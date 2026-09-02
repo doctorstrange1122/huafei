@@ -1066,21 +1066,37 @@
 
         // 跳转支付宝APP（com.eg.android.AlipayGphone）
         function openAlipayApp(url) {
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
+
             // APK环境：直接通过 NativeBridge 调用 Java 层跳转
-            if (window.NativeBridge && window.NativeBridge.openApp) {
+            if (isAPK && window.NativeBridge && window.NativeBridge.openApp) {
                 window.NativeBridge.openApp('com.eg.android.AlipayGphone', url);
                 return;
             }
 
-            // 浏览器环境：用 scheme 尝试唤起支付宝并打开指定页面
-            var alipayScheme = 'alipays://platformapi/startapp?appId=20000067&url=' + encodeURIComponent(url);
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = alipayScheme;
-            document.body.appendChild(iframe);
-            setTimeout(function() {
-                if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-            }, 3000);
+            // alipays://platformapi/startapp?appId=20000067&url= 支付宝内置浏览器打开H5
+            const alipayScheme = 'alipays://platformapi/startapp?appId=20000067&url=' + encodeURIComponent(url);
+
+            function tryScheme(schemeUrl) {
+                if (isAPK) {
+                    window.location.href = schemeUrl;
+                } else if (isIOS) {
+                    // iOS Safari 必须用 window.location.href，iframe 方式无效
+                    window.location.href = schemeUrl;
+                } else {
+                    // 安卓浏览器用 iframe 方式，避免页面跳转
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = schemeUrl;
+                    document.body.appendChild(iframe);
+                    setTimeout(function() {
+                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                    }, 3000);
+                }
+            }
+
+            tryScheme(alipayScheme);
         }
 
         // 跳转天猫APP（com.tmall.wireless）
