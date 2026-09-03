@@ -1159,35 +1159,38 @@
                 }
             }
         }
-        // 跳转点淘APP（com.taobao.live）- 使用JS scheme跳转，无需重新打包APK
-        // taobaolive:// scheme直接传递链接，确保打开的是复制的链接界面而非APP首页
+        // 跳转点淘APP（com.taobao.live）- 使用intent://格式跳转，无需重新打包APK
+        // intent://格式由Chromium WebView内置解析，直接启动点淘并传递链接
         function openDianTaoApp(url) {
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
 
-            // 点淘scheme：taobaolive:// + 链接，直接打开对应页面
-            const diantaoScheme = 'taobaolive://' + url;
-
-            function tryScheme(schemeUrl) {
-                if (isAPK) {
-                    // APK环境：Java shouldOverrideUrlLoading 会拦截 scheme并启动点淘
-                    window.location.href = schemeUrl;
-                } else if (isIOS) {
-                    // iOS Safari 必须用 location.href
-                    window.location.href = schemeUrl;
-                } else {
-                    // 安卓浏览器用 iframe 避免页面跳转
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = schemeUrl;
-                    document.body.appendChild(iframe);
-                    setTimeout(function() {
-                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 3000);
-                }
+            if (isIOS) {
+                // iOS: 直接用taobaolive:// scheme
+                window.location.href = 'taobaolive://' + url;
+                return;
             }
 
-            tryScheme(diantaoScheme);
+            // Android（含APK）：使用intent://格式
+            // 格式: intent://URL路径#Intent;scheme=taobaolive;package=com.taobao.live;S.browser_fallback_url=URL;end
+            // Chromium WebView内置解析intent://URL，直接创建Intent启动点淘APP并传递链接
+            var urlPath = url.replace('https://', '').replace('http://', '');
+            var intentUrl = 'intent://' + urlPath +
+                '#Intent;scheme=taobaolive;package=com.taobao.live;' +
+                'S.browser_fallback_url=' + encodeURIComponent(url) +
+                ';end';
+
+            if (isAPK) {
+                // APK环境：先复制链接到剪贴板（确保即使跳转失败用户也有链接可用）
+                if (window.NativeBridge && window.NativeBridge.copyToClipboard) {
+                    window.NativeBridge.copyToClipboard(url);
+                }
+                // intent://由WebView内置解析，不需要shouldOverrideUrlLoading拦截
+                window.location.href = intentUrl;
+            } else {
+                // Android浏览器：直接用intent://
+                window.location.href = intentUrl;
+            }
         }
         function createQRCodeWithText(qrCodeDataURL, customText) {
             return new Promise((resolve) => {
