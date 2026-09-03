@@ -1159,38 +1159,44 @@
                 }
             }
         }
-        // 跳转点淘APP（com.taobao.live）- 使用intent://格式跳转，无需重新打包APK
-        // intent://格式由Chromium WebView内置解析，直接启动点淘并传递链接
+        // 跳转点淘APP（com.taobao.live）
+        // 网页版：taobaolive:// scheme由手机浏览器系统层处理，直接打开点淘
+        // APK环境：shouldOverrideUrlLoading不支持taobaolive://，临时用复制+提示
         function openDianTaoApp(url) {
             const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
             const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
 
-            if (isIOS) {
-                // iOS: 直接用taobaolive:// scheme
-                window.location.href = 'taobaolive://' + url;
-                return;
-            }
-
-            // Android（含APK）：使用intent://格式
-            // 格式: intent://URL路径#Intent;scheme=taobaolive;package=com.taobao.live;S.browser_fallback_url=URL;end
-            // Chromium WebView内置解析intent://URL，直接创建Intent启动点淘APP并传递链接
-            var urlPath = url.replace('https://', '').replace('http://', '');
-            var intentUrl = 'intent://' + urlPath +
-                '#Intent;scheme=taobaolive;package=com.taobao.live;' +
-                'S.browser_fallback_url=' + encodeURIComponent(url) +
-                ';end';
-
             if (isAPK) {
-                // APK环境：先复制链接到剪贴板（确保即使跳转失败用户也有链接可用）
+                // APK环境：shouldOverrideUrlLoading不支持taobaolive://
+                // 临时方案：复制链接 + 提示用户手动打开点淘
                 if (window.NativeBridge && window.NativeBridge.copyToClipboard) {
                     window.NativeBridge.copyToClipboard(url);
                 }
-                // intent://由WebView内置解析，不需要shouldOverrideUrlLoading拦截
-                window.location.href = intentUrl;
-            } else {
-                // Android浏览器：直接用intent://
-                window.location.href = intentUrl;
+                showToast('链接已复制，请打开点淘粘贴使用');
+                return;
             }
+
+            // 网页版：使用taobaolive:// scheme
+            // 移动浏览器由系统处理自定义scheme，直接打开点淘APP
+            var diantaoScheme = 'taobaolive://' + url;
+
+            // 检测APP是否成功打开（页面是否进入后台）
+            var appOpened = false;
+            var visibilityHandler = function() {
+                if (document.hidden) { appOpened = true; }
+            };
+            document.addEventListener('visibilitychange', visibilityHandler);
+
+            window.location.href = diantaoScheme;
+
+            // 2秒后如果APP未打开，复制链接并提示
+            setTimeout(function() {
+                document.removeEventListener('visibilitychange', visibilityHandler);
+                if (!appOpened) {
+                    copyToClipboard(url);
+                    showToast('点淘未打开，链接已复制，请手动打开点淘粘贴');
+                }
+            }, 2000);
         }
         function createQRCodeWithText(qrCodeDataURL, customText) {
             return new Promise((resolve) => {
