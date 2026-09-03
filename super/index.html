@@ -248,7 +248,7 @@
         .qr-code-container {
             display: flex;
             flex-wrap: nowrap;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
             gap: 12px;
             text-align: center;
@@ -262,9 +262,9 @@
         .qr-code-right {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            align-items: stretch;
+            justify-content: stretch;
+            gap: 0;
             min-width: 140px;
         }
         #resultArea img { display: inline-block; }
@@ -295,11 +295,14 @@
 
         /* 操作按钮 */
         .action-buttons {
-            display: flex; flex-direction: column; gap: 10px; align-items: center;
+            display: flex; flex-direction: column; gap: 6px; align-items: center;
+            height: 100%;
+            justify-content: space-between;
         }
         .action-buttons button {
             width: 100%; min-width: 130px;
-            padding: 12px 16px; font-size: 14px; font-weight: 600;
+            flex: 1;
+            padding: 8px 12px; font-size: 13px; font-weight: 600;
             border: none; border-radius: 8px; cursor: pointer;
             transition: opacity 0.2s, transform 0.1s;
         }
@@ -308,6 +311,7 @@
         .action-buttons button:nth-child(2) { background: #6a9a7a; color: #fff; }
         .action-buttons button:nth-child(3) { background: #c08a5a; color: #fff; }
         .action-buttons button:nth-child(4) { background: #b5504a; color: #fff; }
+        .action-buttons button:nth-child(5) { background: #8b6cb5; color: #fff; }
 
         /* 带文字二维码 */
         .qr-code-with-text {
@@ -1155,6 +1159,36 @@
                 }
             }
         }
+        // 跳转点淘APP（com.taobao.live）- 使用JS scheme跳转，无需重新打包APK
+        // taobaolive:// scheme直接传递链接，确保打开的是复制的链接界面而非APP首页
+        function openDianTaoApp(url) {
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
+
+            // 点淘scheme：taobaolive:// + 链接，直接打开对应页面
+            const diantaoScheme = 'taobaolive://' + url;
+
+            function tryScheme(schemeUrl) {
+                if (isAPK) {
+                    // APK环境：Java shouldOverrideUrlLoading 会拦截 scheme并启动点淘
+                    window.location.href = schemeUrl;
+                } else if (isIOS) {
+                    // iOS Safari 必须用 location.href
+                    window.location.href = schemeUrl;
+                } else {
+                    // 安卓浏览器用 iframe 避免页面跳转
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = schemeUrl;
+                    document.body.appendChild(iframe);
+                    setTimeout(function() {
+                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                    }, 3000);
+                }
+            }
+
+            tryScheme(diantaoScheme);
+        }
         function createQRCodeWithText(qrCodeDataURL, customText) {
             return new Promise((resolve) => {
                 const qrCodeImg = new Image();
@@ -1360,6 +1394,7 @@
                     <button onclick="openTaobaoApp('${fullContent}')">一键跳转淘宝</button>
                     <button onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
                     <button onclick="openTmallApp('${fullContent}')">一键跳转天猫</button>
+                    <button onclick="openDianTaoApp('${fullContent}')">一键跳转点淘</button>
                 `;
 
                 qrRight.appendChild(actionButtons);
