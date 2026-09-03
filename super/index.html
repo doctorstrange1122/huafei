@@ -488,6 +488,14 @@
             updateBadgeDisplay(btnKey, data.counts[btnKey]);
         }
 
+        // 同步使用次数到悬浮窗
+        function syncUsageToFloat() {
+            if (window.NativeBridge && window.NativeBridge.onUsageUpdate) {
+                const usageData = getUsageData();
+                window.NativeBridge.onUsageUpdate(JSON.stringify(usageData.counts));
+            }
+        }
+
         function updateBadgeDisplay(btnKey, count) {
             const btn = document.querySelector('.button-group button[data-btn-key="' + btnKey + '"]');
             if (!btn) return;
@@ -1283,6 +1291,9 @@
                 if (btnKey) {
                     incrementUsageCount(btnKey);
                 }
+
+                // 同步使用次数到悬浮窗
+                syncUsageToFloat();
 
                 // 拼接二维码上方文字：自定义文字 + 两个空格 + 自动标签
                 let displayText = autoLabel || '';
