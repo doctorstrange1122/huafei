@@ -43,6 +43,20 @@
             margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
         }
         .card-title::before { content: ""; width: 4px; height: 16px; background: #8ba0b5; border-radius: 2px; }
+        .reset-usage-btn {
+            font-size: 12px;
+            color: #e53e3e;
+            cursor: pointer;
+            font-weight: normal;
+            padding: 4px 10px;
+            border: 1px solid #fed7d7;
+            border-radius: 12px;
+            background: #fff5f5;
+            transition: all 0.2s;
+        }
+        .reset-usage-btn:active {
+            background: #fed7d7;
+        }
 
         /* 悬浮窗控制面板 */
         .float-control {
@@ -442,13 +456,16 @@
     </div>
 
     <div class="card">
-        <div class="card-title">生成二维码</div>
+        <div class="card-title" style="justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 6px;">生成二维码</span>
+            <span class="reset-usage-btn" onclick="resetAllUsageCounts()">清空今日统计</span>
+        </div>
 
         <div class="btn-section">
             <div class="btn-section-title">肥料</div>
             <div class="button-group">
-                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=75085&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7980&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=75085&spmb=46023237', '10万', '10w')" data-btn-key="10w">10万(10次)<span class="usage-badge zero">0</span></button>
-                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68206&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68206&spmb=46023237', '6万', '6w')" data-btn-key="6w">6万(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=69029&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7310&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=690296&spmb=46023237', '10万', '10w')" data-btn-key="10w">10万(10次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68206&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=682066&spmb=46023237', '6万', '6w')" data-btn-key="6w">6万(1次)<span class="usage-badge zero">0</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=101097&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=5387&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=101097&spmb=46023237', '5.2万', '52000')" data-btn-key="52000">5.2万(1次)<span class="usage-badge zero">0</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=70424&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=704246&spmb=46023237', '5.1万', '51000')" data-btn-key="51000">5.1万(1次)<span class="usage-badge zero">0</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=69029&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7310&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=690296&spmb=46023237', '5万①', '5w1')" data-btn-key="5w1">5万①(1次)<span class="usage-badge zero">0</span></button>
@@ -460,7 +477,6 @@
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68479&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68479&spmb=46023237', '3万②', '3w2')" data-btn-key="3w2">3万②(1次)<span class="usage-badge zero">0</span></button>
             </div>
         </div>
-
         <div class="btn-section">
             <div class="btn-section-title">其他</div>
             <div class="button-group">
@@ -535,6 +551,23 @@
             data.counts[btnKey] = (data.counts[btnKey] || 0) + 1;
             saveUsageData(data);
             updateBadgeDisplay(btnKey, data.counts[btnKey]);
+        }
+
+        function resetAllUsageCounts() {
+            if (!confirm('确定要清空今日所有按钮的使用次数统计吗？')) {
+                return;
+            }
+            const data = getUsageData();
+            data.counts = {};
+            saveUsageData(data);
+            // 更新所有角标显示
+            const buttons = document.querySelectorAll('.button-group button[data-btn-key]');
+            buttons.forEach(function(btn) {
+                const key = btn.getAttribute('data-btn-key');
+                updateBadgeDisplay(key, 0);
+            });
+            // 同步到悬浮窗
+            syncUsageToFloat();
         }
 
         // 同步使用次数到悬浮窗
