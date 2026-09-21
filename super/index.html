@@ -1321,6 +1321,29 @@
             });
         }
 
+        // 从完整URL生成短链
+        function generateShortUrl(fullUrl) {
+            // 提取参数
+            function getParam(url, name) {
+                const regex = new RegExp('[?&]' + name + '=([^&]+)');
+                const match = url.match(regex);
+                return match ? decodeURIComponent(match[1]) : '';
+            }
+            const i = getParam(fullUrl, 'itemIds');
+            const d = getParam(fullUrl, 'deliveryId');
+            const s = getParam(fullUrl, 'sceneId');
+            const p = getParam(fullUrl, 'prismTrace');
+            const b = getParam(fullUrl, 'spmb');
+            
+            if (!i || !d || !s) return fullUrl;
+            
+            let shortUrl = 'https://tktool.pages.dev/r?i=' + i + '&d=' + d + '&s=' + s;
+            if (p) shortUrl += '&p=' + p;
+            if (b && b !== '46023237') shortUrl += '&b=' + b;
+            
+            return shortUrl;
+        }
+
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
@@ -1356,16 +1379,18 @@
             try {
                 // 将链接中的 itemIds=xxx 替换为解析到的商品ID
                 const fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
-                // 使用组合后的完整字符串生成一个二维码
-                const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
+                // 生成短链（用于二维码和复制）
+                const shortContent = generateShortUrl(fullContent);
+                // 使用短链生成二维码，更简洁易扫
+                const qrCodeDataURL = await QRCode.toDataURL(shortContent, {
                     width: 150,
                     height: 150,
                     colorDark: "#000000",
                     colorLight: "#FFFFFF"
                 });
 
-                // 自动复制到剪贴板
-                copyToClipboard(fullContent);
+                // 自动复制短链到剪贴板
+                copyToClipboard(shortContent);
 
                 // 增加按钮使用次数
                 if (btnKey) {
@@ -1436,7 +1461,7 @@
                 qrRight.className = 'qr-code-right';
 
                 actionButtons.innerHTML = `
-                    <button onclick="copyToClipboard('${fullContent}')">复制链接</button>
+                    <button onclick="copyToClipboard('${shortContent}')">复制链接</button>
                     <button onclick="openTaobaoApp('${fullContent}')">一键跳转淘宝</button>
                     <button onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
                     <button onclick="openTmallApp('${fullContent}')">一键跳转天猫</button>
