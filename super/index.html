@@ -1385,5 +1385,219 @@
             }
         }
     </script>
+
+    <!-- ====== 密钥激活系统 ====== -->
+    <style>
+        #keyActivateOverlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            padding: 20px;
+        }
+        #keyActivateOverlay.active { display: flex; }
+        .key-activate-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .key-activate-card h2 {
+            font-size: 20px;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        .key-activate-card .subtitle {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+        .key-activate-card input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            outline: none;
+            text-align: center;
+            letter-spacing: 1px;
+            font-family: "SF Mono", Menlo, monospace;
+            text-transform: uppercase;
+            transition: border-color 0.2s;
+        }
+        .key-activate-card input:focus { border-color: #667eea; }
+        .key-activate-card button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .key-activate-card button:active { transform: scale(0.98); }
+        .key-activate-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .key-activate-error {
+            color: #e53e3e;
+            font-size: 13px;
+            margin-top: 10px;
+            min-height: 18px;
+        }
+        .key-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+    </style>
+
+    <div id="keyActivateOverlay">
+        <div class="key-activate-card">
+            <div class="key-icon">🔐</div>
+            <h2>请输入激活密钥</h2>
+            <p class="subtitle">本工具需要激活密钥才能使用<br>每密钥仅限一台设备</p>
+            <input type="text" id="keyInput" placeholder="DT-XXXX-XXXX-XXXX" autocomplete="off" maxlength="16">
+            <button id="keyActivateBtn" onclick="activateKey()">激 活</button>
+            <div class="key-activate-error" id="keyError"></div>
+        </div>
+    </div>
+
+    <script>
+    // 密钥验证系统
+    (function() {
+        const KEY_API_BASE = 'https://tktool.pages.dev/api/key';
+        const STORAGE_KEY = 'app_activate_key';
+        const STORAGE_DEVICE = 'app_device_id';
+
+        // 获取或生成设备ID
+        function getDeviceId() {
+            let id = localStorage.getItem(STORAGE_DEVICE);
+            if (!id) {
+                id = 'dev_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem(STORAGE_DEVICE, id);
+            }
+            return id;
+        }
+
+        // 显示激活弹窗
+        function showActivateOverlay() {
+            document.getElementById('keyActivateOverlay').classList.add('active');
+            // 自动聚焦
+            setTimeout(() => {
+                const input = document.getElementById('keyInput');
+                if (input) input.focus();
+            }, 300);
+        }
+
+        // 隐藏激活弹窗
+        function hideActivateOverlay() {
+            document.getElementById('keyActivateOverlay').classList.remove('active');
+        }
+
+        // 验证已保存的密钥
+        async function verifySavedKey() {
+            const savedKey = localStorage.getItem(STORAGE_KEY);
+            const deviceId = getDeviceId();
+
+            if (!savedKey) return false;
+
+            try {
+                const resp = await fetch(KEY_API_BASE + '/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: savedKey, deviceId })
+                });
+                const data = await resp.json();
+                return data.valid === true;
+            } catch (e) {
+                console.warn('密钥验证请求失败:', e);
+                // 网络失败时，本地暂存的密钥也作为临时通过（避免断网无法使用）
+                // 但只在7天内有效
+                const lastVerify = parseInt(localStorage.getItem('app_last_verify') || '0');
+                if (Date.now() - lastVerify < 7 * 24 * 3600 * 1000) {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // 全局激活函数
+        window.activateKey = async function() {
+            const keyInput = document.getElementById('keyInput');
+            const btn = document.getElementById('keyActivateBtn');
+            const errEl = document.getElementById('keyError');
+
+            let key = (keyInput.value || '').trim().toUpperCase();
+            if (!key) {
+                errEl.textContent = '请输入密钥';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '激活中...';
+            errEl.textContent = '';
+
+            const deviceId = getDeviceId();
+
+            try {
+                const resp = await fetch(KEY_API_BASE + '/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, deviceId })
+                });
+                const data = await resp.json();
+
+                if (data.success && data.activated) {
+                    localStorage.setItem(STORAGE_KEY, key);
+                    localStorage.setItem('app_last_verify', Date.now());
+                    hideActivateOverlay();
+                } else {
+                    errEl.textContent = data.error || '激活失败';
+                }
+            } catch (e) {
+                errEl.textContent = '网络错误，请检查网络后重试';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '激 活';
+            }
+        };
+
+        // 回车激活
+        document.addEventListener('DOMContentLoaded', function() {
+            const keyInput = document.getElementById('keyInput');
+            if (keyInput) {
+                keyInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') activateKey();
+                });
+            }
+        });
+
+        // 初始化：检查激活状态
+        async function init() {
+            const isValid = await verifySavedKey();
+            if (isValid) {
+                localStorage.setItem('app_last_verify', Date.now());
+                hideActivateOverlay();
+            } else {
+                showActivateOverlay();
+            }
+        }
+
+        // 页面加载后立即检查
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+    </script>
 </body>
 </html>
