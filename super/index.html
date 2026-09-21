@@ -207,6 +207,39 @@
             grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
+        .btn-section {
+            margin-bottom: 14px;
+        }
+        .btn-section:last-child {
+            margin-bottom: 0;
+        }
+        .btn-section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #7a93ac;
+            margin-bottom: 8px;
+            padding-left: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-section-title::before {
+            content: "";
+            width: 3px;
+            height: 14px;
+            background: #8ba0b5;
+            border-radius: 2px;
+        }
+        .section-tip {
+            font-size: 12px;
+            color: #e53e3e;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #fff5f5;
+            border-radius: 8px;
+            border-left: 3px solid #fc8181;
+            line-height: 1.5;
+        }
         .button-group button {
             position: relative;
             padding: 14px 12px; font-size: 15px; font-weight: 600;
@@ -410,16 +443,32 @@
 
     <div class="card">
         <div class="card-title">生成二维码</div>
-        <div class="button-group">
-            <button onclick="generateQRCodes(500, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=69755&activityId=100129&deliveryId=69755&sceneId=7779&itemIds=', '500☀☀', '500ss')" data-btn-key="500ss">500☀☀(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=98812&deliveryId=98812&sceneId=2203&itemIds=', '话费', '1')" data-btn-key="1">话费(2次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(2, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?activityId=100129&deliveryId=90243&sceneId=9267&spma=mspd&spmb=qdmsxiadan&itemIds=', '元宝', 'yuanbao')" data-btn-key="yuanbao">元宝(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(30000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=68479&deliveryId=68479&sceneId=7506&itemIds=', '3万', '3w')" data-btn-key="3w">3万肥料(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(40000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=68422&deliveryId=68422&sceneId=7506&itemIds=', '4万①', '4w1')" data-btn-key="4w1">4万肥料①(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(40000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=74994&deliveryId=74994&sceneId=7506&itemIds=', '4万②', '4w2')" data-btn-key="4w2">4万肥料②(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(50000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=69029&deliveryId=69029&sceneId=7310&itemIds=', '5万①', '5w1')" data-btn-key="5w1">5万肥料①(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(50000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&pha_manifest=default&spma=farm&spmb=xsmsxiadan01&hd_from_id=times&sceneId=5387&deliveryId=104511&prismTrace=104511&itemIds=', '5万②', '5w2')" data-btn-key="5w2">5万肥料②(1次)<span class="usage-badge zero">0</span></button>
-            <button onclick="generateQRCodes(60000, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tjb-ssr/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=68206&deliveryId=68206&sceneId=7506&itemIds=', '6万', '6w')" data-btn-key="6w">6万肥料(1次)<span class="usage-badge zero">0</span></button>
+
+        <div class="btn-section">
+            <div class="btn-section-title">肥料</div>
+            <div class="button-group">
+                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=75085&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7980&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=75085&spmb=46023237', '10万', '10w')" data-btn-key="10w">10万(10次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68206&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68206&spmb=46023237', '6万', '6w')" data-btn-key="6w">6万(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=101097&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=5387&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=101097&spmb=46023237', '5.2万', '52000')" data-btn-key="52000">5.2万(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=70424&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=704246&spmb=46023237', '5.1万', '51000')" data-btn-key="51000">5.1万(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=69029&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7310&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=690296&spmb=46023237', '5万①', '5w1')" data-btn-key="5w1">5万①(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=104511&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=5387&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=104511&spmb=xsmsxiadan01', '5万②', '5w2')" data-btn-key="5w2">5万②(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68422&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68422&spmb=46023237', '4万①', '4w1')" data-btn-key="4w1">4万①(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=74994&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=74994&spmb=46023237', '4万②', '4w2')" data-btn-key="4w2">4万②(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=79447&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=79447&spmb=46023237', '4万③', '4w3')" data-btn-key="4w3">4万③(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=70424&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7310&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=704246&spmb=46023237', '3万①', '3w1')" data-btn-key="3w1">3万①(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68479&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68479&spmb=46023237', '3万②', '3w2')" data-btn-key="3w2">3万②(1次)<span class="usage-badge zero">0</span></button>
+            </div>
+        </div>
+
+        <div class="btn-section">
+            <div class="btn-section-title">其他</div>
+            <div class="button-group">
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?ut_sk=1.YFLdTc0p40gDAFHpvqTxEGMf_21380790_1789988188351.Copy.tao_feedbackscreenshare&sp_tk=YzB0bVRnc01jQzM%3D&deliveryId=99141&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=9267&scene=wt&cpp=1&implId=other_1343_3235046_101028_0&hd_from_id=100085&shareurl=true&itemIds=911896365609&asac=2A24229CRW8AFXDCFEMN20&forceThemis=true&x-sec=wua&un_site=0&originQueryId=214784df17886086691852153e1172&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&app=macos_safari&x-preload=true&taskhubType=taskhubcc&ttid=201200%40taobao_iphone_9.23.0&x-ssr=true&short_name=h.8pHdg09&spma=farm&fromToken=nKgxVQaWKS28n788kRuRXZCgBBNt5UNUvUwUrU5UMUaj&sm=a0a262&sourceType=other&activityId=100129&taskFrom=wulengjing&prismTrace=99141&spmb=46023237&un=eaec0c1dcf12ad9adf0c2bb5806eccf0&suid=701BC9ED-7EF6-41B5-87D6-A5445E9BFF63&bxsign=tcd3DnfBA84Q-Kjf4ENAVeICF2wyP6CgNCTil4AkpOZnpmrpLZjHFGXa2QomPofjG-ORppEP3FZG97K_UcekFR3qMcKxGDXqdbCt_hSlrgd9qQ&bc_fl_src=share-1107637027195-1-0', '5000元宝', 'yuanbao')" data-btn-key="yuanbao">5000元宝(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=98812&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=2203&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=98812&spmb=46023237', '5999羊毛', 'yangmao')" data-btn-key="yangmao">5999羊毛(1次)<span class="usage-badge zero">0</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=69755&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7779&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=69755&spmb=46023237', '500阳光', '500yg')" data-btn-key="500yg">500阳光(1次)<span class="usage-badge zero">0</span></button>
+            </div>
+            <div class="section-tip">⚠️ 此区域若在淘宝打开后上方不显示奖励内容，请更换天猫打开</div>
         </div>
     </div>
 
@@ -1241,7 +1290,7 @@
             });
         }
 
-        async function generateQRCodes(quantity, fixedString, autoLabel, btnKey) {
+        async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
             const userCustomText = document.getElementById('customText').value.trim();
@@ -1274,8 +1323,8 @@
             }
 
             try {
-                // 将固定字符串与提取的商品ID连接起来
-                const fullContent = fixedString + productId;
+                // 将链接中的 itemIds=xxx 替换为解析到的商品ID
+                const fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
                 // 使用组合后的完整字符串生成一个二维码
                 const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
                     width: 150,
