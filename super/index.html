@@ -8,10 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="秒杀二维码">
+    <meta name="apple-mobile-web-app-title" content="秒杀商品奖励">
     <meta name="theme-color" content="#6a9a7a">
     <link rel="manifest" href="/tktool/manifest.json">
-    <title>秒杀商品二维码生成</title>
+    <title>秒杀商品奖励</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
@@ -370,7 +370,7 @@
         .result-info .info-label { font-size: 12px; color: #718096; margin-bottom: 4px; }
         .result-info .info-value { font-size: 14px; font-weight: 600; color: #2d3748; }
 
-        /* 带文字二维码 */
+        /* 带文字图片 */
         .qr-code-with-text {
             display: inline-block; text-align: center;
             background: #fff; padding: 12px; border-radius: 12px;
@@ -412,8 +412,8 @@
 <div class="wrapper">
 
     <div class="header">
-        <h1>秒杀商品二维码生成</h1>
-        <div class="subtitle">粘贴淘口令，一键生成二维码</div>
+        <h1>秒杀商品奖励</h1>
+        <div class="subtitle">粘贴淘口令，一键生成奖励链接</div>
     </div>
 
     <div class="float-control">
@@ -428,12 +428,12 @@
     </div>
 
     <div class="card">
-        <div class="card-title">输入信息</div>
+        <div class="card-title">输入区</div>
 
         <div class="input-section">
             <label for="customText">自定义文字（选填）</label>
             <input type="text" id="customText" placeholder="可输入备注信息，如商品名称、用途等">
-            <div class="tip-text">自定义文字将显示在二维码上方</div>
+            <div class="tip-text">自定义文字将显示在结果上方</div>
         </div>
 
         <div class="input-section">
@@ -454,24 +454,24 @@
             <label class="checkbox-label">
                 <input type="checkbox" id="autoJumpCheck">
                 <span class="checkbox-custom"></span>
-                生成二维码后自动跳转淘宝
+                生成后自动跳转淘宝
             </label>
             <label class="checkbox-label">
                 <input type="checkbox" id="autoJumpDianTaoCheck">
                 <span class="checkbox-custom"></span>
-                生成二维码后自动跳转支付宝
+                生成后自动跳转支付宝
             </label>
             <label class="checkbox-label">
                 <input type="checkbox" id="autoJumpTmallCheck">
                 <span class="checkbox-custom"></span>
-                生成二维码后自动跳转天猫
+                生成后自动跳转天猫
             </label>
         </div>
     </div>
 
     <div class="card">
         <div class="card-title" style="justify-content: space-between;">
-            <span style="display: flex; align-items: center; gap: 6px;">生成二维码</span>
+            <span style="display: flex; align-items: center; gap: 6px;">功能区</span>
             <span class="reset-usage-btn" onclick="resetAllUsageCounts()">清空今日统计</span>
         </div>
 
@@ -502,16 +502,19 @@
         </div>
     </div>
 
-    <div id="resultArea"></div>
+    <div class="card" id="resultCard" style="display: none;">
+        <div class="card-title">结果区</div>
+        <div id="resultArea"></div>
+    </div>
 
-    <div class="footer">秒杀商品二维码生成工具</div>
+    <div class="footer">秒杀商品奖励工具</div>
 </div>
 
     <!-- 扫码弹窗 -->
     <div class="scan-modal" id="scanModal">
         <button class="scan-close" onclick="stopScan()">✕</button>
         <div class="scan-viewport" id="scanViewport"></div>
-        <div class="scan-hint">将二维码对准框内，自动识别</div>
+        <div class="scan-hint">将图片对准框内，自动识别</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -759,7 +762,7 @@
                     if (result === 'ERROR') {
                         alert('扫码解析失败，请重试或手动粘贴淘口令');
                     } else if (result === 'NOT_FOUND') {
-                        alert('未识别到二维码，请重新拍照');
+                        alert('未识别到内容，请重新拍照');
                     } else {
                         document.getElementById('productLink').value = result;
                     }
@@ -1067,10 +1070,10 @@
             document.body.removeChild(textarea);
         }
 
-        // 下载二维码图片函数（修复版）
+        // 下载图片函数（修复版）
         function downloadQRCode() {
             if (!currentQRCodeCanvas) {
-                alert('请先生成二维码');
+                alert('请先生成图片');
                 return;
             }
 
@@ -1084,14 +1087,14 @@
                 alert('图片已下载，请在手机「文件管理 → Download」文件夹中查看。若图库未显示，请将图片移动到 DCIM 文件夹。');
             } catch (error) {
                 console.error('下载失败:', error);
-                alert('下载失败，请长按二维码图片选择「保存到相册」');
+                alert('下载失败，请长按图片选择「保存到相册」');
             }
         }
 
-        // 下载带文字的二维码图片函数（修复版）
+        // 下载带文字图片函数（修复版）
         function downloadQRCodeWithText() {
             if (!currentQRCodeWithTextCanvas) {
-                alert('请先生成带文字的二维码');
+                alert('请先生成带文字图片');
                 return;
             }
 
@@ -1105,7 +1108,7 @@
                 alert('图片已下载，请在手机「文件管理 → Download」文件夹中查看。若图库未显示，请将图片移动到 DCIM 文件夹。');
             } catch (error) {
                 console.error('下载失败:', error);
-                alert('下载失败，请长按二维码图片选择「保存到相册」');
+                alert('下载失败，请长按图片选择「保存到相册」');
             }
         }
 
@@ -1417,7 +1420,7 @@
                 // 长按保存提示
                 const saveTip = document.createElement('div');
                 saveTip.className = 'long-press-tip';
-                saveTip.textContent = '👆 长按二维码图片可保存至图库';
+                saveTip.textContent = '👆 长按图片可保存至图库';
 
                 // 创建操作按钮区域
                 const actionButtons = document.createElement('div');
@@ -1428,7 +1431,7 @@
 
                 const mergedImg = document.createElement('img');
                 mergedImg.src = currentQRCodeWithTextCanvas.toDataURL('image/png');
-                mergedImg.alt = '带文字的二维码';
+                mergedImg.alt = '带文字图片';
                 mergedImg.style.maxWidth = '180px';
                 mergedImg.style.borderRadius = '8px';
                 mergedImg.style.cursor = 'pointer';
@@ -1444,7 +1447,7 @@
                 mergedImg.addEventListener('touchstart', function(e) {
                     longPressTimer = setTimeout(function() {
                         if (isInApp && NativeBridge.saveImage) {
-                            if (confirm('是否保存二维码图片到图库？')) {
+                            if (confirm('是否保存图片到图库？')) {
                                 NativeBridge.saveImage(currentQRCodeWithTextCanvas.toDataURL('image/png'));
                             }
                         }
@@ -1482,6 +1485,10 @@
                 // 更新结果区域
                 resultArea.innerHTML = '';
                 resultArea.appendChild(container);
+
+                // 显示结果区卡片
+                const resultCard = document.getElementById('resultCard');
+                if (resultCard) resultCard.style.display = 'block';
 
                 // 自动跳转：根据复选框选择跳转对应APP
                 if (getAutoJumpEnabled()) {
