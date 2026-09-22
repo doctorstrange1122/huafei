@@ -26,9 +26,9 @@
         .wrapper { max-width: 480px; margin: 0 auto; }
 
         /* 标题 */
-        .header { text-align: center; padding: 20px 0 16px; color: #4a5c6e; }
-        .header h1 { font-size: 24px; font-weight: 700; letter-spacing: 1px; }
-        .header .subtitle { font-size: 13px; color: #8a9bad; margin-top: 6px; }
+        .header { text-align: center; padding: 24px 0 20px; color: #2d3748; }
+        .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header .subtitle { font-size: 14px; color: #718096; margin-top: 8px; font-weight: 500; }
 
         /* 卡片通用 */
         .card {
@@ -228,11 +228,16 @@
             margin-bottom: 0;
         }
         .btn-section-title {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
-            color: #7a93ac;
-            margin-bottom: 8px;
+            color: #4a5c6e;
+            margin-bottom: 10px;
             padding-left: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .btn-section-title > span {
             display: flex;
             align-items: center;
             gap: 6px;
@@ -241,17 +246,21 @@
             content: "";
             width: 3px;
             height: 14px;
-            background: #8ba0b5;
+            background: linear-gradient(180deg, #ff6b35 0%, #f7931e 100%);
             border-radius: 2px;
+            display: inline-block;
         }
         .section-tip {
-            font-size: 11px;
+            font-size: 12px;
             color: #e53e3e;
             font-weight: normal;
-            line-height: 1.3;
-            margin-left: auto;
-            text-align: right;
-            white-space: nowrap;
+            line-height: 1.4;
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: left;
+            margin-left: 0;
         }
         .button-group button {
             position: relative;
@@ -461,7 +470,7 @@
         </div>
 
         <div class="btn-section">
-            <div class="btn-section-title">肥料</div>
+            <div class="btn-section-title"><span>肥料</span></div>
             <div class="button-group">
                 <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=75085&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7980&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=75085&spmb=46023237', '10万', '10w')" data-btn-key="10w">10万(10次)<span class="usage-badge zero">0</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&deliveryId=68206&disableProgress=true&_tbScancodeApproach_=scan&disableNav=YES&sceneId=7506&scene=wt&hd_from_id=100085&shareurl=true&itemIds=911896365609&forceThemis=true&x-sec=wua&un_site=0&share_crt_v=1&spm=farm.13840689.tasklist-pentaprism.101028&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&prismTrace=68206&spmb=46023237', '6万', '6w')" data-btn-key="6w">6万(1次)<span class="usage-badge zero">0</span></button>
