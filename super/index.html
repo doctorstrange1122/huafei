@@ -1214,13 +1214,11 @@
                     window.NativeBridge.openApp('com.tmall.wireless', url);
                     return;
                 }
-                copyToClipboard(url);
                 tryScheme('tmall://tmallclient/');
-                showToast('链接已复制，请在天猫中粘贴使用');
+                showToast('正在打开天猫...');
             } else if (isIOS) {
-                copyToClipboard(url);
                 tryScheme('tmall://tmallclient/');
-                showToast('链接已复制，请在天猫中粘贴使用');
+                showToast('正在打开天猫...');
             } else {
                 try {
                     var urlObj = new URL(url);
@@ -1229,9 +1227,8 @@
                         encodeURIComponent(url) + ';end';
                     tryScheme(intentUrl);
                 } catch(e) {
-                    copyToClipboard(url);
                     tryScheme('tmall://tmallclient/');
-                    showToast('链接已复制，请在天猫中粘贴使用');
+                    showToast('正在打开天猫...');
                 }
             }
         }
@@ -1389,8 +1386,8 @@
                     colorLight: "#FFFFFF"
                 });
 
-                // 自动复制短链到剪贴板
-                copyToClipboard(shortContent);
+                // 保存生成的链接供跳转使用
+                window._lastGeneratedLink = fullContent;
 
                 // 增加按钮使用次数
                 if (btnKey) {
@@ -1461,7 +1458,6 @@
                 qrRight.className = 'qr-code-right';
 
                 actionButtons.innerHTML = `
-                    <button onclick="copyToClipboard('${shortContent}')">复制链接</button>
                     <button onclick="openTaobaoApp('${fullContent}')">一键跳转淘宝</button>
                     <button onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
                     <button onclick="openTmallApp('${fullContent}')">一键跳转天猫</button>
