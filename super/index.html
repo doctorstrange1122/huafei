@@ -812,15 +812,8 @@
         }
         // ====== 扫码功能结束 ======
 
-        // CORS 代理列表（并行竞争，谁先返回用谁）
-        const CORS_PROXIES = [
-            (url) => `https://proxy.cors.sh/${url}`,
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-            (url) => `https://proxy.corsfix.com/?${url}`,
-            (url) => `https://api.cors.syrins.tech/?url=${encodeURIComponent(url)}`,
-            (url) => `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
-        ];
+        // 自建 CORS 代理
+        const PROXY_URL = 'https://tktool.pages.dev/api/proxy';
 
         // 从分享文本中提取短链
         function extractShortUrl(text) {
@@ -828,27 +821,19 @@
             return m ? m[0] : null;
         }
 
-        // 通过 CORS 代理请求 URL，返回响应文本（并行请求，取最快响应）
+        // 通过自建代理请求 URL，返回响应文本
         async function fetchWithProxy(targetUrl) {
-            const promises = CORS_PROXIES.map((proxyFn, i) => {
-                const proxyUrl = proxyFn(targetUrl);
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
-                return fetch(proxyUrl, { signal: controller.signal })
-                    .then(resp => {
-                        clearTimeout(timeoutId);
-                        if (resp.ok) return resp.text();
-                        throw new Error('bad status');
-                    })
-                    .then(text => {
-                        if (text && text.length > 50) return text;
-                        throw new Error('too short');
-                    })
-                    .catch(e => { throw e; });
-            });
             try {
-                return await Promise.any(promises);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const resp = await fetch(`${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!resp.ok) throw new Error('bad status');
+                const data = await resp.json();
+                if (data.body && data.body.length > 50) return data.body;
+                throw new Error('too short');
             } catch (e) {
+                console.error('代理请求失败:', e);
                 return null;
             }
         }
