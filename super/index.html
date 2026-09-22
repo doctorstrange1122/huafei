@@ -1202,7 +1202,13 @@
                 tryScheme('tmall://tmallclient/');
                 showToast('正在打开天猫...');
             } else if (isIOS) {
-                tryScheme('tmall://tmallclient/');
+                // iOS：尝试用 tmall:// scheme 直接打开页面，失败回落启动天猫
+                try {
+                    var tmallSchemeUrl = url.replace(/^https?:\/\//, 'tmall://');
+                    tryScheme(tmallSchemeUrl);
+                } catch(e) {
+                    tryScheme('tmall://tmallclient/');
+                }
                 showToast('正在打开天猫...');
             } else {
                 try {
