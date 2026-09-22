@@ -18,7 +18,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
             background: linear-gradient(135deg, #e8edf2 0%, #d3dde6 50%, #c2cfd9 100%);
             min-height: 100vh;
-            padding: 16px;
+            padding: 10px;
             color: #3a4a5a;
             overflow-x: hidden;
             position: relative;
@@ -26,9 +26,9 @@
         .wrapper { max-width: 480px; margin: 0 auto; }
 
         /* 标题 */
-        .header { text-align: center; padding: 24px 0 20px; color: #2d3748; }
+        .header { text-align: center; padding: 12px 0 8px; color: #2d3748; }
         .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .header .subtitle { font-size: 14px; color: #718096; margin-top: 8px; font-weight: 500; }
+        .header .subtitle { font-size: 14px; color: #718096; margin-top: 4px; font-weight: 500; }
 
         /* 卡片通用 */
         .card {
@@ -56,6 +56,23 @@
         }
         .reset-usage-btn:active {
             background: #fed7d7;
+        }
+        .func-area-title {
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .func-area-title::before { display: none; }
+        .func-title-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .func-title-left::before {
+            content: "";
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(180deg, #ff6b35 0%, #f7931e 100%);
+            border-radius: 2px;
         }
 
         /* 悬浮窗控制面板 */
@@ -447,7 +464,6 @@
         <div class="input-section">
             <label for="customText">自定义文字（选填）</label>
             <input type="text" id="customText" placeholder="可输入备注信息，如商品名称、用途等">
-            <div class="tip-text">自定义文字将显示在结果上方</div>
         </div>
 
         <div class="input-section">
@@ -460,7 +476,6 @@
                     <button class="clear-button" onclick="clearInput()">清空</button>
                 </div>
             </div>
-            <div class="tip-text">粘贴淘口令/分享文本或通过当面分享扫码，自动解析获取商品ID</div>
         </div>
 
         <!-- 自动跳转复选框 -->
@@ -484,8 +499,8 @@
     </div>
 
     <div class="card">
-        <div class="card-title">功能区</div>
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+        <div class="card-title func-area-title">
+            <span class="func-title-left"><span class="func-title-text">功能区</span></span>
             <span class="reset-usage-btn" onclick="resetAllUsageCounts()">清空今日统计</span>
         </div>
 
