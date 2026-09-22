@@ -353,9 +353,10 @@
         }
         .action-buttons button:active { transform: scale(0.96); }
         .action-buttons button:nth-child(1) { background: #7a93ac; color: #fff; }
-        .action-buttons button:nth-child(2) { background: #6a9a7a; color: #fff; display: none !important; }
+        .action-buttons button:nth-child(2) { background: #6a9a7a; color: #fff; }
         .action-buttons button:nth-child(3) { background: #c08a5a; color: #fff; }
         .action-buttons button:nth-child(4) { background: #b5504a; color: #fff; }
+        .action-buttons button.btn-hidden { display: none !important; }
 
         /* 结果区信息显示 */
         .result-info {
@@ -1469,7 +1470,7 @@
                         <div class="info-value">${displayText || autoLabel || ''}</div>
                     </div>
                     <button onclick="openTaobaoApp('${fullContent}')">一键跳转淘宝</button>
-                    <button onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
+                    <button class="btn-hidden" onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
                     <button onclick="openTmallApp('${fullContent}')">一键跳转天猫</button>
                 `;
 
