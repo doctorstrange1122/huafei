@@ -355,7 +355,8 @@
         .action-buttons button:nth-child(2) { background: #6a9a7a; color: #fff; }
         .action-buttons button:nth-child(3) { background: #c08a5a; color: #fff; }
         .action-buttons button:nth-child(4) { background: #b5504a; color: #fff; }
-        .action-buttons button.btn-hidden { display: none !important; }
+        .action-buttons button.btn-hidden,
+        .checkbox-label.btn-hidden { display: none !important; }
 
         /* 结果区信息显示 */
         .result-info {
@@ -455,7 +456,7 @@
                 <span class="checkbox-custom"></span>
                 生成后自动跳转淘宝
             </label>
-            <label class="checkbox-label">
+            <label class="checkbox-label btn-hidden">
                 <input type="checkbox" id="autoJumpDianTaoCheck">
                 <span class="checkbox-custom"></span>
                 生成后自动跳转支付宝
