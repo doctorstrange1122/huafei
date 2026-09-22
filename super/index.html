@@ -1389,9 +1389,8 @@
                 // 将链接中的 itemIds=xxx 替换为解析到的商品ID
                 const fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
                 // 生成短链（用于二维码和复制）
-                const shortContent = generateShortUrl(fullContent);
-                // 使用短链生成二维码，更简洁易扫
-                const qrCodeDataURL = await QRCode.toDataURL(shortContent, {
+                // 使用完整淘宝链接生成二维码，淘宝扫码可在内部直接打开活动页
+                const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
                     width: 150,
                     height: 150,
                     colorDark: "#000000",
