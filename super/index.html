@@ -1437,10 +1437,11 @@
                 mergedImg.addEventListener('touchend', function() { clearTimeout(longPressTimer); });
                 mergedImg.addEventListener('touchmove', function() { clearTimeout(longPressTimer); });
 
-                // 左侧：二维码 + 长按提示
+                // 左侧：二维码 + 长按提示（暂时隐藏）
                 const qrLeft = document.createElement('div');
                 qrLeft.className = 'qr-code-left';
                 qrLeft.style.textAlign = 'center';
+                qrLeft.style.display = 'none';
                 qrLeft.appendChild(mergedImg);
                 qrLeft.appendChild(saveTip);
 
