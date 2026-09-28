@@ -492,7 +492,7 @@
         <div class="input-section">
             <label for="productLink">淘口令 / 分享文本</label>
             <div class="input-row">
-                <input type="text" id="productLink" placeholder="粘贴淘口令或分享文本" required>
+                <input type="text" id="productLink" placeholder="粘贴淘口令/分享文本，或直接输入商品id（支持多id，逗号分隔）" required>
                 <div class="action-btn-group">
                     <button class="scan-button" onclick="startScan()" title="扫码输入">扫码</button>
                     <button class="paste-button" onclick="pasteFromClipboard()" title="粘贴剪贴板">粘贴</button>
@@ -1025,11 +1025,46 @@
         }
 
         // 从商品链接中提取商品ID的函数（保留原逻辑，作为兜底）
+        // 判断输入是否为“直接商品id”模式：纯数字串 / id=xxx / (id1,id2,...) 等
+        function isDirectIdInput(text) {
+            if (!text) return false;
+            const t = text.trim();
+            const cleaned = t.replace(/id\s*=\s*/gi, '')
+                             .replace(/[（）()]/g, '')
+                             .replace(/[¥￥\s]/g, '');
+            // 含分隔符（逗号/分号/顿号/空格）时，要求每个片段均为纯数字
+            if (/[,\s;；、]/.test(cleaned)) {
+                const parts = cleaned.split(/[,\s;；、]+/).filter(Boolean);
+                return parts.length > 0 && parts.every(p => /^\d{7,}$/.test(p));
+            }
+            // 单一长数字串（≥7位）视为直接id
+            return /^\d{7,}$/.test(cleaned);
+        }
+
+        // 从“直接商品id”输入中提取全部商品id（支持多id，逗号/括号/空白分隔，自动去重）
+        function extractAllProductIds(text) {
+            if (!text) return [];
+            let t = text.trim();
+            // 去掉括号
+            t = t.replace(/[（）()]/g, ' ');
+            // 去掉 "id=" / "itemIds=" 前缀（保留后续数字串）
+            t = t.replace(/\bid\s*=\s*/gi, ' ');
+            t = t.replace(/\bitemIds\s*=\s*/gi, ' ');
+            // 提取所有 ≥7 位连续数字
+            const ids = (t.match(/\d{7,}/g) || []);
+            const seen = new Set();
+            const result = [];
+            for (const id of ids) {
+                if (!seen.has(id)) { seen.add(id); result.push(id); }
+            }
+            return result;
+        }
+
         function extractProductId(productLink) {
             let productId = '';
 
-            // 方法1：匹配 itemIds= 参数
-            const itemIdsMatch = productLink.match(/itemIds=(\d+)/);
+            // 方法1：匹配 itemIds= 参数（支持逗号分隔的多个id）
+            const itemIdsMatch = productLink.match(/itemIds=([^&\s]+)/);
             if (itemIdsMatch) {
                 productId = itemIdsMatch[1];
                 return productId;
@@ -1428,12 +1463,23 @@
             const resultArea = document.getElementById('resultArea');
             resultArea.innerHTML = '<p>正在解析淘口令并生成，请稍候...</p>';
 
-            // 先尝试通过淘口令解析获取商品ID
+            // 优先：直接输入商品id 模式（纯数字 / id=xxx / (id1,id2,...) 等，支持多id）
             let productId = null;
-            try {
-                productId = await parseItemIdFromShareText(productLink);
-            } catch (e) {
-                console.warn('淘口令解析异常:', e.message);
+            if (isDirectIdInput(productLink)) {
+                const ids = extractAllProductIds(productLink);
+                if (ids.length > 0) {
+                    // 多个id以逗号拼接进链接的 itemIds 参数
+                    productId = ids.join(',');
+                }
+            }
+
+            // 否则：先尝试通过淘口令解析获取商品ID
+            if (!productId) {
+                try {
+                    productId = await parseItemIdFromShareText(productLink);
+                } catch (e) {
+                    console.warn('淘口令解析异常:', e.message);
+                }
             }
 
             // 如果淘口令解析失败，回退到原有的链接提取逻辑
