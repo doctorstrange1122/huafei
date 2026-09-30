@@ -137,15 +137,42 @@
         .custom-field { min-width: 0; }
         .custom-text-field { flex: 0 0 42%; }
         .custom-link-field { flex: 1; min-width: 0; }
-        .custom-link-field .input-row { gap: 6px; margin: 0; }
-        .custom-link-field .input-row input { flex: 1; min-width: 0; }
+        .custom-link-field .input-row { gap: 0; margin: 0; }
+        .custom-link-field .input-row input {
+            flex: 1; min-width: 0;
+            height: 46px; box-sizing: border-box;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: none;
+        }
         .generate-custom-btn {
-            flex-shrink: 0; padding: 0 16px; height: 42px; border: none;
-            border-radius: 10px; cursor: pointer; white-space: nowrap;
+            flex-shrink: 0; padding: 0 18px; height: 46px; border: none;
+            border-radius: 0 10px 10px 0; cursor: pointer; white-space: nowrap;
             color: #fff; font-size: 14px; font-weight: 600;
             background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            box-shadow: inset 1px 0 0 rgba(255,255,255,0.25);
         }
-        .generate-custom-btn:active { opacity: .85; }
+        .generate-custom-btn:active { opacity: .9; }
+
+        /* 结果区商品ID提示 */
+        .product-id-toast-wrap { text-align: center; margin-bottom: 14px; }
+        .product-id-toast {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 20px;
+            background: #fff8f0; border: 1px solid #ffd8b8;
+            color: #5a3e2b; font-size: 14px; font-weight: 500;
+            box-shadow: 0 2px 8px rgba(247,147,30,0.12);
+        }
+        .product-id-toast .id-label { color: #8a6d5b; }
+        .product-id-toast .id-value {
+            font-weight: 700; color: #ff6b35; letter-spacing: 0.5px;
+        }
+        .product-id-toast .copy-id-btn {
+            border: none; background: #ff6b35; color: #fff;
+            padding: 4px 10px; border-radius: 12px;
+            font-size: 12px; cursor: pointer; line-height: 1;
+        }
+        .product-id-toast .copy-id-btn:active { opacity: .85; }
 
         /* 自动跳转复选框 */
         .auto-jump-checkbox {
@@ -1156,6 +1183,12 @@
             }
         }
 
+        // 复制结果区展示的商品ID
+        function copyProductId() {
+            const id = window._lastGeneratedProductId;
+            if (id) copyToClipboard(id);
+        }
+
         // iOS Safari 兼容的复制方案
         function _copyFallback(text) {
             const textarea = document.createElement('textarea');
@@ -1582,8 +1615,9 @@
                     colorLight: "#FFFFFF"
                 });
 
-                // 保存生成的链接供跳转使用
+                // 保存生成的链接与商品ID供后续使用
                 window._lastGeneratedLink = fullContent;
+                window._lastGeneratedProductId = productId;
 
                 // 增加按钮使用次数（自定义链接 key='self' 不计入统计，无角标）
                 if (btnKey && btnKey !== 'self') {
@@ -1669,6 +1703,19 @@
 
                 // 更新结果区域
                 resultArea.innerHTML = '';
+
+                // 顶部展示当前商品ID（居中圆角toast，宽度随内容）
+                const productIdToastWrap = document.createElement('div');
+                productIdToastWrap.className = 'product-id-toast-wrap';
+                const escapedProductId = String(window._lastGeneratedProductId || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                productIdToastWrap.innerHTML = `
+                    <div class="product-id-toast">
+                        <span class="id-label">当前商品id：</span>
+                        <span class="id-value">${escapedProductId}</span>
+                        <button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>
+                    </div>
+                `;
+                resultArea.appendChild(productIdToastWrap);
                 resultArea.appendChild(container);
 
                 // 显示结果区卡片，并自动滚动到结果区（生成任意二维码后生效，include 自定义链接）
