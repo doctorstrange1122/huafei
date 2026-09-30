@@ -132,6 +132,21 @@
         .input-section input:focus { outline: none; border-color: #8ba0b5; }
         .input-section input::placeholder { color: #b0bcc8; }
 
+        /* 自定义文字 / 自定义链接 并排布局 */
+        .custom-input-section { display: flex; gap: 10px; align-items: flex-end; }
+        .custom-field { min-width: 0; }
+        .custom-text-field { flex: 0 0 42%; }
+        .custom-link-field { flex: 1; min-width: 0; }
+        .custom-link-field .input-row { gap: 6px; margin: 0; }
+        .custom-link-field .input-row input { flex: 1; min-width: 0; }
+        .generate-custom-btn {
+            flex-shrink: 0; padding: 0 16px; height: 42px; border: none;
+            border-radius: 10px; cursor: pointer; white-space: nowrap;
+            color: #fff; font-size: 14px; font-weight: 600;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+        }
+        .generate-custom-btn:active { opacity: .85; }
+
         /* 自动跳转复选框 */
         .auto-jump-checkbox {
             margin-top: 10px;
@@ -484,9 +499,18 @@
     <div class="card">
         <div class="card-title">输入区</div>
 
-        <div class="input-section">
-            <label for="customText">自定义文字（选填）</label>
-            <input type="text" id="customText" placeholder="可输入备注信息，如商品名称、用途等">
+        <div class="input-section custom-input-section">
+            <div class="custom-field custom-text-field">
+                <label for="customText">自定义文字（选填）</label>
+                <input type="text" id="customText" placeholder="备注信息，如商品名称">
+            </div>
+            <div class="custom-field custom-link-field">
+                <label for="customLink">自定义链接（选填）</label>
+                <div class="input-row">
+                    <input type="text" id="customLink" placeholder="粘贴带 itemIds= 的链接">
+                    <button type="button" class="generate-custom-btn" onclick="generateCustomQR()">生成</button>
+                </div>
+            </div>
         </div>
 
         <div class="input-section">
@@ -1449,6 +1473,62 @@
             if (el) el.classList.toggle('show');
         }
 
+        // 与现有 itemIds= 替换一致；兼容 id=；二者都没有则末尾追加 &itemIds=解析到的id
+        function replaceIdInUrl(url, productId) {
+            const ids = String(productId);
+            if (/itemIds=[^&]*/.test(url)) {
+                return url.replace(/itemIds=[^&]+/, 'itemIds=' + ids);
+            }
+            if (/[?&]id=\d+/.test(url)) {
+                return url.replace(/([?&]id=)\d+/, '$1' + ids);
+            }
+            // 兜底：自动在末尾追加（用户确认行为）
+            return url + '&itemIds=' + ids;
+        }
+
+        // 抽取商品ID解析逻辑（直接id / 淘口令解析 / 链接提取），支持多id逗号拼接
+        async function resolveProductId(productLink) {
+            if (isDirectIdInput(productLink)) {
+                const ids = extractAllProductIds(productLink);
+                if (ids.length > 0) {
+                    return ids.join(',');
+                }
+            }
+            try {
+                const p = await parseItemIdFromShareText(productLink);
+                if (p) return p;
+            } catch (e) {
+                console.warn('淘口令解析异常:', e.message);
+            }
+            return extractProductId(productLink);
+        }
+
+        // 自定义链接生成：解析 productLink 的 ID → 替换自定义链接中的 ID → 复用 generateQRCodes（key='self'，中转域名包装）
+        async function generateCustomQR() {
+            const customLink = (document.getElementById('customLink').value || '').trim();
+            const productLink = (document.getElementById('productLink').value || '').trim();
+            const resultArea = document.getElementById('resultArea');
+
+            if (!customLink) {
+                alert('请先输入自定义链接');
+                return;
+            }
+            if (!productLink) {
+                alert('请先在“淘口令 / 分享文本”输入商品ID或淘口令');
+                return;
+            }
+
+            const productId = await resolveProductId(productLink);
+            if (!productId) {
+                resultArea.innerHTML = '<p style="color: red;">解析失败：无法获取商品ID</p>';
+                return;
+            }
+
+            const replacedUrl = replaceIdInUrl(customLink, productId);
+            // 复用主流程：key='self' 不计入次数、二维码经中转域名包装
+            await generateQRCodes(1, replacedUrl, '自定义链接', 'self');
+        }
+
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
@@ -1463,29 +1543,8 @@
             const resultArea = document.getElementById('resultArea');
             resultArea.innerHTML = '<p>正在解析淘口令并生成，请稍候...</p>';
 
-            // 优先：直接输入商品id 模式（纯数字 / id=xxx / (id1,id2,...) 等，支持多id）
-            let productId = null;
-            if (isDirectIdInput(productLink)) {
-                const ids = extractAllProductIds(productLink);
-                if (ids.length > 0) {
-                    // 多个id以逗号拼接进链接的 itemIds 参数
-                    productId = ids.join(',');
-                }
-            }
-
-            // 否则：先尝试通过淘口令解析获取商品ID
-            if (!productId) {
-                try {
-                    productId = await parseItemIdFromShareText(productLink);
-                } catch (e) {
-                    console.warn('淘口令解析异常:', e.message);
-                }
-            }
-
-            // 如果淘口令解析失败，回退到原有的链接提取逻辑
-            if (!productId) {
-                productId = extractProductId(productLink);
-            }
+            // 解析商品ID（直接id / 淘口令解析 / 链接提取，支持多id）——抽取为共享函数供自定义链接复用
+            const productId = await resolveProductId(productLink);
 
             if (!productId) {
                 resultArea.innerHTML = '<p style="color: red;">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
@@ -1498,16 +1557,23 @@
                 // 返回轻量 HTML 中转页；页面内用 tbopen:// 官方 Deep Link 唤起淘宝 App。
                 // 扫码看不到完整 URL；改链接只需改中转服务配置，无需改本文件、也无需重打包 APK。
                 const REDIRECT_BASE = 'https://huafei-redirect-pages.pages.dev'; // ← 中转服务域名（Pages Functions 自动从在线文档同步按钮链接，国内访问稳定）
+                const REDIRECT_ORIGIN = REDIRECT_BASE.replace(/\/+$/, '');
+                // 结果区跳转 / 兜底始终用真实完整链接（本机直接唤起 App，不依赖中转页）
+                const directUrl = replaceIdInUrl(baseUrl, productId);
                 let fullContent;
-                if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
+                if (btnKey === 'self') {
+                    // 自定义链接：客户端已完成 ID 替换，作为 url 参数交给中转服务
+                    // 「加密」= 中转域名包装，二维码内不含明文淘系 URL（解码可见真实链接，符合预期）
+                    fullContent = REDIRECT_ORIGIN + '/r/self'
+                                + '?pid=' + encodeURIComponent(productId)
+                                + '&url=' + encodeURIComponent(directUrl);
+                } else if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
                     // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
-                    fullContent = REDIRECT_BASE.replace(/\/+$/, '') + '/r/' + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
+                    fullContent = REDIRECT_ORIGIN + '/r/' + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
                 } else {
                     // 兜底：直接编码真实淘宝链接（未配置中转服务时）
-                    fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
+                    fullContent = directUrl;
                 }
-                // 结果区跳转始终用真实完整链接（本机直接唤起 App，不依赖中转页）
-                const directUrl = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
                 // 生成二维码（中转模式下二维码内容为你的中转地址，不含任何淘宝参数）
                 const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
                     width: 150,
@@ -1519,8 +1585,8 @@
                 // 保存生成的链接供跳转使用
                 window._lastGeneratedLink = fullContent;
 
-                // 增加按钮使用次数
-                if (btnKey) {
+                // 增加按钮使用次数（自定义链接 key='self' 不计入统计，无角标）
+                if (btnKey && btnKey !== 'self') {
                     incrementUsageCount(btnKey);
                 }
 
@@ -1605,9 +1671,14 @@
                 resultArea.innerHTML = '';
                 resultArea.appendChild(container);
 
-                // 显示结果区卡片
+                // 显示结果区卡片，并自动滚动到结果区（生成任意二维码后生效，include 自定义链接）
                 const resultCard = document.getElementById('resultCard');
-                if (resultCard) resultCard.style.display = 'block';
+                if (resultCard) {
+                    resultCard.style.display = 'block';
+                    requestAnimationFrame(function() {
+                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                }
 
                 // 自动跳转：根据复选框选择跳转对应APP（结果区始终用真实链接直跳）
                 if (getAutoJumpEnabled()) {
