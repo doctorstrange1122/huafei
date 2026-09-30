@@ -216,6 +216,25 @@
         }
         .input-row { display: flex; gap: 8px; align-items: stretch; }
         .input-row input { flex: 1; }
+        /* 淘口令行：输入框(内嵌扫码图标) + 粘贴/清空 连体 */
+        .product-input-row { gap: 0; }
+        .product-input-row .action-btn-group { border-radius: 0 10px 10px 0; }
+        .input-with-scan { position: relative; flex: 1; min-width: 0; }
+        .input-with-scan input {
+            width: 100%; height: 46px; box-sizing: border-box;
+            padding: 12px 48px 12px 14px;
+            border-top-right-radius: 0; border-bottom-right-radius: 0;
+            border-right: none;
+        }
+        .scan-icon-btn {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            width: 34px; height: 34px; padding: 0; border: none;
+            background: transparent; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #6a9a7a;
+        }
+        .scan-icon-btn:active { background: rgba(106,154,122,0.12); }
+        .scan-icon-btn svg { width: 20px; height: 20px; display: block; }
         .action-btn-group {
             display: flex;
             flex-shrink: 0;
@@ -225,7 +244,7 @@
         }
         .action-btn-group button {
             padding: 0 14px;
-            height: 40px;
+            height: 46px;
             font-size: 14px;
             font-weight: 600;
             border: none;
@@ -542,10 +561,14 @@
 
         <div class="input-section">
             <label for="productLink">淘口令 / 分享文本</label>
-            <div class="input-row">
-                <input type="text" id="productLink" placeholder="粘贴淘口令/分享文本，或直接输入商品id（支持多id，逗号分隔）" required>
+            <div class="input-row product-input-row">
+                <div class="input-with-scan">
+                    <input type="text" id="productLink" placeholder="粘贴淘口令/分享文本，或直接输入商品id（支持多id，逗号分隔）" required>
+                    <button type="button" class="scan-icon-btn" onclick="startScan()" title="扫码输入">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                    </button>
+                </div>
                 <div class="action-btn-group">
-                    <button class="scan-button" onclick="startScan()" title="扫码输入">扫码</button>
                     <button class="paste-button" onclick="pasteFromClipboard()" title="粘贴剪贴板">粘贴</button>
                     <button class="clear-button" onclick="clearInput()">清空</button>
                 </div>
