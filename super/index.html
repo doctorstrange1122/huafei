@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="秒杀商品奖励">
-    <meta name="theme-color" content="#6a9a7a">
+    <meta name="theme-color" content="#6b82a0">
     <link rel="manifest" href="/tktool/manifest.json">
     <title>秒杀商品奖励</title>
     <style>
@@ -42,20 +42,20 @@
             font-size: 15px; font-weight: 600; color: #4a5c6e;
             margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
         }
-        .card-title::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, #ff6b35 0%, #f7931e 100%); border-radius: 2px; }
+        .card-title::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, #7a93ac 0%, #6b82a0 100%); border-radius: 2px; }
         .reset-usage-btn {
             font-size: 12px;
-            color: #e53e3e;
+            color: #8a9099;
             cursor: pointer;
             font-weight: normal;
             padding: 4px 10px;
-            border: 1px solid #fed7d7;
+            border: 1px solid #d5d9dd;
             border-radius: 12px;
-            background: #fff5f5;
+            background: #f0f2f4;
             transition: all 0.2s;
         }
         .reset-usage-btn:active {
-            background: #fed7d7;
+            background: #d5d9dd;
         }
         .func-area-title {
             justify-content: space-between;
@@ -93,11 +93,11 @@
         .float-control-right { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
         .float-toggle-btn {
             padding: 8px 16px; font-size: 13px; font-weight: 600;
-            background: #6a9a7a; color: #fff;
+            background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff;
             border: none; border-radius: 20px; cursor: pointer;
             white-space: nowrap;
         }
-        .float-toggle-btn.active { background: #c0392b; }
+        .float-toggle-btn.active { background: linear-gradient(135deg, #7a93ac, #6b82a0); }
         .float-toggle-btn:active { transform: scale(0.96); }
         .float-opacity-label { font-size: 11px; color: #5a7a96; white-space: nowrap; flex-shrink: 0; }
         .float-opacity-slider {
@@ -109,7 +109,7 @@
         .float-opacity-slider::-webkit-slider-thumb {
             -webkit-appearance: none; appearance: none;
             width: 16px; height: 16px; border-radius: 50%;
-            background: #6a9a7a; cursor: pointer;
+            background: #6b82a0; cursor: pointer;
         }
         .float-opacity-value { font-size: 11px; color: #5a7a96; min-width: 28px; text-align: right; flex-shrink: 0; }
 
@@ -168,11 +168,11 @@
         }
         .product-id-panel .pid-item { white-space: nowrap; } /* 单个id内部不折行 */
         .product-id-panel .copy-id-btn {
-            border: none; background: #7ba9c9; color: #fff;
+            border: none; background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff;
             padding: 5px 14px; border-radius: 12px;
             font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1;
         }
-        .product-id-panel .copy-id-btn:active { background: #6b99b9; }
+        .product-id-panel .copy-id-btn:active { background: #5f7590; }
 
         /* 自动跳转复选框 */
         .auto-jump-checkbox {
@@ -204,8 +204,8 @@
             flex-shrink: 0;
         }
         .checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
-            background: #6a8a9a;
-            border-color: #6a8a9a;
+            background: #6b82a0;
+            border-color: #6b82a0;
         }
         .checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
             content: '✓';
@@ -231,9 +231,9 @@
             width: 34px; height: 34px; padding: 0; border: none;
             background: transparent; border-radius: 8px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
-            color: #6a9a7a;
+            color: #6b82a0;
         }
-        .scan-icon-btn:active { background: rgba(106,154,122,0.12); }
+        .scan-icon-btn:active { background: rgba(107,130,160,0.12); }
         .scan-icon-btn svg { width: 20px; height: 20px; display: block; }
         .action-btn-group {
             display: flex;
@@ -261,12 +261,12 @@
             width: 1px;
             background: rgba(255,255,255,0.25);
         }
-        .scan-button { background: #6a9a7a; color: #fff; }
-        .scan-button:active { background: #5a8a6a; }
-        .paste-button { background: #7ba9c9; color: #fff; }
-        .paste-button:active { background: #6b99b9; }
-        .clear-button { background: #a0b0c0; color: #fff; }
-        .clear-button:active { background: #90a0b0; }
+        .scan-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
+        .scan-button:active { background: #5f7590; }
+        .paste-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
+        .paste-button:active { background: #5f7590; }
+        .clear-button { background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff; }
+        .clear-button:active { background: #9aa0a6; }
 
         /* 扫码弹窗 */
         .scan-modal {
@@ -283,7 +283,7 @@
         .scan-close:active { background: rgba(255,255,255,0.4); }
         .scan-viewport {
             width: 280px; height: 280px; border-radius: 16px; overflow: hidden;
-            border: 3px solid #6a9a7a; position: relative;
+            border: 3px solid #6b82a0; position: relative;
         }
         .scan-viewport video { width: 100%; height: 100%; object-fit: cover; }
         .scan-hint {
@@ -318,7 +318,7 @@
             content: "";
             width: 4px;
             height: 16px;
-            background: linear-gradient(180deg, #ff6b35 0%, #f7931e 100%);
+            background: linear-gradient(180deg, #7a93ac 0%, #6b82a0 100%);
             border-radius: 2px;
         }
         .section-tip {
@@ -423,12 +423,12 @@
         }
         .long-press-tip {
             display: inline-block;
-            background: #eef6ff;
-            border: 1px solid #b3d0f0;
+            background: #eef3f8;
+            border: 1px solid #c3d0dc;
             border-radius: 20px;
             padding: 6px 14px;
             font-size: 13px;
-            color: #2c6cb5;
+            color: #5a7089;
             font-weight: 600;
             margin: 4px 0 12px;
         }
@@ -511,7 +511,7 @@
         }
 
         .fold-toggle {
-            background: linear-gradient(135deg, #9aa7b5, #8a97a8) !important;
+            background: linear-gradient(135deg, #7a93ac, #6b82a0) !important;
             opacity: 0.95;
         }
         .fold-panel {
@@ -1807,13 +1807,13 @@
             text-transform: uppercase;
             transition: border-color 0.2s;
         }
-        .key-activate-card input:focus { border-color: #667eea; }
+        .key-activate-card input:focus { border-color: #6b82a0; }
         .key-activate-card button {
             width: 100%;
             padding: 14px;
             font-size: 16px;
             font-weight: 600;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #7a93ac, #6b82a0);
             color: #fff;
             border: none;
             border-radius: 10px;
