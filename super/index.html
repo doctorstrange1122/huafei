@@ -13,49 +13,94 @@
     <link rel="manifest" href="/tktool/manifest.json">
     <title>秒杀商品奖励</title>
     <style>
+        :root {
+            --bg-1: #e8edf2; --bg-2: #d3dde6; --bg-3: #c2cfd9;
+            --card-bg: #fdfdfe; --card-shadow: rgba(120,140,160,0.1);
+            --text-main: #3a4a5a; --text-title: #4a5c6e; --text-sub: #718096;
+            --text-weak: #9aa8b6; --text-mid: #5a7a96; --placeholder: #b0bcc8;
+            --input-bg: #fff; --input-border: #dde3ea; --input-focus: #8ba0b5;
+            --panel-bg: #eaf0f6; --panel-border: #c5d2de;
+            --tip-bg: #eef3f8; --tip-border: #c3d0dc; --tip-text: #5a7089;
+            --tip-accent: #d4884a;
+            --weak-bg: #f0f2f4; --weak-border: #d5d9dd; --weak-text: #8a9099;
+            --idpanel-bg: #fff8f0; --idpanel-border: #ffd8b8; --pid-label: #8a6d5b;
+            --error-text: #e53e3e;
+            --toggle-bg: #ffffff; --toggle-border: #c5d2de; --toggle-color: #6b82a0;
+            --toggle-shadow: rgba(120,140,160,0.18);
+        }
+        [data-theme="dark"] {
+            --bg-1: #171c22; --bg-2: #12161b; --bg-3: #0d1013;
+            --card-bg: #1e242c; --card-shadow: rgba(0,0,0,0.45);
+            --text-main: #dde5ee; --text-title: #e6ecf3; --text-sub: #9aa8b6;
+            --text-weak: #6b7783; --text-mid: #8fa3b8; --placeholder: #5f6b78;
+            --input-bg: #171d24; --input-border: #333d47; --input-focus: #6b82a0;
+            --panel-bg: #242b33; --panel-border: #333d47;
+            --tip-bg: #242b33; --tip-border: #39434e; --tip-text: #a8b6c4;
+            --tip-accent: #e0a875;
+            --weak-bg: #262c34; --weak-border: #3a444e; --weak-text: #8b959f;
+            --idpanel-bg: #2b2620; --idpanel-border: #4e4437; --pid-label: #b6a08c;
+            --error-text: #ff8a8a;
+            --toggle-bg: #242b33; --toggle-border: #39434e; --toggle-color: #cfd8e2;
+            --toggle-shadow: rgba(0,0,0,0.4);
+        }
+        /* 主题切换按钮（右上角圆形） */
+        .theme-toggle {
+            position: fixed; top: 12px; right: 12px; z-index: 9998;
+            width: 40px; height: 40px; border-radius: 50%; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--toggle-bg); border: 1px solid var(--toggle-border);
+            color: var(--toggle-color);
+            box-shadow: 0 2px 10px var(--toggle-shadow);
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .theme-toggle:active { transform: scale(0.94); }
+        .theme-toggle svg { width: 20px; height: 20px; display: block; }
+        .theme-toggle .icon-sun { display: none; }
+        [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+        [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
-            background: linear-gradient(135deg, #e8edf2 0%, #d3dde6 50%, #c2cfd9 100%);
+            background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
             min-height: 100vh;
             padding: 10px;
-            color: #3a4a5a;
+            color: var(--text-main);
             overflow-x: hidden;
             position: relative;
         }
         .wrapper { max-width: 480px; margin: 0 auto; }
 
         /* 标题 */
-        .header { text-align: center; padding: 12px 0 8px; color: #2d3748; }
+        .header { text-align: center; padding: 12px 0 8px; color: var(--text-main); }
         .header h1 { font-size: 28px; font-weight: 800; letter-spacing: 2px; background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .header .subtitle { font-size: 14px; color: #718096; margin-top: 4px; font-weight: 500; }
+        .header .subtitle { font-size: 14px; color: var(--text-sub); margin-top: 4px; font-weight: 500; }
 
         /* 卡片通用 */
         .card {
-            background: #fdfdfe;
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 4px 20px rgba(120,140,160,0.1);
+            box-shadow: 0 4px 20px var(--card-shadow);
             margin-bottom: 14px;
         }
         .card-title {
-            font-size: 15px; font-weight: 600; color: #4a5c6e;
+            font-size: 15px; font-weight: 600; color: var(--text-title);
             margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
         }
         .card-title::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, #7a93ac 0%, #6b82a0 100%); border-radius: 2px; }
         .reset-usage-btn {
             font-size: 12px;
-            color: #8a9099;
+            color: var(--weak-text);
             cursor: pointer;
             font-weight: normal;
             padding: 4px 10px;
-            border: 1px solid #d5d9dd;
+            border: 1px solid var(--weak-border);
             border-radius: 12px;
-            background: #f0f2f4;
+            background: var(--weak-bg);
             transition: all 0.2s;
         }
         .reset-usage-btn:active {
-            background: #d5d9dd;
+            background: var(--weak-border);
         }
         .func-area-title {
             justify-content: space-between;
@@ -77,8 +122,8 @@
 
         /* 悬浮窗控制面板 */
         .float-control {
-            background: #eaf0f6;
-            border: 1px solid #c5d2de;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             border-radius: 10px;
             padding: 10px 12px;
             margin-bottom: 14px;
@@ -99,11 +144,11 @@
         }
         .float-toggle-btn.active { background: linear-gradient(135deg, #7a93ac, #6b82a0); }
         .float-toggle-btn:active { transform: scale(0.96); }
-        .float-opacity-label { font-size: 11px; color: #5a7a96; white-space: nowrap; flex-shrink: 0; }
+        .float-opacity-label { font-size: 11px; color: var(--text-mid); white-space: nowrap; flex-shrink: 0; }
         .float-opacity-slider {
             flex: 1; -webkit-appearance: none; appearance: none;
             height: 6px; border-radius: 3px;
-            background: #c5d2de; outline: none; cursor: pointer;
+            background: var(--panel-border); outline: none; cursor: pointer;
             min-width: 60px; max-width: 100%;
         }
         .float-opacity-slider::-webkit-slider-thumb {
@@ -111,26 +156,26 @@
             width: 16px; height: 16px; border-radius: 50%;
             background: #6b82a0; cursor: pointer;
         }
-        .float-opacity-value { font-size: 11px; color: #5a7a96; min-width: 28px; text-align: right; flex-shrink: 0; }
+        .float-opacity-value { font-size: 11px; color: var(--text-mid); min-width: 28px; text-align: right; flex-shrink: 0; }
 
         /* 输入区 */
         .input-section { margin-bottom: 14px; }
         .input-section label {
             display: block; font-size: 14px; font-weight: 600;
-            color: #4a5c6e; margin-bottom: 6px;
+            color: var(--text-title); margin-bottom: 6px;
         }
         .input-section input {
             width: 100%;
             padding: 12px 14px; font-size: 16px;
-            border: 2px solid #dde3ea; border-radius: 10px;
+            border: 2px solid var(--input-border); border-radius: 10px;
             transition: border-color 0.2s;
             -webkit-appearance: none;
             font-family: inherit;
-            background: #fff;
-            color: #3a4a5a;
+            background: var(--input-bg);
+            color: var(--text-main);
         }
-        .input-section input:focus { outline: none; border-color: #8ba0b5; }
-        .input-section input::placeholder { color: #b0bcc8; }
+        .input-section input:focus { outline: none; border-color: var(--input-focus); }
+        .input-section input::placeholder { color: var(--placeholder); }
 
         /* 自定义文字 / 自定义链接 并排布局 */
         .custom-input-section { display: flex; gap: 10px; align-items: flex-end; }
@@ -158,9 +203,9 @@
         .product-id-panel {
             display: flex; flex-direction: column; align-items: center; gap: 5px;
             width: 100%; padding: 10px 12px;
-            background: #fff8f0; border: 1px solid #ffd8b8; border-radius: 12px;
+            background: var(--idpanel-bg); border: 1px solid var(--idpanel-border); border-radius: 12px;
         }
-        .product-id-panel .pid-label { font-size: 12px; color: #8a6d5b; font-weight: 600; }
+        .product-id-panel .pid-label { font-size: 12px; color: var(--pid-label); font-weight: 600; }
         .product-id-panel .pid-value {
             display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px;
             font-size: 14px; font-weight: 700; color: #ff6b35;
@@ -184,7 +229,7 @@
             align-items: center;
             gap: 8px;
             font-size: 13px;
-            color: #4a5c6e;
+            color: var(--text-title);
             cursor: pointer;
             user-select: none;
         }
@@ -194,12 +239,12 @@
         .checkbox-custom {
             width: 18px;
             height: 18px;
-            border: 2px solid #8ba0b5;
+            border: 2px solid var(--input-focus);
             border-radius: 4px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: #fff;
+            background: var(--input-bg);
             transition: all 0.2s;
             flex-shrink: 0;
         }
@@ -291,7 +336,7 @@
         }
 
         /* 提示文字 — 醒目颜色 */
-        .tip-text { font-size: 13px; color: #d4884a; font-weight: 500; margin-top: 6px; }
+        .tip-text { font-size: 13px; color: var(--tip-accent); font-weight: 500; margin-top: 6px; }
 
         /* 生成按钮组 - 221排列 */
         .button-group {
@@ -308,7 +353,7 @@
         .btn-section-title {
             font-size: 15px;
             font-weight: 600;
-            color: #4a5c6e;
+            color: var(--text-title);
             margin-bottom: 14px;
             display: flex;
             align-items: center;
@@ -423,18 +468,18 @@
         }
         .long-press-tip {
             display: inline-block;
-            background: #eef3f8;
-            border: 1px solid #c3d0dc;
+            background: var(--tip-bg);
+            border: 1px solid var(--tip-border);
             border-radius: 20px;
             padding: 6px 14px;
             font-size: 13px;
-            color: #5a7089;
+            color: var(--tip-text);
             font-weight: 600;
             margin: 4px 0 12px;
         }
         .result-info {
-            font-size: 14px; color: #4a5c6e; margin: 8px 0;
-            padding: 10px; background: #f4f7fa; border-radius: 8px;
+            font-size: 14px; color: var(--text-title); margin: 8px 0;
+            padding: 10px; background: var(--panel-bg); border-radius: 8px;
         }
         .result-info .copy-success {
             color: #6a9a7a; font-size: 12px; font-weight: 600;
@@ -463,15 +508,15 @@
 
         /* 结果区信息显示 */
         .result-info {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             border-radius: 8px;
             padding: 10px 14px;
             margin-bottom: 10px;
             text-align: center;
         }
-        .result-info .info-label { font-size: 12px; color: #718096; margin-bottom: 4px; }
-        .result-info .info-value { font-size: 14px; font-weight: 600; color: #2d3748; }
+        .result-info .info-label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
+        .result-info .info-value { font-size: 14px; font-weight: 600; color: var(--text-main); }
 
         /* 带文字图片 */
         .qr-code-with-text {
@@ -482,11 +527,11 @@
         .qr-code-text {
             font-size: 16px; font-weight: 600; margin-bottom: 8px;
             max-width: 180px; word-wrap: break-word; line-height: 1.3;
-            color: #4a5c6e;
+            color: var(--text-title);
         }
 
         /* 页脚 */
-        .footer { text-align: center; font-size: 11px; color: #9aa8b6; padding: 16px 0 8px; }
+        .footer { text-align: center; font-size: 11px; color: var(--text-weak); padding: 16px 0 8px; }
 
         /* Toast 提示 */
         .toast {
@@ -526,6 +571,31 @@
     </style>
 </head>
 <body>
+<script>
+    // 主题初始化（尽早执行，避免闪屏）
+    (function () {
+        var t = null;
+        try { t = localStorage.getItem('tktool-theme'); } catch (e) {}
+        if (!t) {
+            t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+    })();
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        try { localStorage.setItem('tktool-theme', t); } catch (e) {}
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'dark' ? '#12161b' : '#6b82a0');
+    }
+    function toggleTheme() {
+        var cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+    }
+</script>
+<button id="themeToggleBtn" class="theme-toggle" onclick="toggleTheme()" title="切换深色/浅色模式" aria-label="切换深色/浅色模式">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+</button>
 <div class="wrapper">
 
     <div class="header">
@@ -1578,7 +1648,7 @@
 
             const productId = await resolveProductId(productLink);
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: red;">解析失败：无法获取商品ID</p>';
+                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p>';
                 return;
             }
 
@@ -1605,7 +1675,7 @@
             const productId = await resolveProductId(productLink);
 
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: red;">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
+                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
                 return;
             }
 
@@ -1756,7 +1826,7 @@
                 }
             } catch (error) {
                 console.error('生成失败:', error);
-                resultArea.innerHTML = '<p style="color: red;">生成过程中出现错误，请检查控制台。</p>';
+                resultArea.innerHTML = '<p style="color: var(--error-text);">生成过程中出现错误，请检查控制台。</p>';
             }
         }
     </script>
@@ -1775,7 +1845,7 @@
         }
         #keyActivateOverlay.active { display: flex; }
         .key-activate-card {
-            background: #fff;
+            background: var(--card-bg);
             border-radius: 16px;
             padding: 28px 24px;
             width: 100%;
@@ -1785,21 +1855,23 @@
         }
         .key-activate-card h2 {
             font-size: 20px;
-            color: #2d3748;
+            color: var(--text-main);
             margin-bottom: 8px;
         }
         .key-activate-card .subtitle {
             font-size: 13px;
-            color: #718096;
+            color: var(--text-sub);
             margin-bottom: 20px;
         }
         .key-activate-card input {
             width: 100%;
             padding: 14px 16px;
             font-size: 16px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid var(--input-border);
             border-radius: 10px;
             margin-bottom: 14px;
+            background: var(--input-bg);
+            color: var(--text-main);
             outline: none;
             text-align: center;
             letter-spacing: 1px;
@@ -1823,7 +1895,7 @@
         .key-activate-card button:active { transform: scale(0.98); }
         .key-activate-card button:disabled { opacity: 0.6; cursor: not-allowed; }
         .key-activate-error {
-            color: #e53e3e;
+            color: var(--error-text);
             font-size: 13px;
             margin-top: 10px;
             min-height: 18px;
