@@ -413,6 +413,7 @@
             justify-content: center;
             gap: 6px;
             min-width: 140px;
+            align-self: stretch; /* 与左侧二维码区域等高 */
         }
         #resultArea img { display: inline-block; }
         .result-card { text-align: center; }
@@ -443,6 +444,7 @@
         /* 操作按钮 */
         .action-buttons {
             display: flex; flex-direction: column; gap: 10px; align-items: stretch; justify-content: center;
+            flex: 1; /* 占满右侧高度，按钮整体垂直居中 */
         }
         .action-buttons .result-info { width: 100%; }
         .action-buttons button {
@@ -452,10 +454,10 @@
             transition: opacity 0.2s, transform 0.1s;
         }
         .action-buttons button:active { transform: scale(0.96); }
-        .action-buttons button:nth-child(1) { background: #7a93ac; color: #fff; }
-        .action-buttons button:nth-child(2) { background: #6a9a7a; color: #fff; }
-        .action-buttons button:nth-child(3) { background: #c08a5a; color: #fff; }
-        .action-buttons button:nth-child(4) { background: #b5504a; color: #fff; }
+        /* 颜色按类名锁定，避免结构变化导致错位 */
+        .action-buttons button.btn-taobao { background: #6a9a7a; color: #fff; }
+        .action-buttons button.btn-alipay { background: #6a9a7a; color: #fff; }
+        .action-buttons button.btn-tmall  { background: #b5504a; color: #fff; }
         .action-buttons button.btn-hidden,
         .checkbox-label.btn-hidden { display: none !important; }
 
@@ -1711,12 +1713,9 @@
                 qrRight.className = 'qr-code-right';
 
                 actionButtons.innerHTML = `
-                    <div class="result-info">
-                        <div class="info-value">${displayText || autoLabel || ''}</div>
-                    </div>
-                    <button onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
-                    <button class="btn-hidden" onclick="openAlipayApp('${directUrl}')">一键跳转支付宝</button>
-                    <button onclick="openTmallApp('${directUrl}')">一键跳转天猫</button>
+                    <button class="btn-taobao" onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
+                    <button class="btn-alipay btn-hidden" onclick="openAlipayApp('${directUrl}')">一键跳转支付宝</button>
+                    <button class="btn-tmall" onclick="openTmallApp('${directUrl}')">一键跳转天猫</button>
                 `;
 
                 qrRight.appendChild(actionButtons);
