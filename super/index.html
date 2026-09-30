@@ -1497,7 +1497,7 @@
                 // 二维码只编码“你的中转域名/令牌”，真实淘宝链接由中转服务按 btnKey 映射，
                 // 返回轻量 HTML 中转页；页面内用 tbopen:// 官方 Deep Link 唤起淘宝 App。
                 // 扫码看不到完整 URL；改链接只需改中转服务配置，无需改本文件、也无需重打包 APK。
-                const REDIRECT_BASE = 'https://huafei-redirect.ymlbal.workers.dev'; // ← 中转服务域名（worker 自动从在线文档同步按钮链接）
+                const REDIRECT_BASE = 'https://huafei-redirect-pages.pages.dev'; // ← 中转服务域名（Pages Functions 自动从在线文档同步按钮链接，国内访问稳定）
                 let fullContent;
                 if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
                     // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
