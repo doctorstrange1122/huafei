@@ -1493,10 +1493,22 @@
             }
 
             try {
-                // 将链接中的 itemIds=xxx 替换为解析到的商品ID
-                const fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
-                // 生成短链（用于二维码和复制）
-                // 使用完整淘宝链接生成二维码，淘宝扫码可在内部直接打开活动页
+                // === 中转重定向模式（默认占位，未配置时自动回退到直出真实链接）===
+                // 二维码只编码“你的中转域名/令牌”，真实淘宝链接由中转服务按 btnKey 映射，
+                // 返回轻量 HTML 中转页；页面内用 tbopen:// 官方 Deep Link 唤起淘宝 App。
+                // 扫码看不到完整 URL；改链接只需改中转服务配置，无需改本文件、也无需重打包 APK。
+                const REDIRECT_BASE = 'https://huafei-redirect.ymlbal.workers.dev'; // ← 中转服务域名（worker 自动从在线文档同步按钮链接）
+                let fullContent;
+                if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
+                    // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
+                    fullContent = REDIRECT_BASE.replace(/\/+$/, '') + '/r/' + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
+                } else {
+                    // 兜底：直接编码真实淘宝链接（未配置中转服务时）
+                    fullContent = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
+                }
+                // 结果区跳转始终用真实完整链接（本机直接唤起 App，不依赖中转页）
+                const directUrl = baseUrl.replace(/itemIds=[^&]+/, 'itemIds=' + productId);
+                // 生成二维码（中转模式下二维码内容为你的中转地址，不含任何淘宝参数）
                 const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
                     width: 150,
                     height: 150,
@@ -1579,9 +1591,9 @@
                     <div class="result-info">
                         <div class="info-value">${displayText || autoLabel || ''}</div>
                     </div>
-                    <button onclick="openTaobaoApp('${fullContent}')">一键跳转淘宝</button>
-                    <button class="btn-hidden" onclick="openAlipayApp('${fullContent}')">一键跳转支付宝</button>
-                    <button onclick="openTmallApp('${fullContent}')">一键跳转天猫</button>
+                    <button onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
+                    <button class="btn-hidden" onclick="openAlipayApp('${directUrl}')">一键跳转支付宝</button>
+                    <button onclick="openTmallApp('${directUrl}')">一键跳转天猫</button>
                 `;
 
                 qrRight.appendChild(actionButtons);
@@ -1597,13 +1609,13 @@
                 const resultCard = document.getElementById('resultCard');
                 if (resultCard) resultCard.style.display = 'block';
 
-                // 自动跳转：根据复选框选择跳转对应APP
+                // 自动跳转：根据复选框选择跳转对应APP（结果区始终用真实链接直跳）
                 if (getAutoJumpEnabled()) {
-                    setTimeout(function() { openTaobaoApp(fullContent); }, 300);
+                    setTimeout(function() { openTaobaoApp(directUrl); }, 300);
                 } else if (getAutoJumpDianTaoEnabled()) {
-                    setTimeout(function() { openAlipayApp(fullContent); }, 300);
+                    setTimeout(function() { openAlipayApp(directUrl); }, 300);
                 } else if (getAutoJumpTmallEnabled()) {
-                    setTimeout(function() { openTmallApp(fullContent); }, 300);
+                    setTimeout(function() { openTmallApp(directUrl); }, 300);
                 }
             } catch (error) {
                 console.error('生成失败:', error);
