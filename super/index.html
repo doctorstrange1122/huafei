@@ -162,15 +162,17 @@
         }
         .product-id-panel .pid-label { font-size: 12px; color: #8a6d5b; font-weight: 600; }
         .product-id-panel .pid-value {
-            font-size: 15px; font-weight: 700; color: #ff6b35;
-            word-break: break-all; text-align: center; line-height: 1.3;
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 8px;
+            font-size: 14px; font-weight: 700; color: #ff6b35;
+            text-align: center; line-height: 1.3;
         }
+        .product-id-panel .pid-item { white-space: nowrap; } /* 单个id内部不折行 */
         .product-id-panel .copy-id-btn {
-            border: none; background: #ff6b35; color: #fff;
+            border: none; background: #7ba9c9; color: #fff;
             padding: 5px 14px; border-radius: 12px;
             font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1;
         }
-        .product-id-panel .copy-id-btn:active { opacity: .85; }
+        .product-id-panel .copy-id-btn:active { background: #6b99b9; }
 
         /* 自动跳转复选框 */
         .auto-jump-checkbox {
@@ -1711,10 +1713,14 @@
                 qrRight.className = 'qr-code-right';
 
                 const escapedProductId = String(window._lastGeneratedProductId || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                // 按逗号拆分为独立片段：单id内部不换行，多id之间自动换行
+                const productIdHtml = escapedProductId.split(',').map(function(s) {
+                    return '<span class="pid-item">' + s.trim() + '</span>';
+                }).join('');
                 actionButtons.innerHTML = `
                     <div class="product-id-panel">
                         <span class="pid-label">当前商品id</span>
-                        <span class="pid-value">${escapedProductId}</span>
+                        <span class="pid-value">${productIdHtml}</span>
                         <button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>
                     </div>
                     <button class="btn-taobao" onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
