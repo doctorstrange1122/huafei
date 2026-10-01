@@ -51,22 +51,32 @@ export function buildTransitHtml(realUrl) {
   .btn{margin-top:28px;padding:12px 30px;font-size:16px;color:#fff;background:#ff5000;
        border:0;border-radius:24px}
   #tip{color:#999;font-size:13px;margin-top:18px}
+  /* iOS 手势遮罩：Safari 禁止无手势唤起 scheme，需用户点击触发 */
+  #iosMask{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;
+           justify-content:center;background:rgba(0,0,0,.6);color:#fff;z-index:999;cursor:pointer}
+  #iosMask .big{font-size:20px;margin-bottom:10px}
+  #iosMask .sub{font-size:14px;opacity:.85}
 </style>
 </head>
 <body>
   <p>正在唤起淘宝 App…</p>
   <button class="btn" id="openBtn">手动打开淘宝</button>
   <p id="tip">若未自动打开，请点击上方按钮</p>
+  <div id="iosMask"><div class="big">点击打开淘宝 App</div><div class="sub">如已安装将自动跳转</div></div>
 <script>
 const REAL_URL = ${JSON.stringify(realUrl).replace(/</g, '\\u003c')};
 function openTaobaoApp(url) {
   const tbopenUrl = 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + encodeURIComponent(url);
   const taobaoScheme = 'taobao://' + url.replace('https://', '');
+  // iPadOS 14+ 的 UA 是 MacIntel，需结合触摸点判断
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
   let appOpened = false;
   const visibilityHandler = function() { if (document.hidden) { appOpened = true; } };
   document.addEventListener('visibilitychange', visibilityHandler);
-  function tryScheme(schemeUrl) {
-    if (window.NativeBridge || (window.Android && typeof window.Android !== 'undefined')) {
+  // iOS Safari 必须用 location.href，且在用户手势中触发；iframe 方式对 iOS 无效
+  function fire(schemeUrl) {
+    if (isIOS || isAPK) {
       window.location.href = schemeUrl;
     } else {
       const iframe = document.createElement('iframe');
@@ -76,15 +86,24 @@ function openTaobaoApp(url) {
       setTimeout(function() { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 3000);
     }
   }
-  tryScheme(tbopenUrl);
-  setTimeout(function() {
-    if (appOpened) { document.removeEventListener('visibilitychange', visibilityHandler); return; }
-    tryScheme(taobaoScheme);
-  }, 1000);
+  function go() {
+    if (appOpened) { return; }
+    fire(tbopenUrl);
+    setTimeout(function() { if (!appOpened) { fire(taobaoScheme); } }, 1000);
+  }
+  if (isIOS) {
+    // 自动试一次（多数被 Safari 拦截），弹出手势遮罩兜底
+    go();
+    const mask = document.getElementById('iosMask');
+    mask.style.display = 'flex';
+    mask.addEventListener('click', go);
+  } else {
+    go();
+  }
+  document.getElementById('openBtn').addEventListener('click', go);
 }
 window.onload = function() {
   openTaobaoApp(REAL_URL);
-  document.getElementById('openBtn').addEventListener('click', function(){ openTaobaoApp(REAL_URL); });
 };
 </script>
 </body>
