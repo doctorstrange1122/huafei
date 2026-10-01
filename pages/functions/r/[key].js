@@ -1,4 +1,4 @@
-import { getButtonMap, buildTransitHtml } from './_lib.js';
+import { getButtonMap, buildTransitHtml } from '../_lib.js';
 
 export async function onRequestGet(context) {
   const { request, params } = context;
