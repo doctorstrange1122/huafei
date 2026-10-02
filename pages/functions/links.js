@@ -46,9 +46,10 @@ function buildHtml(csvText) {
     const [cat, name, daily, did, sid, link, used] = r;
     const catCls = cat === "肥料" ? "cat-feiliao" : "cat-qita";
     const usedCls = used === "是" ? "yes" : "no";
+    const rowCls = used === "否" ? "unused" : "";
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
     if (cat === "肥料") feiliao++; else qita++;
-    return `<tr>
+    return `<tr class="${rowCls}">
       <td class="${catCls}">${esc(cat)}</td>
       <td>${esc(name)}</td>
       <td>${esc(daily)}</td>
@@ -79,6 +80,8 @@ function buildHtml(csvText) {
   th,td { padding:9px 12px; text-align:left; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
+  tbody tr.unused { background:#e9eef3; }
+  tbody tr.unused:hover { background:#e1e8ee; }
   .cat-feiliao { color:#c8842a; }
   .cat-qita { color:#3a7ca5; }
   .yes { color:#2e8b57; font-weight:600; }
@@ -92,6 +95,8 @@ function buildHtml(csvText) {
     th{background:#262a2f;}
     th,td{border-bottom-color:#2c2f34;}
     tbody tr:hover{background:#23272c;}
+    tbody tr.unused{background:#222831;}
+    tbody tr.unused:hover{background:#262c36;}
   }
 </style>
 </head>
