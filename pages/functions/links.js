@@ -1,19 +1,25 @@
 export async function onRequestGet(context) {
-  const SOURCES = [
-    "https://raw.githubusercontent.com/doctorstrange1122/huafei/main/data/links.csv",
-    "https://cdn.jsdelivr.net/gh/doctorstrange1122/huafei@main/data/links.csv"
-  ];
-  const bust = context.request.url.includes("?") ? "?" + context.request.url.split("?")[1] : "";
+  const REPO = "doctorstrange1122/huafei";
+  const PATH = "data/links.csv";
 
   let csvText = "";
-  for (const url of SOURCES) {
+  let srcNote = "";
+
+  // 主源：raw.githubusercontent.com。子请求 no-store，每次回源取最新（不缓存）
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${REPO}/main/${PATH}`, { cache: "no-store" });
+    if (r.ok) { csvText = await r.text(); srcNote = "raw"; }
+  } catch (e) {}
+
+  // 兜底：jsDelivr（同样 no-store）
+  if (!csvText.trim()) {
     try {
-      const res = await fetch(url + bust, { cf: { cacheTtl: 0 } });
-      if (res.ok) { csvText = await res.text(); if (csvText.trim()) break; }
-    } catch (e) { /* try next */ }
+      const r = await fetch(`https://cdn.jsdelivr.net/gh/${REPO}@main/${PATH}`, { cache: "no-store" });
+      if (r.ok) { csvText = await r.text(); srcNote = "jsDelivr"; }
+    } catch (e) {}
   }
 
-  const html = buildHtml(csvText);
+  const html = buildHtml(csvText, srcNote);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
@@ -33,7 +39,7 @@ function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function buildHtml(csvText) {
+function buildHtml(csvText, srcNote) {
   let rows = [];
   let errMsg = "";
   if (csvText && csvText.trim()) {
@@ -65,7 +71,7 @@ function buildHtml(csvText) {
 
   const meta = errMsg
     ? `<span class="err">${errMsg}</span>`
-    : `共 ${rows.length} 条 · 肥料区 ${feiliao} · 其他区 ${qita} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
+    : `共 ${rows.length} 条 · 肥料区 ${feiliao} · 其他区 ${qita} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
