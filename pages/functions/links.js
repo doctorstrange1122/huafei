@@ -44,11 +44,12 @@ function buildHtml(csvText) {
 
   let feiliao = 0, qita = 0;
   const bodyRows = rows.map(r => {
-    const [cat, name, daily, did, sid, used, link] = r;
+    const [cat, name, daily, did, sid, used, link, orig] = r;
     const catCls = cat === "肥料" ? "cat-feiliao" : "cat-qita";
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
+    const origHtml = orig ? `<a href="${esc(orig)}" target="_blank" rel="noopener">${esc(orig)}</a>` : "";
     if (cat === "肥料") feiliao++; else qita++;
     return `<tr class="${rowCls}">
       <td class="${catCls}">${esc(cat)}</td>
@@ -58,6 +59,7 @@ function buildHtml(csvText) {
       <td>${esc(sid)}</td>
       <td class="${usedCls}">${esc(used)}</td>
       <td class="link">${linkHtml}</td>
+      <td class="link">${origHtml}</td>
     </tr>`;
   }).join("");
 
@@ -77,7 +79,7 @@ function buildHtml(csvText) {
   h1 { font-size:20px; margin:0 0 4px; }
   .meta { color:#888; font-size:13px; margin-bottom:16px; }
   .table-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-  table { border-collapse:collapse; width:100%; min-width:760px; font-size:13px; margin:0 auto; }
+  table { border-collapse:collapse; width:100%; min-width:920px; font-size:13px; margin:0 auto; }
   th,td { padding:9px 12px; text-align:center; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
@@ -106,7 +108,7 @@ function buildHtml(csvText) {
   <div class="meta">${meta}</div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th></tr></thead>
+      <thead><tr><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
