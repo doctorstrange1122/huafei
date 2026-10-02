@@ -1,13 +1,14 @@
 export async function onRequestGet(context) {
   const SOURCES = [
-    "https://cdn.jsdelivr.net/gh/doctorstrange1122/huafei@main/data/links.csv",
-    "https://raw.githubusercontent.com/doctorstrange1122/huafei/main/data/links.csv"
+    "https://raw.githubusercontent.com/doctorstrange1122/huafei/main/data/links.csv",
+    "https://cdn.jsdelivr.net/gh/doctorstrange1122/huafei@main/data/links.csv"
   ];
+  const bust = context.request.url.includes("?") ? "?" + context.request.url.split("?")[1] : "";
 
   let csvText = "";
   for (const url of SOURCES) {
     try {
-      const res = await fetch(url, { cf: { cacheTtl: 60, cacheEverything: true } });
+      const res = await fetch(url + bust, { cf: { cacheTtl: 0 } });
       if (res.ok) { csvText = await res.text(); if (csvText.trim()) break; }
     } catch (e) { /* try next */ }
   }
