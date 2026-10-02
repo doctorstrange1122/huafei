@@ -43,7 +43,7 @@ function buildHtml(csvText) {
 
   let feiliao = 0, qita = 0;
   const bodyRows = rows.map(r => {
-    const [cat, name, daily, did, sid, link, used] = r;
+    const [cat, name, daily, did, sid, used, link] = r;
     const catCls = cat === "肥料" ? "cat-feiliao" : "cat-qita";
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
@@ -55,8 +55,8 @@ function buildHtml(csvText) {
       <td>${esc(daily)}</td>
       <td>${esc(did)}</td>
       <td>${esc(sid)}</td>
-      <td class="link">${linkHtml}</td>
       <td class="${usedCls}">${esc(used)}</td>
+      <td class="link">${linkHtml}</td>
     </tr>`;
   }).join("");
 
@@ -76,8 +76,8 @@ function buildHtml(csvText) {
   h1 { font-size:20px; margin:0 0 4px; }
   .meta { color:#888; font-size:13px; margin-bottom:16px; }
   .table-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-  table { border-collapse:collapse; width:100%; min-width:760px; font-size:13px; }
-  th,td { padding:9px 12px; text-align:left; border-bottom:1px solid #eee; white-space:nowrap; }
+  table { border-collapse:collapse; width:100%; min-width:760px; font-size:13px; margin:0 auto; }
+  th,td { padding:9px 12px; text-align:center; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
   tbody tr.unused { background:#e9eef3; }
@@ -105,7 +105,7 @@ function buildHtml(csvText) {
   <div class="meta">${meta}</div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>链接</th><th>是否使用</th></tr></thead>
+      <thead><tr><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
