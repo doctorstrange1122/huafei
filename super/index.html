@@ -230,17 +230,21 @@
         /* 常用 id 下拉行 */
         .common-id-section { position: relative; }
         .common-id-row {
-            display: flex; gap: 0; align-items: stretch;
+            display: flex; gap: 8px; align-items: center;
+        }
+        .common-id-label {
+            flex-shrink: 0;
+            font-size: 14px; font-weight: 600; color: var(--text-title);
+            margin: 0; padding: 0;
         }
         .common-id-display {
             flex: 1; min-width: 0;
-            display: flex; align-items: center;
-            height: 46px; padding: 0 14px;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 38px; padding: 0 12px;
             background: var(--input-bg);
             border: 2px solid var(--input-border);
-            border-right: none;
-            border-radius: 10px 0 0 10px;
-            font-size: 15px; color: var(--text-main);
+            border-radius: 10px;
+            font-size: 14px; color: var(--text-main);
             cursor: pointer; user-select: none;
             transition: border-color 0.2s;
         }
@@ -248,11 +252,13 @@
         .common-id-placeholder {
             color: var(--placeholder);
         }
-        .common-id-row .action-btn-group { border-radius: 0 10px 10px 0; }
-        .common-id-clear-btn {
-            background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff;
+        .common-id-arrow {
+            font-size: 11px; color: var(--text-sub); margin-left: 8px;
+            transition: transform 0.2s;
         }
-        .common-id-clear-btn:active { background: #9aa0a6; }
+        .common-id-display.active .common-id-arrow {
+            transform: rotate(180deg);
+        }
         .common-id-list {
             position: absolute; left: 0; right: 0; top: calc(100% + 6px);
             max-height: 260px; overflow-y: auto;
@@ -774,13 +780,11 @@
 
         <!-- 常用 id -->
         <div class="input-section common-id-section">
-            <label for="commonIdDisplay">常用 id</label>
             <div class="common-id-row">
+                <label for="commonIdDisplay" class="common-id-label">常用 id</label>
                 <div class="common-id-display" id="commonIdDisplay" onclick="toggleCommonIdList()">
                     <span class="common-id-placeholder" id="commonIdPlaceholder">选择常用 id</span>
-                </div>
-                <div class="action-btn-group">
-                    <button type="button" class="common-id-clear-btn" onclick="clearCommonIdSelection()" title="清除选择">✕</button>
+                    <span class="common-id-arrow" id="commonIdArrow">▼</span>
                 </div>
             </div>
             <div class="common-id-list" id="commonIdList" style="display:none;"></div>
@@ -1116,7 +1120,7 @@
             document.getElementById('customText').value = item.customText || '';
             const placeholder = document.getElementById('commonIdPlaceholder');
             if (placeholder) {
-                placeholder.textContent = item.id + (item.customText ? ' ' + item.customText : '');
+                placeholder.textContent = item.customText || '已选择';
                 placeholder.classList.remove('common-id-placeholder');
             }
             closeCommonIdList();
@@ -1172,10 +1176,10 @@
         function confirmCustomTextModal() {
             const input = document.getElementById('customTextModalInput');
             const text = input ? input.value.trim() : '';
+            const ids = pendingCommonIds;
             closeCustomTextModal();
-            if (pendingCommonIds) {
-                doAddCommonIds(pendingCommonIds, text);
-                pendingCommonIds = null;
+            if (ids) {
+                doAddCommonIds(ids, text);
             }
         }
 
