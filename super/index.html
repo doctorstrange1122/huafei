@@ -1180,16 +1180,14 @@
         }
 
         function doAddCommonIds(ids, customText) {
-            const idList = String(ids).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-            if (idList.length === 0) return;
+            const rawId = String(ids || '').trim();
+            if (!rawId) return;
             let list = getCommonIds();
-            idList.forEach(function(id) {
-                // 去重：同 id + 同 customText 视为重复，移除旧项后插到头部
-                list = list.filter(function(item) {
-                    return !(item.id === id && item.customText === customText);
-                });
-                list.unshift({ id: id, customText: customText, createdAt: Date.now() });
+            // 多 id 作为一条整体保存（不再按逗号拆分）；同 id + 同 customText 视为重复，移除旧项后插到头部
+            list = list.filter(function(item) {
+                return !(item.id === rawId && item.customText === customText);
             });
+            list.unshift({ id: rawId, customText: customText, createdAt: Date.now() });
             if (list.length > COMMON_IDS_MAX) {
                 list = list.slice(0, COMMON_IDS_MAX);
             }
