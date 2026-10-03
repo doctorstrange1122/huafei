@@ -219,6 +219,131 @@
         }
         .product-id-panel .copy-id-btn:active { background: #5f7590; }
 
+        /* +常用 按钮 */
+        .product-id-panel .add-common-btn {
+            border: none; background: linear-gradient(135deg, #6a9a7a, #5a8a6a); color: #fff;
+            padding: 5px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1;
+        }
+        .product-id-panel .add-common-btn:active { background: #4a7a5a; }
+
+        /* 常用 id 下拉行 */
+        .common-id-section { position: relative; }
+        .common-id-row {
+            display: flex; gap: 0; align-items: stretch;
+        }
+        .common-id-display {
+            flex: 1; min-width: 0;
+            display: flex; align-items: center;
+            height: 46px; padding: 0 14px;
+            background: var(--input-bg);
+            border: 2px solid var(--input-border);
+            border-right: none;
+            border-radius: 10px 0 0 10px;
+            font-size: 15px; color: var(--text-main);
+            cursor: pointer; user-select: none;
+            transition: border-color 0.2s;
+        }
+        .common-id-display.active { border-color: var(--input-focus); }
+        .common-id-placeholder {
+            color: var(--placeholder);
+        }
+        .common-id-row .action-btn-group { border-radius: 0 10px 10px 0; }
+        .common-id-clear-btn {
+            background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff;
+        }
+        .common-id-clear-btn:active { background: #9aa0a6; }
+        .common-id-list {
+            position: absolute; left: 0; right: 0; top: calc(100% + 6px);
+            max-height: 260px; overflow-y: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px var(--card-shadow);
+            z-index: 100;
+            padding: 6px 0;
+        }
+        .common-id-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            white-space: nowrap; overflow: hidden;
+            transition: background 0.15s;
+        }
+        .common-id-item:hover,
+        .common-id-item:active { background: var(--weak-bg); }
+        .common-id-item-id {
+            font-size: 14px; font-weight: 700; color: #ff6b35;
+            flex-shrink: 0;
+        }
+        .common-id-item-text {
+            flex: 1; min-width: 0;
+            font-size: 13px; color: var(--text-sub);
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .common-id-empty {
+            padding: 14px; text-align: center; font-size: 13px; color: var(--text-weak);
+        }
+        .common-id-delete {
+            flex-shrink: 0;
+            width: 26px; height: 26px;
+            border: none; border-radius: 6px;
+            background: transparent;
+            color: #e53e3e;
+            font-size: 16px; line-height: 1;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .common-id-delete:active { background: rgba(229,62,62,0.1); }
+
+        /* 自定义文字弹窗 */
+        .custom-text-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10000; align-items: center; justify-content: center;
+        }
+        .custom-text-modal.active { display: flex; }
+        .custom-text-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+        }
+        .custom-text-card {
+            position: relative;
+            width: 88%; max-width: 360px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            z-index: 1;
+        }
+        .custom-text-title {
+            font-size: 16px; font-weight: 700; color: var(--text-title);
+            margin-bottom: 16px; text-align: center;
+        }
+        .custom-text-card input {
+            width: 100%; height: 46px;
+            padding: 0 12px;
+            border: 2px solid var(--input-border); border-radius: 10px;
+            background: var(--input-bg); color: var(--text-main);
+            font-size: 15px; margin-bottom: 18px;
+        }
+        .custom-text-card input:focus { outline: none; border-color: var(--input-focus); }
+        .custom-text-actions {
+            display: flex; gap: 10px;
+        }
+        .custom-text-actions button {
+            flex: 1; height: 44px;
+            border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .custom-text-actions .btn-cancel {
+            background: var(--weak-bg); color: var(--text-sub);
+        }
+        .custom-text-actions .btn-confirm {
+            background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff;
+        }
+        .custom-text-actions .btn-cancel:active { background: var(--weak-border); }
+        .custom-text-actions .btn-confirm:active { background: #5f7590; }
+
         /* 自动跳转复选框 */
         .auto-jump-checkbox {
             margin-top: 10px;
@@ -647,6 +772,20 @@
             </div>
         </div>
 
+        <!-- 常用 id -->
+        <div class="input-section common-id-section">
+            <label for="commonIdDisplay">常用 id</label>
+            <div class="common-id-row">
+                <div class="common-id-display" id="commonIdDisplay" onclick="toggleCommonIdList()">
+                    <span class="common-id-placeholder" id="commonIdPlaceholder">选择常用 id</span>
+                </div>
+                <div class="action-btn-group">
+                    <button type="button" class="common-id-clear-btn" onclick="clearCommonIdSelection()" title="清除选择">✕</button>
+                </div>
+            </div>
+            <div class="common-id-list" id="commonIdList" style="display:none;"></div>
+        </div>
+
         <!-- 自动跳转复选框 -->
         <div class="auto-jump-checkbox">
             <label class="checkbox-label">
@@ -719,6 +858,19 @@
         <button class="scan-close" onclick="stopScan()">✕</button>
         <div class="scan-viewport" id="scanViewport"></div>
         <div class="scan-hint">将图片对准框内，自动识别</div>
+    </div>
+
+    <!-- 常用 id 自定义文字弹窗 -->
+    <div class="custom-text-modal" id="customTextModal" style="display:none;">
+        <div class="custom-text-overlay" onclick="closeCustomTextModal()"></div>
+        <div class="custom-text-card">
+            <div class="custom-text-title">请输入自定义文字</div>
+            <input type="text" id="customTextModalInput" placeholder="如商品名称、备注信息" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmCustomTextModal();}">
+            <div class="custom-text-actions">
+                <button type="button" class="btn-cancel" onclick="closeCustomTextModal()">取消</button>
+                <button type="button" class="btn-confirm" onclick="confirmCustomTextModal()">保存</button>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -882,6 +1034,7 @@
         function initPageFeatures() {
             initAllBadges();
             setupAutoJumpCheckboxMutex();
+            renderCommonIdList();
         }
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initPageFeatures);
@@ -894,6 +1047,174 @@
             document.getElementById('productLink').value = '';
             document.getElementById('customText').value = '';
         }
+
+        // ====== 常用 id 功能 ======
+        const COMMON_IDS_KEY = 'common_ids';
+        const COMMON_IDS_MAX = 50;
+
+        function getCommonIds() {
+            try {
+                const raw = localStorage.getItem(COMMON_IDS_KEY);
+                if (raw) {
+                    const list = JSON.parse(raw);
+                    if (Array.isArray(list)) return list;
+                }
+            } catch (e) {}
+            return [];
+        }
+
+        function setCommonIds(list) {
+            try {
+                localStorage.setItem(COMMON_IDS_KEY, JSON.stringify(list));
+            } catch (e) {}
+        }
+
+        function renderCommonIdList() {
+            const list = getCommonIds();
+            const container = document.getElementById('commonIdList');
+            if (!container) return;
+            if (list.length === 0) {
+                container.innerHTML = '<div class="common-id-empty">暂无常用 id</div>';
+                return;
+            }
+            container.innerHTML = list.map(function(item, index) {
+                const id = String(item.id || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const text = String(item.customText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return '<div class="common-id-item" onclick="fillFromCommonId(' + index + ')">' +
+                    '<span class="common-id-item-id">' + id + '</span>' +
+                    '<span class="common-id-item-text">' + (text ? text : '') + '</span>' +
+                    '<button type="button" class="common-id-delete" onclick="deleteCommonId(event, ' + index + ')" title="删除">🗑</button>' +
+                '</div>';
+            }).join('');
+        }
+
+        function toggleCommonIdList() {
+            const list = document.getElementById('commonIdList');
+            if (!list) return;
+            const isHidden = list.style.display === 'none';
+            if (isHidden) {
+                renderCommonIdList();
+                list.style.display = 'block';
+                document.getElementById('commonIdDisplay').classList.add('active');
+            } else {
+                closeCommonIdList();
+            }
+        }
+
+        function closeCommonIdList() {
+            const list = document.getElementById('commonIdList');
+            if (list) list.style.display = 'none';
+            const display = document.getElementById('commonIdDisplay');
+            if (display) display.classList.remove('active');
+        }
+
+        function fillFromCommonId(index) {
+            const list = getCommonIds();
+            const item = list[index];
+            if (!item) return;
+            document.getElementById('productLink').value = item.id || '';
+            document.getElementById('customText').value = item.customText || '';
+            const placeholder = document.getElementById('commonIdPlaceholder');
+            if (placeholder) {
+                placeholder.textContent = item.id + (item.customText ? ' ' + item.customText : '');
+                placeholder.classList.remove('common-id-placeholder');
+            }
+            closeCommonIdList();
+        }
+
+        function clearCommonIdSelection() {
+            const placeholder = document.getElementById('commonIdPlaceholder');
+            if (placeholder) {
+                placeholder.textContent = '选择常用 id';
+                placeholder.classList.add('common-id-placeholder');
+            }
+        }
+
+        function addCurrentToCommonIds() {
+            let productId = window._lastGeneratedProductId || '';
+            if (!productId) {
+                productId = document.getElementById('productLink').value.trim();
+            }
+            if (!productId) {
+                showToast('没有可保存的商品 id');
+                return;
+            }
+            const customText = document.getElementById('customText').value.trim();
+            if (!customText) {
+                pendingCommonIds = productId;
+                openCustomTextModal();
+                return;
+            }
+            doAddCommonIds(productId, customText);
+        }
+
+        let pendingCommonIds = null;
+
+        function openCustomTextModal() {
+            const modal = document.getElementById('customTextModal');
+            const input = document.getElementById('customTextModalInput');
+            if (!modal || !input) return;
+            input.value = '';
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            setTimeout(function() { input.focus(); }, 50);
+        }
+
+        function closeCustomTextModal() {
+            const modal = document.getElementById('customTextModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+            pendingCommonIds = null;
+        }
+
+        function confirmCustomTextModal() {
+            const input = document.getElementById('customTextModalInput');
+            const text = input ? input.value.trim() : '';
+            closeCustomTextModal();
+            if (pendingCommonIds) {
+                doAddCommonIds(pendingCommonIds, text);
+                pendingCommonIds = null;
+            }
+        }
+
+        function doAddCommonIds(ids, customText) {
+            const idList = String(ids).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+            if (idList.length === 0) return;
+            let list = getCommonIds();
+            idList.forEach(function(id) {
+                // 去重：同 id + 同 customText 视为重复，移除旧项后插到头部
+                list = list.filter(function(item) {
+                    return !(item.id === id && item.customText === customText);
+                });
+                list.unshift({ id: id, customText: customText, createdAt: Date.now() });
+            });
+            if (list.length > COMMON_IDS_MAX) {
+                list = list.slice(0, COMMON_IDS_MAX);
+            }
+            setCommonIds(list);
+            renderCommonIdList();
+            showToast('已保存到常用 id');
+        }
+
+        function deleteCommonId(event, index) {
+            if (event) event.stopPropagation();
+            const list = getCommonIds();
+            if (index < 0 || index >= list.length) return;
+            list.splice(index, 1);
+            setCommonIds(list);
+            renderCommonIdList();
+        }
+
+        // 点击页面其他区域收起常用 id 下拉
+        document.addEventListener('click', function(event) {
+            const section = document.querySelector('.common-id-section');
+            if (!section) return;
+            if (!section.contains(event.target)) {
+                closeCommonIdList();
+            }
+        });
 
         // 粘贴剪贴板内容到输入框
         function pasteFromClipboard() {
@@ -1791,7 +2112,10 @@
                     <div class="product-id-panel">
                         <span class="pid-label">当前商品id</span>
                         <span class="pid-value">${productIdHtml}</span>
-                        <button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>
+                        <div style="display:flex;gap:8px;justify-content:center;width:100%;">
+                            <button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>
+                            <button type="button" class="add-common-btn" onclick="addCurrentToCommonIds()" title="保存到常用 id">+常用</button>
+                        </div>
                     </div>
                     <button class="btn-taobao" onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
                     <button class="btn-alipay btn-hidden" onclick="openAlipayApp('${directUrl}')">一键跳转支付宝</button>
