@@ -245,16 +245,16 @@
             flex-shrink: 0;
             font-size: 14px; font-weight: 600; color: var(--text-title);
             margin: 0; padding: 0;
-            line-height: 30px;
+            line-height: 26px;
         }
         .common-id-display {
             flex: 1; min-width: 0;
             display: flex; align-items: center; justify-content: space-between;
-            height: 30px; padding: 0 12px;
+            height: 26px; padding: 0 10px;
             background: var(--input-bg);
             border: 2px solid var(--input-border);
             border-radius: 10px;
-            font-size: 14px; color: var(--text-main);
+            font-size: 13px; color: var(--text-main);
             cursor: pointer; user-select: none;
             transition: border-color 0.2s;
         }
@@ -793,7 +793,7 @@
             <div class="common-id-row">
                 <label for="commonIdDisplay" class="common-id-label">常用 id</label>
                 <div class="common-id-display" id="commonIdDisplay" onclick="toggleCommonIdList()">
-                    <span class="common-id-placeholder" id="commonIdPlaceholder">选择常用 id</span>
+                    <span class="common-id-placeholder" id="commonIdPlaceholder">常用id点击自动填入</span>
                     <span class="common-id-arrow" id="commonIdArrow">▼</span>
                 </div>
             </div>
@@ -1130,16 +1130,22 @@
             document.getElementById('customText').value = item.customText || '';
             const placeholder = document.getElementById('commonIdPlaceholder');
             if (placeholder) {
-                placeholder.textContent = item.customText || '已选择';
+                placeholder.textContent = '已填入';
                 placeholder.classList.remove('common-id-placeholder');
+                clearTimeout(commonIdRestoreTimer);
+                commonIdRestoreTimer = setTimeout(function() {
+                    placeholder.textContent = '常用id点击自动填入';
+                    placeholder.classList.add('common-id-placeholder');
+                }, 3000);
             }
             closeCommonIdList();
         }
 
         function clearCommonIdSelection() {
+            clearTimeout(commonIdRestoreTimer);
             const placeholder = document.getElementById('commonIdPlaceholder');
             if (placeholder) {
-                placeholder.textContent = '选择常用 id';
+                placeholder.textContent = '常用id点击自动填入';
                 placeholder.classList.add('common-id-placeholder');
             }
         }
@@ -1163,6 +1169,7 @@
         }
 
         let pendingCommonIds = null;
+        let commonIdRestoreTimer = null;
 
         function openCustomTextModal() {
             const modal = document.getElementById('customTextModal');
