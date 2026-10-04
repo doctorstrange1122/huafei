@@ -201,8 +201,8 @@
 
         /* 右侧操作区：当前商品id面板（分行显示 id 与复制按钮） */
         .product-id-panel {
-            display: flex; flex-direction: column; align-items: center; gap: 5px;
-            width: 100%; padding: 10px 12px;
+            display: flex; flex-direction: column; align-items: center; gap: 3px;
+            width: 100%; padding: 6px 8px;
             background: var(--idpanel-bg); border: 1px solid var(--idpanel-border); border-radius: 12px;
         }
         .product-id-panel .pid-label { font-size: 12px; color: var(--pid-label); font-weight: 600; }
@@ -214,24 +214,25 @@
         .product-id-panel .pid-item { white-space: nowrap; } /* 单个id内部不折行 */
         .product-id-panel .copy-id-btn {
             border: none; background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff;
-            padding: 5px 8px; border-radius: 12px;
+            border-radius: 12px;
             font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1;
         }
         .product-id-panel .copy-id-btn:active { background: #5f7590; }
 
         /* 复制/+常用 按钮组 */
         .product-id-panel .pid-btn-group {
-            display: flex; gap: 4px; align-items: center; justify-content: center;
+            display: flex; gap: 2px; align-items: center; justify-content: center;
             width: 100%; flex-wrap: nowrap; white-space: nowrap;
         }
         .product-id-panel .pid-btn-group button {
             flex: 1 1 0; min-width: 0;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            padding: 3px 6px;
         }
         /* +常用 按钮 */
         .product-id-panel .add-common-btn {
             border: none; background: linear-gradient(135deg, #6a9a7a, #5a8a6a); color: #fff;
-            padding: 5px 8px; border-radius: 12px;
+            border-radius: 12px;
             font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1;
         }
         .product-id-panel .add-common-btn:active { background: #4a7a5a; }
@@ -281,22 +282,32 @@
             padding: 6px 0;
         }
         .common-id-item {
-            display: flex; align-items: center; gap: 8px;
-            padding: 10px 12px;
+            display: flex; align-items: flex-end; gap: 6px;
+            padding: 8px 10px;
             cursor: pointer;
-            white-space: nowrap; overflow: hidden;
             transition: background 0.15s;
         }
         .common-id-item:hover,
         .common-id-item:active { background: var(--weak-bg); }
+        .common-id-ids {
+            flex: 1; min-width: 0;
+            display: flex; flex-direction: column; gap: 2px;
+        }
         .common-id-item-id {
             font-size: 14px; font-weight: 700; color: #ff6b35;
+            line-height: 1.25;
+            word-break: break-all;
+        }
+        .common-id-meta {
             flex-shrink: 0;
+            display: flex; align-items: center; gap: 6px;
+            padding-bottom: 1px;
         }
         .common-id-item-text {
-            flex: 1; min-width: 0;
             font-size: 13px; color: var(--text-sub);
             overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 90px;
         }
         .common-id-empty {
             padding: 14px; text-align: center; font-size: 13px; color: var(--text-weak);
@@ -585,7 +596,7 @@
             flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 14px;
+            gap: 10px;
             text-align: center;
         }
         .qr-code-left {
@@ -599,7 +610,7 @@
             flex-direction: column;
             align-items: stretch;
             justify-content: center;
-            gap: 8px;
+            gap: 5px;
             min-width: 140px;
             max-width: 260px;
             flex: 1 1 140px;
@@ -634,10 +645,11 @@
             box-shadow: 0 8px 40px rgba(0,0,0,0.4);
         }
         #resultArea img { display: inline-block; }
-        .result-card { text-align: center; }
+        .result-card { text-align: center; padding: 14px; }
+        .result-card .card-title { margin-bottom: 10px; }
         .result-card img {
             border-radius: 12px; box-shadow: 0 4px 16px rgba(120,140,160,0.12);
-            margin: 10px 0;
+            margin: 0;
         }
         .long-press-tip {
             display: inline-block;
@@ -1124,12 +1136,18 @@
                 return;
             }
             container.innerHTML = list.map(function(item, index) {
-                const id = String(item.id || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const rawId = String(item.id || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 const text = String(item.customText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const ids = rawId.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+                const idsHtml = ids.map(function(id) {
+                    return '<span class="common-id-item-id">' + id + '</span>';
+                }).join('');
                 return '<div class="common-id-item" onclick="fillFromCommonId(' + index + ')">' +
-                    '<span class="common-id-item-id">' + id + '</span>' +
-                    '<span class="common-id-item-text">' + (text ? text : '') + '</span>' +
-                    '<button type="button" class="common-id-delete" onclick="deleteCommonId(event, ' + index + ')" title="删除">🗑</button>' +
+                    '<div class="common-id-ids">' + idsHtml + '</div>' +
+                    '<div class="common-id-meta">' +
+                        (text ? '<span class="common-id-item-text">' + text + '</span>' : '') +
+                        '<button type="button" class="common-id-delete" onclick="deleteCommonId(event, ' + index + ')" title="删除">🗑</button>' +
+                    '</div>' +
                 '</div>';
             }).join('');
         }
