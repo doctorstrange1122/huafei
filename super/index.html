@@ -261,6 +261,7 @@
             font-size: 13px; color: var(--text-main);
             cursor: pointer; user-select: none;
             transition: border-color 0.2s;
+            position: relative;
         }
         .common-id-display.active { border-color: var(--input-focus); }
         .common-id-placeholder {
@@ -310,6 +311,7 @@
             overflow: hidden; text-overflow: ellipsis;
             white-space: nowrap;
             max-width: 90px;
+            text-align: center;
         }
         .common-id-empty {
             padding: 14px; text-align: center; font-size: 13px; color: var(--text-weak);
@@ -841,8 +843,8 @@
                 <div class="common-id-display" id="commonIdDisplay" onclick="toggleCommonIdList()">
                     <span class="common-id-placeholder" id="commonIdPlaceholder">常用id点击自动填入</span>
                     <span class="common-id-arrow" id="commonIdArrow">▼</span>
+                    <div class="common-id-list" id="commonIdList" style="display:none;"></div>
                 </div>
-                <div class="common-id-list" id="commonIdList" style="display:none;"></div>
             </div>
         </div>
 
