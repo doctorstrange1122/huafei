@@ -238,10 +238,11 @@
         .product-id-panel .add-common-btn:active { background: #4a7a5a; }
 
         /* 常用 id 下拉行 */
-        .common-id-section { }
+        .common-id-section { position: relative; }
         .common-id-row {
             display: flex; gap: 8px; align-items: center;
             position: relative;
+            flex-wrap: wrap;
         }
         .common-id-section .common-id-label {
             flex-shrink: 0;
@@ -841,8 +842,8 @@
                     <span class="common-id-placeholder" id="commonIdPlaceholder">常用id点击自动填入</span>
                     <span class="common-id-arrow" id="commonIdArrow">▼</span>
                 </div>
+                <div class="common-id-list" id="commonIdList" style="display:none;"></div>
             </div>
-            <div class="common-id-list" id="commonIdList" style="display:none;"></div>
         </div>
 
         <!-- 自动跳转复选框 -->
