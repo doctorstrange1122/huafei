@@ -238,9 +238,10 @@
         .product-id-panel .add-common-btn:active { background: #4a7a5a; }
 
         /* 常用 id 下拉行 */
-        .common-id-section { position: relative; }
+        .common-id-section { }
         .common-id-row {
             display: flex; gap: 8px; align-items: center;
+            position: relative;
         }
         .common-id-section .common-id-label {
             flex-shrink: 0;
@@ -282,7 +283,7 @@
             padding: 6px 0;
         }
         .common-id-item {
-            display: flex; align-items: flex-end; gap: 6px;
+            display: flex; align-items: center; gap: 6px;
             padding: 8px 10px;
             cursor: pointer;
             transition: background 0.15s;
@@ -1104,6 +1105,8 @@
         function clearInput() {
             document.getElementById('productLink').value = '';
             document.getElementById('customText').value = '';
+            const customLink = document.getElementById('customLink');
+            if (customLink) customLink.value = '';
         }
 
         // ====== 常用 id 功能 ======
