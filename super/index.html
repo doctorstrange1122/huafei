@@ -581,10 +581,10 @@
         #resultArea { margin-top: 0; margin-bottom: 18px; }
         .qr-code-container {
             display: flex;
-            flex-wrap: nowrap;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
             text-align: center;
         }
         .qr-code-left {
@@ -596,11 +596,11 @@
         .qr-code-right {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
-            gap: 6px;
-            min-width: 150px;
-            align-self: stretch; /* 与左侧二维码区域等高 */
+            gap: 8px;
+            width: 100%;
+            max-width: 320px;
         }
         #resultArea img { display: inline-block; }
         .result-card { text-align: center; }
@@ -2097,7 +2097,7 @@
                 const mergedImg = document.createElement('img');
                 mergedImg.src = currentQRCodeWithTextCanvas.toDataURL('image/png');
                 mergedImg.alt = '带文字图片';
-                mergedImg.style.maxWidth = '260px';
+                mergedImg.style.maxWidth = '240px';
                 mergedImg.style.borderRadius = '8px';
                 mergedImg.style.cursor = 'pointer';
                 mergedImg.style.webkitTouchCallout = 'none';
