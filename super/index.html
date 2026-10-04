@@ -581,7 +581,8 @@
         #resultArea { margin-top: 0; margin-bottom: 18px; }
         .qr-code-container {
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
+            flex-direction: row;
             align-items: center;
             justify-content: center;
             gap: 14px;
@@ -599,8 +600,38 @@
             align-items: stretch;
             justify-content: center;
             gap: 8px;
-            width: 100%;
-            max-width: 320px;
+            min-width: 140px;
+            max-width: 260px;
+            flex: 1 1 140px;
+        }
+        /* 二维码显示的缩略图（本身是高清原图，仅 CSS 缩小显示） */
+        .qr-thumb {
+            width: 160px;
+            height: auto;
+            border-radius: 8px;
+            cursor: zoom-in;
+            box-shadow: 0 2px 10px rgba(120,140,160,0.18);
+        }
+        /* 点击放大预览遮罩 */
+        .qr-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.82);
+            padding: 20px;
+        }
+        .qr-lightbox.open { display: flex; }
+        .qr-lightbox img {
+            max-width: 92vw;
+            max-height: 92vh;
+            width: auto;
+            height: auto;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
         }
         #resultArea img { display: inline-block; }
         .result-card { text-align: center; }
@@ -1892,6 +1923,21 @@
             });
         }
 
+        // 点击放大预览二维码（显示高清原图）
+        function openQRPreview(dataUrl) {
+            const lb = document.getElementById('qrLightbox');
+            const img = document.getElementById('qrLightboxImg');
+            if (!lb || !img) return;
+            img.src = dataUrl;
+            lb.classList.add('open');
+        }
+        function closeQRPreview(e) {
+            // 点击图片本身不关闭，点击遮罩空白处才关闭
+            if (e && e.target && e.target.id === 'qrLightboxImg') return;
+            const lb = document.getElementById('qrLightbox');
+            if (lb) lb.classList.remove('open');
+        }
+
         // 生成普通二维码图片（无文字）
         function createQRCodeOnly(qrCodeDataURL) {
             return new Promise((resolve) => {
@@ -2095,12 +2141,15 @@
                 currentQRCodeWithTextCanvas = await createQRCodeWithText(qrCodeDataURL, displayText);
 
                 const mergedImg = document.createElement('img');
+                mergedImg.className = 'qr-thumb';
                 mergedImg.src = currentQRCodeWithTextCanvas.toDataURL('image/png');
                 mergedImg.alt = '带文字图片';
-                mergedImg.style.maxWidth = '240px';
-                mergedImg.style.borderRadius = '8px';
-                mergedImg.style.cursor = 'pointer';
                 mergedImg.style.webkitTouchCallout = 'none';
+
+                // 点击放大预览（用高清原图）
+                mergedImg.addEventListener('click', function() {
+                    openQRPreview(currentQRCodeWithTextCanvas.toDataURL('image/png'));
+                });
 
                 // 长按保存：APK 用原生保存到图库，浏览器弹出系统菜单（含"保存图片"选项）
                 mergedImg.addEventListener('contextmenu', function(e) {
@@ -2399,5 +2448,10 @@
         }
     })();
     </script>
+
+    <!-- 二维码点击放大预览 -->
+    <div class="qr-lightbox" id="qrLightbox" onclick="closeQRPreview(event)">
+        <img id="qrLightboxImg" src="" alt="二维码原图" />
+    </div>
 </body>
 </html>
