@@ -599,7 +599,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            min-width: 140px;
+            min-width: 150px;
             align-self: stretch; /* 与左侧二维码区域等高 */
         }
         #resultArea img { display: inline-block; }
@@ -1845,8 +1845,8 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    const qrSize = 180;
-                    const padding = 12;
+                    const qrSize = 256;
+                    const padding = 14;
                     const fontSize = 18;
                     const lineHeight = fontSize + 4;
                     const maxCharsPerLine = 12;
@@ -1903,14 +1903,14 @@
                     const ctx = canvas.getContext('2d');
 
                     // 设置画布尺寸与二维码相同
-                    canvas.width = 150;
-                    canvas.height = 150;
+                    canvas.width = 256;
+                    canvas.height = 256;
 
                     // 绘制白色背景
                     ctx.fillStyle = 'white';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     // 绘制二维码
-                    ctx.drawImage(qrCodeImg, 0, 0, 150, 150);
+                    ctx.drawImage(qrCodeImg, 0, 0, 256, 256);
 
                     resolve(canvas);
                 };
@@ -2053,8 +2053,9 @@
                 }
                 // 生成二维码（中转模式下二维码内容为你的中转地址，不含任何淘宝参数）
                 const qrCodeDataURL = await QRCode.toDataURL(fullContent, {
-                    width: 150,
-                    height: 150,
+                    width: 256,
+                    height: 256,
+                    errorCorrectionLevel: 'M',
                     colorDark: "#000000",
                     colorLight: "#FFFFFF"
                 });
@@ -2096,7 +2097,7 @@
                 const mergedImg = document.createElement('img');
                 mergedImg.src = currentQRCodeWithTextCanvas.toDataURL('image/png');
                 mergedImg.alt = '带文字图片';
-                mergedImg.style.maxWidth = '180px';
+                mergedImg.style.maxWidth = '260px';
                 mergedImg.style.borderRadius = '8px';
                 mergedImg.style.cursor = 'pointer';
                 mergedImg.style.webkitTouchCallout = 'none';
