@@ -1404,10 +1404,17 @@
 
         // 从 URL 中提取商品ID（零网络，毫秒级）
         function extractItemIdFromUrl(url) {
+            // 优先匹配 itemIds=（支持逗号分隔的多个id）
+            const itemIdsMatch = url.match(/[?&]itemIds=([^&\s]+)/);
+            if (itemIdsMatch) {
+                const ids = itemIdsMatch[1].split(',').filter(function(s) {
+                    return /^\d{7,}$/.test(s.trim());
+                }).join(',');
+                if (ids) return ids;
+            }
             // 按最常见的格式优先匹配（id= 至少7位数字避免匹配短值如 YES）
             const m = url.match(/[?&]id=(\d{7,})/)          // id= 后至少7位数字
                 || url.match(/topIds=(\d+)/)                 // 淘宝分享页的 topIds 参数
-                || url.match(/itemIds=(\d+)/)
                 || url.match(/\/i(\d+)\.htm/)
                 || url.match(/\/(\d+)\.html?/);
             return m ? m[1] : null;
@@ -1516,9 +1523,10 @@
         function isDirectIdInput(text) {
             if (!text) return false;
             const t = text.trim();
-            const cleaned = t.replace(/id\s*=\s*/gi, '')
+            const cleaned = t.replace(/itemIds\s*=\s*/gi, '')
+                             .replace(/\bid\s*=\s*/gi, '')
                              .replace(/[（）()]/g, '')
-                             .replace(/[¥￥\s]/g, '');
+                             .replace(/[¥￥&\s]/g, '');
             // 含分隔符（逗号/分号/顿号/空格）时，要求每个片段均为纯数字
             if (/[,\s;；、]/.test(cleaned)) {
                 const parts = cleaned.split(/[,\s;；、]+/).filter(Boolean);
