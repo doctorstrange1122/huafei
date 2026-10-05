@@ -14,7 +14,16 @@ export async function onRequestGet(context) {
     return new Response('中转服务暂不可用：无法读取在线文档', { status: 503 });
   }
 
-  const entry = map[key];
+  let entry = map[key];
+  if (!entry) {
+    // 可能命中了旧的内存缓存，强制刷新后再查一次
+    try {
+      map = await getButtonMap(true);
+      entry = map[key];
+    } catch (e) {
+      // 刷新失败仍用旧 map，entry 保持 undefined
+    }
+  }
   if (!entry) {
     return new Response(
       '<!doctype html><meta charset="utf-8"><body style="font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;text-align:center;padding:56px 16px;color:#333;background:#fff"><h3>该二维码已失效，请重新生成</h3></body>',
