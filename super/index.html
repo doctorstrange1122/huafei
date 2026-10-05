@@ -2127,29 +2127,14 @@
 
             const replacedUrl = replaceIdInUrl(customLink, productId);
 
-            // 生成与保存解耦：优先复用“保存”时拿到的 key，本地直接拼 /r/<key>?pid= 秒出码，
-            // 不再重跑保存、也不会把“保存”按钮置为“保存中”。
-            let key = _customSelfKey;
-            if (!key) {
-                // 兜底：从未点过保存就直接点生成，自动静默保存一次拿 key
-                const ok = await saveCustomLinkToBackend(false);
-                if (!ok) {
-                    resultArea.innerHTML = '<p style="color: var(--error-text);">保存自定义链接失败，无法生成二维码</p>';
-                    return;
-                }
-                key = _customSelfKey;
+            // 生成与保存解耦：与其他按钮保持一致——直接复用“保存”时拿到的 key，
+            // 本地拼 /r/<key>?pid= 交给 generateQRCodes（结果区显示“正在解析…”），不触发保存、按钮不显示“生成中”。
+            if (!_customSelfKey) {
+                alert('请先点击“保存”自定义链接，再生成二维码');
+                return;
             }
-
-            // 生成按钮自身状态文案（独立于“保存”按钮）
-            const genBtn = document.querySelector('.generate-custom-btn');
-            const genText = genBtn ? genBtn.textContent : '';
-            if (genBtn) { genBtn.disabled = true; genBtn.textContent = '生成中…'; }
-            try {
-                // 复用主流程：自定义 key 不计入次数、二维码经中转域名包装（无百分号）
-                await generateQRCodes(1, replacedUrl, '自定义链接', key);
-            } finally {
-                if (genBtn) { genBtn.disabled = false; genBtn.textContent = genText || '生成'; }
-            }
+            // 复用主流程：自定义 key 不计入次数、二维码经中转域名包装（无百分号）
+            await generateQRCodes(1, replacedUrl, '自定义链接', _customSelfKey);
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
