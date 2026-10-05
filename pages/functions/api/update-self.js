@@ -92,3 +92,4 @@ export async function onRequestPost({ request, env }) {
 
   return json({ success: true, propagated, commit: putData.commit.sha }, 200, allowOrigin);
 }
+// redeploy-trigger: load GITHUB_PAT env var (no logic change)
