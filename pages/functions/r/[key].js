@@ -7,20 +7,6 @@ export async function onRequestGet(context) {
   const pid = url.searchParams.get('pid');
   const scheme = url.searchParams.get('scheme'); // 'taobao' 强制裸 scheme（仅安卓，鸿蒙不兼容）
 
-  // key='self'：自定义链接，真实 URL 由 url 参数携带，跳过在线文档查表
-  if (key === 'self') {
-    const realUrl = url.searchParams.get('url'); // 已自动解码
-    if (!realUrl) return new Response('缺少 url 参数', { status: 400 });
-    if (!/^https?:\/\//i.test(realUrl)) return new Response('非法链接', { status: 400 });
-    if (scheme === 'taobao') {
-      const taobaoUrl = 'taobao://' + realUrl.replace('https://', '');
-      return Response.redirect(taobaoUrl, 302);
-    }
-    return new Response(buildTransitHtml(realUrl), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
-  }
-
   let map;
   try {
     map = await getButtonMap();
@@ -30,7 +16,10 @@ export async function onRequestGet(context) {
 
   const entry = map[key];
   if (!entry) {
-    return new Response('未找到该按钮 key: ' + key, { status: 404 });
+    return new Response(
+      '<!doctype html><meta charset="utf-8"><body style="font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',sans-serif;text-align:center;padding:56px 16px;color:#333;background:#fff"><h3>该二维码已失效，请重新生成</h3></body>',
+      { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    );
   }
 
   let target = entry.url;

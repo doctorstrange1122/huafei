@@ -19,7 +19,7 @@ export async function getButtonMap(force = false) {
   const now = Date.now();
   if (!force && cacheMap && (now - cacheTime) < CACHE_TTL * 1000) return cacheMap;
   try {
-    const res = await fetch(DOC_URL, { cf: { cacheTtl: 300 } });
+    const res = await fetch(DOC_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('doc fetch ' + res.status);
     const html = await res.text();
     const map = parseButtonMap(html);
