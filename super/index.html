@@ -165,8 +165,8 @@
             color: var(--text-title); margin-bottom: 6px;
         }
         .input-section input {
-            width: 100%;
-            padding: 12px 14px; font-size: 16px;
+            width: 100%; height: 34px;
+            padding: 6px 10px; font-size: 14px;
             border: 2px solid var(--input-border); border-radius: 10px;
             transition: border-color 0.2s;
             -webkit-appearance: none;
@@ -185,23 +185,24 @@
         .custom-link-field .input-row { display: flex; align-items: center; gap: 0; margin: 0; }
         .custom-link-field .input-row input {
             flex: 1; min-width: 0;
-            height: 46px; box-sizing: border-box;
+            height: 34px; box-sizing: border-box;
+            padding: 0 10px; font-size: 14px;
             border-top-right-radius: 0;
             border-bottom-right-radius: 0;
             border-right: none;
         }
         .generate-custom-btn {
-            flex-shrink: 0; padding: 0 12px; height: 38px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
             border-radius: 0 10px 10px 0; cursor: pointer; white-space: nowrap;
-            color: #fff; font-size: 13px; font-weight: 600;
+            color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #c2c7cc, #aeb3b8);
             box-shadow: 0 3px 10px rgba(174,179,184,0.25);
         }
         .generate-custom-btn:active { opacity: .9; }
         .save-custom-btn {
-            flex-shrink: 0; padding: 0 12px; height: 38px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
             border-radius: 0; cursor: pointer; white-space: nowrap;
-            color: #fff; font-size: 13px; font-weight: 600;
+            color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #7a93ac, #6b82a0);
             box-shadow: 0 3px 10px rgba(110,130,160,0.25);
         }
@@ -433,14 +434,14 @@
         .product-input-row .action-btn-group { border-radius: 0 10px 10px 0; }
         .input-with-scan { position: relative; flex: 1; min-width: 0; }
         .input-with-scan input {
-            width: 100%; height: 46px; box-sizing: border-box;
-            padding: 12px 48px 12px 14px;
+            width: 100%; height: 34px; box-sizing: border-box;
+            padding: 6px 36px 6px 12px; font-size: 14px;
             border-top-right-radius: 0; border-bottom-right-radius: 0;
             border-right: none;
         }
         .scan-icon-btn {
-            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-            width: 34px; height: 34px; padding: 0; border: none;
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            width: 28px; height: 28px; padding: 0; border: none;
             background: transparent; border-radius: 8px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             color: #6b82a0;
@@ -455,9 +456,9 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .action-btn-group button {
-            padding: 0 14px;
-            height: 46px;
-            font-size: 14px;
+            padding: 0 12px;
+            height: 34px;
+            font-size: 13px;
             font-weight: 600;
             border: none;
             cursor: pointer;
