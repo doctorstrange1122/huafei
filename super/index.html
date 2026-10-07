@@ -192,7 +192,7 @@
             border-right: none;
         }
         .generate-custom-btn {
-            flex-shrink: 0; padding: 0 10px; height: 30px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
             border-radius: 0 10px 10px 0; cursor: pointer; white-space: nowrap;
             color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #c2c7cc, #aeb3b8);
@@ -200,7 +200,7 @@
         }
         .generate-custom-btn:active { opacity: .9; }
         .save-custom-btn {
-            flex-shrink: 0; padding: 0 10px; height: 30px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
             border-radius: 0; cursor: pointer; white-space: nowrap;
             color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #7a93ac, #6b82a0);
@@ -457,7 +457,7 @@
         }
         .action-btn-group button {
             padding: 0 12px;
-            height: 30px;
+            height: 34px;
             font-size: 13px;
             font-weight: 600;
             border: none;
@@ -506,7 +506,7 @@
         /* 提示文字 — 醒目颜色 */
         .tip-text { font-size: 13px; color: var(--tip-accent); font-weight: 500; margin-top: 6px; }
 
-        /* 生成按钮组 - 221排列 */
+        /* 生成按钮组 - 3列布局 */
         .button-group {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -589,8 +589,7 @@
         .button-group button {
             position: relative;
             display: flex; align-items: center; justify-content: center;
-            height: 30px; padding: 0 8px; font-size: 14px; font-weight: 600; white-space: nowrap;
-            overflow: hidden; text-overflow: ellipsis;
+            height: 34px; padding: 0 10px; font-size: 14px; font-weight: 600; white-space: nowrap;
             border: none; border-radius: 12px; cursor: pointer;
             background: linear-gradient(135deg, #7a93ac, #6b82a0);
             color: #fff;
@@ -738,7 +737,7 @@
         .action-buttons .result-info { width: 100%; }
         .action-buttons button {
             width: 100%; min-width: 0;
-            height: 30px;
+            height: 34px;
             padding: 0 16px; font-size: 14px; font-weight: 600;
             border: none; border-radius: 8px; cursor: pointer;
             transition: opacity 0.2s, transform 0.1s;
@@ -970,9 +969,9 @@
             <div class="level2-title">百补肥料区(默认每日1次)</div>
             <div class="btn-section">
             <div class="button-group">
-                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=88506&farmMemkv=true&hd_from_id=100085&deliveryId=88506&implId=other_1369_3194018_88506_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.88506', '13万①', 'bb13wan1')" data-btn-key="bb13wan1">13万①<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
-                <button onclick="generateQRCodes(3, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=90777&farmMemkv=true&hd_from_id=100085&deliveryId=90777&implId=other_1369_3194018_90777_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.90777', '13万②', 'bb13wan2')" data-btn-key="bb13wan2">13万②(3次)<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
-                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=75085&farmMemkv=true&hd_from_id=100085&deliveryId=75085&implId=other_1369_3194018_75085_0&sceneId=7980&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.75085', '10万', 'bb10wan')" data-btn-key="bb10wan">10万(10次)<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=88506&farmMemkv=true&hd_from_id=100085&deliveryId=88506&implId=other_1369_3194018_88506_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.88506', '13万①', 'bb13wan1')" data-btn-key="bb13wan1">13万①<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
+                <button onclick="generateQRCodes(3, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=90777&farmMemkv=true&hd_from_id=100085&deliveryId=90777&implId=other_1369_3194018_90777_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.90777', '13万②', 'bb13wan2')" data-btn-key="bb13wan2">13万②(3次)<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
+                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=75085&farmMemkv=true&hd_from_id=100085&deliveryId=75085&implId=other_1369_3194018_75085_0&sceneId=7980&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.75085', '10万', 'bb10wan')" data-btn-key="bb10wan">10万(10次)<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
             </div>
             </div>
         </div>
