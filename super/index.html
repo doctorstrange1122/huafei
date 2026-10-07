@@ -987,8 +987,8 @@
             <div class="level2-title">入口区</div>
             <div class="btn-section">
             <div class="button-group">
-                <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=farm&spmb=46023237&prismTrace=90243&activityId=100085&awardIndex=1&deliveryId=90243&implId=other_1364_0_90243_0&samplingRate=10&sceneId=9267&hd_from_id=100085')"><span class="btn-label">秒杀元宝</span><span class="status-badge available">可用</span></button>
-                <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=99141&deliveryId=99141&sceneId=9267')"><span class="btn-label">百补元宝</span><span class="status-badge available">可用</span></button>
+                <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=farm&spmb=46023237&prismTrace=90243&activityId=100085&awardIndex=1&deliveryId=90243&implId=other_1364_0_90243_0&samplingRate=10&sceneId=9267&hd_from_id=100085', 'entrance_sekou_yuanbao')"> data-btn-key="entrance_sekou_yuanbao"><span class="btn-label">秒杀元宝</span><span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
+                <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&pha_manifest=default&disableNav=YES&x-preload=true&disableProgress=true&disableRedirect=tr&x-sec=wua&spma=mspd&spmb=qdmsxiadan&prismTrace=99141&deliveryId=99141&sceneId=9267', 'entrance_baibu_yuanbao')"> data-btn-key="entrance_baibu_yuanbao"><span class="btn-label">百补元宝</span><span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
             </div>
             </div>
         </div>
@@ -1850,7 +1850,12 @@
 
         // 跳转到淘宝APP（兼容 Android / iOS / 鸿蒙系统）
         // 跳转淘宝APP（与元宝过肥一致：tbopen://优先，taobao://回落）
-        function openTaobaoApp(url) {
+        function openTaobaoApp(url, btnKey) {
+            // 入口区按钮点击时计入使用次数（btnKey 为空则不计数，如结果区一键跳转）
+            if (btnKey) {
+                incrementUsageCount(btnKey);
+                syncUsageToFloat();
+            }
             // tbopen:// 是淘宝官方 Deep Link，鸿蒙系统兼容性最好
             const tbopenUrl = `tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=${encodeURIComponent(url)}`;
             // taobao:// 作为备用 scheme
