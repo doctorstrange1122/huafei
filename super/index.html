@@ -1532,13 +1532,17 @@
         async function fetchWithProxy(targetUrl) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
                 const resp = await fetch(`${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (!resp.ok) throw new Error('bad status');
                 const data = await resp.json();
-                if (data.body && data.body.length > 50) return data.body;
-                throw new Error('too short');
+                // 新版代理返回 { url(最终地址), body, ids(服务端已抽好的商品id) }
+                return {
+                    body: (data.body || ''),
+                    url: (data.url || ''),
+                    ids: Array.isArray(data.ids) ? data.ids : []
+                };
             } catch (e) {
                 console.error('代理请求失败:', e);
                 return null;
@@ -1571,7 +1575,7 @@
                     // 方法1：标准 fetch + redirect follow + body 提取
                     (async () => {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        const timeoutId = setTimeout(() => controller.abort(), 3000);
                         const resp = await fetch(shortUrl, {
                             redirect: 'follow',
                             signal: controller.signal,
@@ -1638,18 +1642,25 @@
                         if (!id) throw new Error('no id in resolved url');
                         return id;
                     })(),
-                    // 慢路径：CORS 代理获取完整 HTML
+                    // 慢路径：CORS 代理解析（代理已内置自动UA轮换+重定向跟随+服务端抽id）
                     (async () => {
-                        const body = await fetchWithProxy(shortUrl);
-                        console.log('代理结果长度:', body ? body.length : 0);
-                        if (!body) throw new Error('proxy failed');
-                        // 提取 var url = '...'
+                        const res = await fetchWithProxy(shortUrl);
+                        if (!res) throw new Error('proxy failed');
+                        console.log('代理返回: finalUrl=', res.url, '| ids=', res.ids, '| body长度=', res.body ? res.body.length : 0);
+                        // 1) 优先用代理服务端已抽好的商品id（最稳，不依赖 body 正则）
+                        if (res.ids && res.ids.length) return res.ids[0];
+                        // 2) 其次用跟随重定向后的最终地址抽 id（淘宝短链多为JS跳转，finalUrl 常含真实商品页）
+                        if (res.url) {
+                            const id = extractItemIdFromUrl(res.url);
+                            if (id) return id;
+                        }
+                        // 3) 兜底：从 HTML body 抠（var url / topIds / itemIds / id=）
+                        const body = res.body || '';
                         const urlMatch = body.match(/var\s+url\s*=\s*'([^']+)'/);
                         if (urlMatch) {
                             const id = extractItemIdFromUrl(urlMatch[1]);
                             if (id) return id;
                         }
-                        // 兜底：从 HTML 直接匹配（含 topIds）
                         const m = body.match(/topIds=(\d+)/) || body.match(/itemIds=(\d+)/) || body.match(/[?&]id=(\d{7,})/);
                         if (m) return m[1];
                         throw new Error('no id in proxy body');
