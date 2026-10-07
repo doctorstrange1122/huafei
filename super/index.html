@@ -192,7 +192,7 @@
             border-right: none;
         }
         .generate-custom-btn {
-            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 30px; border: none;
             border-radius: 0 10px 10px 0; cursor: pointer; white-space: nowrap;
             color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #c2c7cc, #aeb3b8);
@@ -200,7 +200,7 @@
         }
         .generate-custom-btn:active { opacity: .9; }
         .save-custom-btn {
-            flex-shrink: 0; padding: 0 10px; height: 34px; border: none;
+            flex-shrink: 0; padding: 0 10px; height: 30px; border: none;
             border-radius: 0; cursor: pointer; white-space: nowrap;
             color: #fff; font-size: 12px; font-weight: 600;
             background: linear-gradient(135deg, #7a93ac, #6b82a0);
@@ -457,7 +457,7 @@
         }
         .action-btn-group button {
             padding: 0 12px;
-            height: 34px;
+            height: 30px;
             font-size: 13px;
             font-weight: 600;
             border: none;
@@ -509,8 +509,8 @@
         /* 生成按钮组 - 221排列 */
         .button-group {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
         .btn-section {
             margin-bottom: 14px;
@@ -588,7 +588,9 @@
         }
         .button-group button {
             position: relative;
-            padding: 14px 12px; font-size: 15px; font-weight: 600; white-space: nowrap;
+            display: flex; align-items: center; justify-content: center;
+            height: 30px; padding: 0 8px; font-size: 14px; font-weight: 600; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
             border: none; border-radius: 12px; cursor: pointer;
             background: linear-gradient(135deg, #7a93ac, #6b82a0);
             color: #fff;
@@ -597,25 +599,25 @@
         }
         .button-group button .usage-badge {
             position: absolute;
-            top: -6px; left: -6px; right: auto;
-            min-width: 20px; height: 20px;
-            padding: 0 5px;
-            font-size: 11px; font-weight: 700;
-            line-height: 20px; text-align: center;
+            top: -4px; left: -4px; right: auto;
+            min-width: 18px; height: 18px;
+            padding: 0 4px;
+            font-size: 10px; font-weight: 700;
+            line-height: 18px; text-align: center;
             background: #ff6b35;
             color: #fff;
-            border-radius: 10px;
+            border-radius: 9px;
             box-shadow: 0 2px 6px rgba(255,107,53,0.5);
             pointer-events: none;
         }
         .button-group button .status-badge {
             position: absolute;
-            top: -6px; right: -6px;
-            min-width: 28px; height: 16px;
-            padding: 0 4px;
-            font-size: 10px; font-weight: 700;
-            line-height: 16px; text-align: center;
-            border-radius: 8px;
+            top: -4px; right: -4px;
+            min-width: 28px; height: 14px;
+            padding: 0 3px;
+            font-size: 9px; font-weight: 700;
+            line-height: 14px; text-align: center;
+            border-radius: 7px;
             color: #fff;
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
             pointer-events: none;
@@ -636,8 +638,8 @@
             color: rgba(255,255,255,0.7);
             box-shadow: none;
         }
-        /* 当按钮总数为奇数时，最后一个按钮独占一整行，宽度与上方两按钮对齐 */
-        .button-group button:last-child:nth-child(odd) {
+        /* 当按钮总数不是3的倍数时，最后一个按钮独占一整行，宽度与上方按钮对齐 */
+        .button-group button:last-child:nth-child(3n+1) {
             grid-column: 1 / -1;
         }
         .button-group button:active {
@@ -736,7 +738,8 @@
         .action-buttons .result-info { width: 100%; }
         .action-buttons button {
             width: 100%; min-width: 0;
-            padding: 12px 16px; font-size: 14px; font-weight: 600;
+            height: 30px;
+            padding: 0 16px; font-size: 14px; font-weight: 600;
             border: none; border-radius: 8px; cursor: pointer;
             transition: opacity 0.2s, transform 0.1s;
         }
@@ -804,8 +807,8 @@
         .fold-panel {
             grid-column: 1 / -1;
             display: none;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
         .fold-panel.show {
             display: grid;
@@ -967,9 +970,9 @@
             <div class="level2-title">百补肥料区(默认每日1次)</div>
             <div class="btn-section">
             <div class="button-group">
-                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=88506&farmMemkv=true&hd_from_id=100085&deliveryId=88506&implId=other_1369_3194018_88506_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.88506', '13万①', 'bb13wan1')" data-btn-key="bb13wan1">13万①<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
-                <button onclick="generateQRCodes(3, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=90777&farmMemkv=true&hd_from_id=100085&deliveryId=90777&implId=other_1369_3194018_90777_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.90777', '13万②', 'bb13wan2')" data-btn-key="bb13wan2">13万②(3次)<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
-                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=75085&farmMemkv=true&hd_from_id=100085&deliveryId=75085&implId=other_1369_3194018_75085_0&sceneId=7980&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.75085', '10万', 'bb10wan')" data-btn-key="bb10wan">10万(10次)<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=88506&farmMemkv=true&hd_from_id=100085&deliveryId=88506&implId=other_1369_3194018_88506_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.88506', '13万①', 'bb13wan1')" data-btn-key="bb13wan1">13万①<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
+                <button onclick="generateQRCodes(3, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=90777&farmMemkv=true&hd_from_id=100085&deliveryId=90777&implId=other_1369_3194018_90777_0&sceneId=5387&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.90777', '13万②', 'bb13wan2')" data-btn-key="bb13wan2">13万②(3次)<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
+                <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/bz/jingmi/1993?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&bybtSceneId=babaFarmFertilizer&red_packet_channel=farmorder&spmb=46066528&prismTrace=75085&farmMemkv=true&hd_from_id=100085&deliveryId=75085&implId=other_1369_3194018_75085_0&sceneId=7980&itemIds=1058899569417&spm=farm.13840689.tasklist-pentaprism.75085', '10万', 'bb10wan')" data-btn-key="bb10wan">10万(10次)<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
             </div>
             </div>
         </div>
