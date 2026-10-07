@@ -939,11 +939,6 @@
                 <span class="checkbox-custom"></span>
                 生成后自动跳转淘宝
             </label>
-            <label class="checkbox-label btn-hidden">
-                <input type="checkbox" id="autoJumpDianTaoCheck">
-                <span class="checkbox-custom"></span>
-                生成后自动跳转支付宝
-            </label>
             <label class="checkbox-label">
                 <input type="checkbox" id="autoJumpTmallCheck">
                 <span class="checkbox-custom"></span>
@@ -1145,38 +1140,69 @@
             });
         }
 
-        // 三个自动跳转复选框互斥：最多选中一个，勾选新的时自动取消其他
+        // ====== 自动跳转复选框状态记忆（localStorage 持久化，退出后台重新打开软件仍保持上次选择）======
+        const AUTOJUMP_KEY = 'autojump_check_states';
+        const AUTOJUMP_CHECKS = ['autoJumpCheck', 'autoJumpTmallCheck'];
+
+        // 保存当前复选框状态到 localStorage
+        function saveAutoJumpStates() {
+            try {
+                const states = {};
+                AUTOJUMP_CHECKS.forEach(function(id) {
+                    const el = document.getElementById(id);
+                    states[id] = el ? el.checked : false;
+                });
+                localStorage.setItem(AUTOJUMP_KEY, JSON.stringify(states));
+            } catch (e) {}
+        }
+
+        // 从 localStorage 恢复复选框状态（互斥：仅保留第一个被选中的，避免脏数据导致多选）
+        function restoreAutoJumpStates() {
+            try {
+                const raw = localStorage.getItem(AUTOJUMP_KEY);
+                if (!raw) return;
+                const states = JSON.parse(raw);
+                let anyChecked = false;
+                AUTOJUMP_CHECKS.forEach(function(id) {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        if (states[id] && !anyChecked) {
+                            el.checked = true;
+                            anyChecked = true;
+                        } else {
+                            el.checked = false;
+                        }
+                    }
+                });
+            } catch (e) {}
+        }
+
+        // 两个自动跳转复选框互斥：最多选中一个，勾选新的时自动取消另一个，并记忆
         function setupAutoJumpCheckboxMutex() {
-            const checks = ['autoJumpCheck', 'autoJumpDianTaoCheck', 'autoJumpTmallCheck'];
-            checks.forEach(function(id, idx) {
+            AUTOJUMP_CHECKS.forEach(function(id) {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.addEventListener('change', function() {
                     if (this.checked) {
-                        checks.forEach(function(otherId) {
+                        AUTOJUMP_CHECKS.forEach(function(otherId) {
                             if (otherId !== id) {
                                 const other = document.getElementById(otherId);
                                 if (other) other.checked = false;
                             }
                         });
                     }
+                    saveAutoJumpStates();
                 });
             });
         }
 
-        // 是否自动跳转（读取复选框状态）
+        // 是否自动跳转淘宝（读取复选框状态）
         function getAutoJumpEnabled() {
             const el = document.getElementById('autoJumpCheck');
             return el ? el.checked : false;
         }
 
-        // 是否自动跳转支付宝
-        function getAutoJumpDianTaoEnabled() {
-            const el = document.getElementById('autoJumpDianTaoCheck');
-            return el ? el.checked : false;
-        }
-
-        // 是否自动跳转天猫
+        // 是否自动跳转天猫（读取复选框状态）
         function getAutoJumpTmallEnabled() {
             const el = document.getElementById('autoJumpTmallCheck');
             return el ? el.checked : false;
@@ -1205,6 +1231,7 @@
         // 页面加载时初始化角标和复选框互斥
         function initPageFeatures() {
             initAllBadges();
+            restoreAutoJumpStates();
             setupAutoJumpCheckboxMutex();
             renderCommonIdList();
         }
@@ -2404,7 +2431,6 @@
                         </div>
                     </div>
                     <button class="btn-taobao" onclick="openTaobaoApp('${directUrl}')">一键跳转淘宝</button>
-                    <button class="btn-alipay btn-hidden" onclick="openAlipayApp('${directUrl}')">一键跳转支付宝</button>
                     <button class="btn-tmall" onclick="openTmallApp('${directUrl}')">一键跳转天猫</button>
                 `;
 
@@ -2423,8 +2449,6 @@
                 // 自动跳转：根据复选框选择跳转对应APP（结果区始终用真实链接直跳）
                 if (getAutoJumpEnabled()) {
                     setTimeout(function() { openTaobaoApp(directUrl); }, 300);
-                } else if (getAutoJumpDianTaoEnabled()) {
-                    setTimeout(function() { openAlipayApp(directUrl); }, 300);
                 } else if (getAutoJumpTmallEnabled()) {
                     setTimeout(function() { openTmallApp(directUrl); }, 300);
                 }
