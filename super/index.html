@@ -1537,11 +1537,12 @@
                 clearTimeout(timeoutId);
                 if (!resp.ok) throw new Error('bad status');
                 const data = await resp.json();
-                // 新版代理返回 { url(最终地址), body, ids(服务端已抽好的商品id) }
+                // 兼容旧版代理（直接返回 body 字符串）与新版（返回 {url,body,ids}）
+                const isObj = data && typeof data === 'object';
                 return {
-                    body: (data.body || ''),
-                    url: (data.url || ''),
-                    ids: Array.isArray(data.ids) ? data.ids : []
+                    body: isObj ? (data.body || '') : (data || ''),
+                    url: isObj ? (data.url || '') : '',
+                    ids: isObj && Array.isArray(data.ids) ? data.ids : []
                 };
             } catch (e) {
                 console.error('代理请求失败:', e);
