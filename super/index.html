@@ -2225,7 +2225,7 @@
             if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
             let ok = false;
             try {
-                const res = await fetch('https://huafei-redirect-pages.pages.dev/api/update-self', {
+                const res = await fetch('https://tktool.pages.dev/api/huafei-save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url, key })
@@ -2326,7 +2326,15 @@
                 let fullContent;
                 if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
                     // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
-                    fullContent = REDIRECT_ORIGIN + '/r/' + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
+                    // 自定义链接（self_ 开头）走 tktool.pages.dev 的独立 /h/ 中转：
+                    // 原 huafei-redirect-pages 在 APK WebView 内 POST fetch 不通，而 tktool 域名 WebView 已验证可用
+                    let redirectOrigin = REDIRECT_ORIGIN;
+                    let pathPrefix = '/r/';
+                    if (btnKey.indexOf('self_') === 0) {
+                        redirectOrigin = 'https://tktool.pages.dev';
+                        pathPrefix = '/h/';
+                    }
+                    fullContent = redirectOrigin + pathPrefix + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
                 } else {
                     // 兜底：直接编码真实淘宝链接（未配置中转服务时）
                     fullContent = directUrl;
