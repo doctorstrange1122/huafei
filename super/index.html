@@ -655,6 +655,27 @@
 
         /* 结果区 */
         #resultArea { margin-top: 0; margin-bottom: 18px; }
+        /* 解析中提示：点击按钮后立即可见，避免首用时被隐藏的结果卡片吞掉 */
+        .loading-hint {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 24px 12px;
+            color: #3a7bd5;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .loading-hint .spinner {
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(58,123,213,0.25);
+            border-top-color: #3a7bd5;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .qr-code-container {
             display: flex;
             flex-wrap: wrap;
@@ -2242,10 +2263,24 @@
             }
 
             const resultArea = document.getElementById('resultArea');
-            resultArea.innerHTML = '<p>正在解析淘口令并生成，请稍候...</p>';
+            const resultCard = document.getElementById('resultCard');
+
+            // 关键修复：点击按钮立即显示结果卡片并滚动到可视区，
+            // 否则首用时卡片为 display:none，下面写的“正在解析”提示会被吞掉，用户看不到解析中状态。
+            if (resultCard) {
+                resultCard.style.display = 'block';
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析淘口令并生成，请稍候...</p>';
 
             // 解析商品ID（直接id / 淘口令解析 / 链接提取，支持多id）——抽取为共享函数供自定义链接复用
+            const parseStart = Date.now();
             const productId = await resolveProductId(productLink);
+            // 若解析过快（如直接输入商品id），保证“正在解析”至少可见约 500ms，避免一闪而过让用户以为没反应
+            const elapsed = Date.now() - parseStart;
+            if (elapsed < 500) {
+                await new Promise(function(r) { setTimeout(r, 500 - elapsed); });
+            }
 
             if (!productId) {
                 resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
@@ -2381,14 +2416,8 @@
                 resultArea.innerHTML = '';
                 resultArea.appendChild(container);
 
-                // 显示结果区卡片，并自动滚动到结果区（生成任意二维码后生效，include 自定义链接）
-                const resultCard = document.getElementById('resultCard');
-                if (resultCard) {
-                    resultCard.style.display = 'block';
-                    requestAnimationFrame(function() {
-                        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    });
-                }
+                // 注：结果卡片的显示与滚动已在函数开头（写入“正在解析”提示时）完成，
+                // 此处无需重复操作，避免重复声明与二次滚动抖动。
 
                 // 自动跳转：根据复选框选择跳转对应APP（结果区始终用真实链接直跳）
                 if (getAutoJumpEnabled()) {
