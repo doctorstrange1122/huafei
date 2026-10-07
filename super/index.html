@@ -518,6 +518,48 @@
         .btn-section:last-child {
             margin-bottom: 0;
         }
+
+        /* 二级区域：秒杀区 / 百补区 / 入口区 */
+        .level2-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+        .level2-section:last-child {
+            margin-bottom: 0;
+        }
+        .level2-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-title);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .level2-title::before {
+            content: "";
+            width: 4px;
+            height: 16px;
+            background: linear-gradient(180deg, #7a93ac 0%, #6b82a0 100%);
+            border-radius: 2px;
+        }
+        .level2-section .btn-section {
+            margin-bottom: 10px;
+        }
+        .level2-section .btn-section:last-child {
+            margin-bottom: 0;
+        }
+        .level2-section .btn-section-title.level3-title {
+            font-size: 14px;
+            padding-left: 10px;
+            border-left: 3px solid #a0aec0;
+        }
+        .level2-section .btn-section-title.level3-title::before {
+            display: none;
+        }
         .btn-section-title {
             font-size: 15px;
             font-weight: 600;
@@ -886,8 +928,10 @@
             <span class="reset-usage-btn" onclick="resetAllUsageCounts()">清空今日统计</span>
         </div>
 
-        <div class="btn-section">
-            <div class="btn-section-title">肥料(默认每日1次)</div>
+        <div class="level2-section">
+            <div class="level2-title">秒杀区</div>
+            <div class="btn-section">
+            <div class="btn-section-title level3-title">肥料(默认每日1次)</div>
             <div class="button-group">
                 <button onclick="generateQRCodes(10, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?&disableNav=YES&x-preload=true&taskhubType=taskhubcc&x-ssr=true&spma=farm&sourceType=other&taskFrom=wulengjing&spmb=46023237&sceneId=7980&deliveryId=75085&scene=wt&shareurl=true&itemIds=586054608522', '10万', '10wan')" data-btn-key="10wan">10万(10次)<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
                 <button class="fold-toggle" type="button" onclick="toggleFold('otherFert')">其他肥料 ▼</button>
@@ -904,9 +948,9 @@
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&x-sec=wua&spma=farm&spmb=46066528&hd_from_id=100085&sceneId=7506&deliveryId=68479&implId=other_1364_3194018_68479_0&itemIds=1010677320313&taskhubType=taskhubcc&taskFrom=wulengjing&sourceType=other', '3万②', '3wan2')" data-btn-key="3wan2">3万②<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
             
                 </div></div>
-        </div>
-        <div class="btn-section">
-            <div class="btn-section-title">其他(默认每日1次)</div>
+            </div>
+            <div class="btn-section">
+            <div class="btn-section-title level3-title">其他(默认每日1次)</div>
             <div class="button-group">
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&x-sec=wua&spma=farm&spmb=46066528&hd_from_id=100085&sceneId=9267&deliveryId=90243&implId=other_1364_3194018_90243_0&itemIds=1010677320313&taskhubType=taskhubcc&taskFrom=wulengjing&sourceType=other&', '秒杀元宝', 'miaosha_yuanbao')" data-btn-key="miaosha_yuanbao">秒杀元宝<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&x-sec=wua&spma=farm&spmb=46066528&hd_from_id=100085&sceneId=9267&deliveryId=99141&implId=other_1364_3194018_99141_0&itemIds=1010677320313&taskhubType=taskhubcc&taskFrom=wulengjing&sourceType=other&', '百补元宝', 'baibu_yuanbao')" data-btn-key="baibu_yuanbao">百补元宝<span class="usage-badge zero">0</span><span class="status-badge testing">待测</span></button>
@@ -916,6 +960,15 @@
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&x-sec=wua&spma=mspd&spmb=46066528&hd_from_id=100085&sceneId=9998&deliveryId=103866&implId=other_1364_3194018_103866_0&itemIds=1075261064999&taskhubType=taskhubcc&taskFrom=wulengjing&sourceType=other', '成就秒杀加速', 'chengjiu_miaosha_jiasu')" data-btn-key="chengjiu_miaosha_jiasu">成就秒杀加速<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?x-ssr=true&disableNav=YES&x-preload=true&disableProgress=true&forceThemis=true&x-sec=wua&spma=mspd&spmb=46066528&hd_from_id=100085&sceneId=9998&deliveryId=104158&implId=other_1364_3194018_104158_0&itemIds=894149801281&taskhubType=taskhubcc&taskFrom=wulengjing&sourceType=other', '成就百补加速', 'chengjiu_baibu_jiasu')" data-btn-key="chengjiu_baibu_jiasu">成就百补加速<span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
             </div>
+            </div>
+        </div>
+
+        <div class="level2-section">
+            <div class="level2-title">百补区</div>
+        </div>
+
+        <div class="level2-section">
+            <div class="level2-title">入口区</div>
         </div>
     </div>
 
