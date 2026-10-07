@@ -2225,11 +2225,10 @@
             if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
             let ok = false;
             try {
-                const res = await fetch('https://tktool.pages.dev/api/huafei-save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url, key })
-                });
+                // 改用 GET 发送：WebView 内 POST JSON 会触发 CORS 预检，部分环境下预检失败导致 Failed to fetch；
+                // GET 为简单请求，不经过预检，兼容性与解析代理保持一致。
+                const saveUrl = 'https://tktool.pages.dev/api/huafei-save?url=' + encodeURIComponent(url) + '&key=' + encodeURIComponent(key);
+                const res = await fetch(saveUrl, { method: 'GET' });
                 let data = {};
                 try { data = await res.json(); } catch (e) {}
                 if (!res.ok || !data.success) throw new Error(data.message || ('保存失败(' + res.status + ')'));
