@@ -1,28 +1,34 @@
 export async function onRequestGet(context) {
   const REPO = "doctorstrange1122/huafei";
-  const PATH = "data/links.csv";
+  const HTML_PATH = "super/index.html";
+  const CSV_PATH = "data/links.csv";
 
+  let htmlText = "";
   let csvText = "";
   let srcNote = "";
 
-  // 主源：raw.githubusercontent.com。子请求 no-store，每次回源取最新（不缓存）
-  try {
-    const r = await fetch(`https://raw.githubusercontent.com/${REPO}/main/${PATH}`, { cache: "no-store" });
-    if (r.ok) { csvText = await r.text(); srcNote = "raw"; }
-  } catch (e) {}
+  // HTML（自动列来源）：raw 优先，jsDelivr 兜底，均 no-store
+  htmlText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${HTML_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${HTML_PATH}`);
+  // CSV（手动层：第9列原链接 + 手动记录行）
+  csvText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${CSV_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${CSV_PATH}`);
+  if (csvText) srcNote = "raw/jsdelivr";
 
-  // 兜底：jsDelivr（同样 no-store）
-  if (!csvText.trim()) {
-    try {
-      const r = await fetch(`https://cdn.jsdelivr.net/gh/${REPO}@main/${PATH}`, { cache: "no-store" });
-      if (r.ok) { csvText = await r.text(); srcNote = "jsDelivr"; }
-    } catch (e) {}
-  }
-
-  const html = buildHtml(csvText, srcNote);
+  const html = buildHtml(htmlText, csvText, srcNote);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
+}
+
+async function fetchText(rawUrl, jsdelivrUrl) {
+  try {
+    const r = await fetch(rawUrl, { cache: "no-store" });
+    if (r.ok) return await r.text();
+  } catch (e) {}
+  try {
+    const r = await fetch(jsdelivrUrl, { cache: "no-store" });
+    if (r.ok) return await r.text();
+  } catch (e) {}
+  return "";
 }
 
 function parseCSV(text) {
@@ -35,33 +41,101 @@ function parseCSV(text) {
   return rows;
 }
 
+const SECTION_SHORT = {
+  "秒杀区": "秒杀区",
+  "百补区(默认每日1次)": "百补区",
+  "入口区(不替换id，使用默认链接)": "入口区"
+};
+
+function parseHtmlButtons(html) {
+  const rows = [];
+  const titleIter = [...html.matchAll(/<div class="level2-title">([^<]+)<\/div>/g)];
+  function sectionOf(pos) {
+    let sec = "?";
+    for (const t of titleIter) {
+      if (t.index <= pos) sec = t[1].trim();
+      else break;
+    }
+    return SECTION_SHORT[sec] || sec;
+  }
+  // 1) 普通 / self_ 按钮：generateQRCodes(count, 'url', 'label', 'key')
+  const gq = /generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*\)/g;
+  let m;
+  while ((m = gq.exec(html)) !== null) {
+    const count = m[1], url = m[2], label = m[3], key = m[4];
+    if (key.includes("+") || key.includes("'")) continue; // 跳过动态模板按钮
+    const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
+    const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
+    const level1 = key.startsWith("self_") ? "自定义" : sectionOf(m.index);
+    rows.push({ level1, name: label, daily: count, did, sid, link: url });
+  }
+  // 2) 入口区固定按钮：<button ... openTaobaoApp('url', 'key') data-btn-key="entrance_...">...<span class="btn-label">LABEL</span>
+  const btnRe = /<button\b([^>]*)>/g;
+  while ((m = btnRe.exec(html)) !== null) {
+    const tag = m[1];
+    const keyM = tag.match(/data-btn-key="([^"]+)"/);
+    if (!keyM || !keyM[1].startsWith("entrance_")) continue;
+    const oc = tag.match(/openTaobaoApp\(\s*'([^']*)'/);
+    const url = oc ? oc[1] : "";
+    const end = html.indexOf("</button>", m.index);
+    const inner = html.slice(m.index, end);
+    const lbl = (inner.match(/btn-label">([^<]+)</) || [])[1] || keyM[1];
+    const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
+    const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
+    rows.push({ level1: "入口区", name: lbl, daily: "", did, sid, link: url });
+  }
+  return rows;
+}
+
+function reconcile(htmlText, csvText) {
+  const autoRows = parseHtmlButtons(htmlText);
+  const autoDids = new Set(autoRows.map(r => r.did).filter(Boolean));
+  const rewardByDid = {};
+  const origByDid = {};
+  const manualRows = [];
+  if (csvText && csvText.trim()) {
+    const csvRows = parseCSV(csvText);
+    for (const row of csvRows) {
+      if (row.length < 9) continue;
+      const [l1, reward, name, daily, did, sid, used, link, orig] = row;
+      if (did && autoDids.has(did)) {
+        // 命中 HTML：转为自动行，仅取 奖励(第2列) 与 原链接(第9列)
+        if (reward) rewardByDid[did] = reward;
+        if (orig) origByDid[did] = orig;
+      } else {
+        // 未命中：保留为手动记录行
+        manualRows.push(row);
+      }
+    }
+  }
+  const finalRows = autoRows.map(a => [
+    a.level1, rewardByDid[a.did] || "", a.name, a.daily, a.did, a.sid, "是", a.link, origByDid[a.did] || ""
+  ]);
+  for (const r of manualRows) finalRows.push(r);
+  return finalRows;
+}
+
 function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function classForLevel1(level1) {
-  // 与 CSS 中的 .cat-* 类名保持一致
-  const map = {
-    "手动记录": "manual",
-    "秒杀区": "ms",
-    "百补区": "bb",
-    "入口区": "rukou",
-    "自定义": "zdy"
-  };
+  const map = { "手动记录": "manual", "秒杀区": "ms", "百补区": "bb", "入口区": "rukou", "自定义": "zdy" };
   return "cat-" + (map[level1] || "other");
 }
 
-function buildHtml(csvText, srcNote) {
-  let rows = [];
+function buildHtml(htmlText, csvText, srcNote) {
   let errMsg = "";
-  if (csvText && csvText.trim()) {
-    try { rows = parseCSV(csvText); } catch (e) { errMsg = "CSV 解析失败"; }
+  let finalRows = [];
+  if (htmlText && htmlText.trim()) {
+    try { finalRows = reconcile(htmlText, csvText); }
+    catch (e) { errMsg = "解析失败：" + e.message; }
   } else {
-    errMsg = "数据加载失败，请确认仓库 data/links.csv 是否存在";
+    errMsg = "HTML 加载失败，请确认仓库 super/index.html 是否存在";
   }
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
-  const bodyRows = rows.map(r => {
+  const bodyRows = finalRows.map(r => {
     const [level1, reward, name, daily, did, sid, used, link, orig] = r;
     const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
@@ -89,7 +163,7 @@ function buildHtml(csvText, srcNote) {
 
   const meta = errMsg
     ? `<span class="err">${errMsg}</span>`
-    : `共 ${rows.length} 条 · ${countParts} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
+    : `共 ${finalRows.length} 条 · ${countParts} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
