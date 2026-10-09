@@ -39,6 +39,18 @@ function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function classForLevel1(level1) {
+  // 与 CSS 中的 .cat-* 类名保持一致
+  const map = {
+    "手动记录": "manual",
+    "秒杀区": "ms",
+    "百补区": "bb",
+    "入口区": "rukou",
+    "自定义": "zdy"
+  };
+  return "cat-" + (map[level1] || "other");
+}
+
 function buildHtml(csvText, srcNote) {
   let rows = [];
   let errMsg = "";
@@ -48,17 +60,18 @@ function buildHtml(csvText, srcNote) {
     errMsg = "数据加载失败，请确认仓库 data/links.csv 是否存在";
   }
 
-  let feiliao = 0, qita = 0;
+  const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = rows.map(r => {
-    const [cat, name, daily, did, sid, used, link, orig] = r;
-    const catCls = cat === "肥料" ? "cat-feiliao" : "cat-qita";
+    const [level1, reward, name, daily, did, sid, used, link, orig] = r;
+    const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
     const origHtml = orig ? `<a href="${esc(orig)}" target="_blank" rel="noopener">${esc(orig)}</a>` : "";
-    if (cat === "肥料") feiliao++; else qita++;
+    if (counts.hasOwnProperty(level1)) counts[level1]++;
     return `<tr class="${rowCls}">
-      <td class="${catCls}">${esc(cat)}</td>
+      <td class="${catCls}">${esc(level1)}</td>
+      <td>${esc(reward)}</td>
       <td>${esc(name)}</td>
       <td>${esc(daily)}</td>
       <td>${esc(did)}</td>
@@ -69,9 +82,14 @@ function buildHtml(csvText, srcNote) {
     </tr>`;
   }).join("");
 
+  const countParts = Object.entries(counts)
+    .filter(([k, v]) => v > 0)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(" · ");
+
   const meta = errMsg
     ? `<span class="err">${errMsg}</span>`
-    : `共 ${rows.length} 条 · 肥料区 ${feiliao} · 其他区 ${qita} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
+    : `共 ${rows.length} 条 · ${countParts} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -85,14 +103,18 @@ function buildHtml(csvText, srcNote) {
   h1 { font-size:20px; margin:0 0 4px; }
   .meta { color:#888; font-size:13px; margin-bottom:16px; }
   .table-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-  table { border-collapse:collapse; width:100%; min-width:920px; font-size:13px; margin:0 auto; }
+  table { border-collapse:collapse; width:100%; min-width:1100px; font-size:13px; margin:0 auto; }
   th,td { padding:9px 12px; text-align:center; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
   tbody tr.unused { background:#e9eef3; }
   tbody tr.unused:hover { background:#e1e8ee; }
-  .cat-feiliao { color:#c8842a; }
-  .cat-qita { color:#3a7ca5; }
+  .cat-manual { color:#888; }
+  .cat-ms { color:#c0392b; }
+  .cat-bb { color:#e67e22; }
+  .cat-rukou { color:#3a7ca5; }
+  .cat-zdy { color:#8e44ad; }
+  .cat-other { color:#2c3e50; }
   .yes { color:#2e8b57; font-weight:600; }
   .no { color:#c0392b; font-weight:600; }
   td.link a { color:#2b6cb0; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
@@ -106,6 +128,11 @@ function buildHtml(csvText, srcNote) {
     tbody tr:hover{background:#23272c;}
     tbody tr.unused{background:#222831;}
     tbody tr.unused:hover{background:#262c36;}
+    .cat-ms{color:#ff6b6b;}
+    .cat-bb{color:#f6b93b;}
+    .cat-rukou{color:#74b9ff;}
+    .cat-zdy{color:#a29bfe;}
+    td.link a{color:#63b3ed;}
   }
 </style>
 </head>
@@ -114,7 +141,7 @@ function buildHtml(csvText, srcNote) {
   <div class="meta">${meta}</div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
+      <thead><tr><th>一级标题</th><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
