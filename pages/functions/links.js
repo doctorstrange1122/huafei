@@ -150,7 +150,7 @@ function buildHtml(htmlText, csvText, srcNote) {
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
     const origHtml = orig ? `<a href="${esc(orig)}" target="_blank" rel="noopener">${esc(orig)}</a>` : "";
     if (counts.hasOwnProperty(level1)) counts[level1]++;
-    return `<tr class="${rowCls}">
+    return `<tr class="${rowCls} ${catCls}">
       <td class="${catCls}">${esc(level1)}</td>
       <td>${esc(subtitle)}</td>
       <td>${esc(name)}</td>
@@ -190,15 +190,22 @@ function buildHtml(htmlText, csvText, srcNote) {
   tbody tr:hover { background:#fafbfc; }
   tbody tr.unused { background:#e9eef3; }
   tbody tr.unused:hover { background:#e1e8ee; }
-  .cat-manual { color:#888; }
-  .cat-ms { color:#c0392b; }
-  .cat-bb { color:#e67e22; }
-  .cat-rukou { color:#3a7ca5; }
-  .cat-zdy { color:#8e44ad; }
-  .cat-other { color:#2c3e50; }
-  .yes { color:#2e8b57; font-weight:600; }
-  .no { color:#c0392b; font-weight:600; }
-  td.link a { color:#2b6cb0; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
+  /* 一级标题整行背景：低饱和度、低亮度（暗淡莫兰迪色） */
+  tbody tr.cat-manual { background:hsl(210,8%,38%);  color:#ececec; }
+  tbody tr.cat-ms     { background:hsl(2,32%,42%);   color:#f3f3f3; }
+  tbody tr.cat-bb     { background:hsl(26,30%,40%);  color:#f4f4f4; }
+  tbody tr.cat-rukou  { background:hsl(205,32%,42%); color:#f3f3f3; }
+  tbody tr.cat-zdy    { background:hsl(265,26%,42%); color:#f3f3f3; }
+  tbody tr.cat-other  { background:hsl(190,14%,40%); color:#f3f3f3; }
+  tbody tr.cat-manual:hover { background:hsl(210,8%,44%); }
+  tbody tr.cat-ms:hover     { background:hsl(2,32%,47%); }
+  tbody tr.cat-bb:hover     { background:hsl(26,30%,45%); }
+  tbody tr.cat-rukou:hover  { background:hsl(205,32%,47%); }
+  tbody tr.cat-zdy:hover    { background:hsl(265,26%,47%); }
+  tbody tr.cat-other:hover  { background:hsl(190,14%,45%); }
+  .yes { color:#7ee2a8; font-weight:600; }
+  .no { color:#ff9b9b; font-weight:600; }
+  td.link a { color:#9ecbff; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
   td.link a:hover { text-decoration:underline; }
   .err { color:#c0392b; }
   @media (prefers-color-scheme:dark){
