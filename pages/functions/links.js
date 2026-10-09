@@ -112,29 +112,43 @@ function parseHtmlButtons(html) {
 function reconcile(htmlText, csvText) {
   const autoRows = parseHtmlButtons(htmlText);
   const autoDids = new Set(autoRows.map(r => r.did).filter(Boolean));
-  const autoLinks = new Set(autoRows.map(r => r.link).filter(Boolean));
-  const origByLink = {};
-  const manualRows = [];
+  // 原链接按 deliveryId 索引；同 did 多行时再用链接 path（去掉动态 query）精确匹配合并行
+  const csvByDid = {};
+  const manualCand = [];
   if (csvText && csvText.trim()) {
-    const csvRows = parseCSV(csvText);
-    for (const row of csvRows) {
+    for (const row of parseCSV(csvText)) {
       if (row.length < 10) continue;
-      const [l1, reward, name, daily, did, sid, used, status, link, orig] = row;
-      // 命中 HTML（按 deliveryId 判断已在 HTML 中）：转为自动行，仅取第10列 原链接
+      const did = row[4];
       if (did && autoDids.has(did)) {
-        if (orig && link && autoLinks.has(link)) origByLink[link] = orig;
+        (csvByDid[did] = csvByDid[did] || []).push(row);
       } else {
-        // 未命中：保留为手动记录行（沿用 CSV 全部 10 列）
-        manualRows.push(row);
+        // 未命中 HTML：候选手动记录行（按 一级标题+奖励名 后续合并或保留）
+        manualCand.push(row);
       }
     }
   }
-  const autoFinal = autoRows.map(a => [
-    a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.status, a.link, origByLink[a.link] || ""
-  ]);
+  const pathOf = u => (u || "").split("?")[0];
+  const filled = autoRows.map(a => {
+    let orig = "";
+    const cands = csvByDid[a.did] || [];
+    if (cands.length) {
+      let pick = cands.find(r => r[9] && pathOf(r[8]) === pathOf(a.link));
+      if (!pick) pick = cands.find(r => r[9]);
+      if (pick) orig = pick[9];
+    }
+    return [a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.status, a.link, orig];
+  });
+  // 手动候选与自动行按 (一级标题|奖励名)+path 合并（回填原链接，去重）；无法匹配则保留为独立手动记录行
+  const manualRows = [];
+  for (const row of manualCand) {
+    const l1 = row[0], name = row[2];
+    let target = filled.find(r => r[0] === l1 && r[2] === name && pathOf(r[8]) === pathOf(row[8]));
+    if (!target) target = filled.find(r => r[0] === l1 && r[2] === name);
+    if (target && !target[9]) target[9] = row[9];
+    if (!target) manualRows.push(row);
+  }
   // 手动记录行置顶（用户要求汇总到表格最上方）
-  const finalRows = [...manualRows, ...autoFinal];
-  return finalRows;
+  return [...manualRows, ...filled];
 }
 
 function esc(s) {
