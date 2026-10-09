@@ -41,48 +41,56 @@ function parseCSV(text) {
   return rows;
 }
 
-const SECTION_SHORT = {
-  "秒杀区": "秒杀区",
-  "百补区(默认每日1次)": "百补区",
-  "入口区(不替换id，使用默认链接)": "入口区"
-};
+// 去掉标题中括号里的提示内容：如 "百补区(默认每日1次)" -> "百补区"
+function stripParen(s) {
+  return (s || "").replace(/[（(][^（）()]*[)）]/g, "").trim();
+}
 
+// 按文档顺序遍历，同时跟踪 一级标题(level2-title) 与 二级标题(level3-title)
 function parseHtmlButtons(html) {
-  const rows = [];
-  const titleIter = [...html.matchAll(/<div class="level2-title">([^<]+)<\/div>/g)];
-  function sectionOf(pos) {
-    let sec = "?";
-    for (const t of titleIter) {
-      if (t.index <= pos) sec = t[1].trim();
-      else break;
-    }
-    return SECTION_SHORT[sec] || sec;
-  }
-  // 1) 普通 / self_ 按钮：generateQRCodes(count, 'url', 'label', 'key')
-  const gq = /generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*\)/g;
-  let m;
-  while ((m = gq.exec(html)) !== null) {
-    const count = m[1], url = m[2], label = m[3], key = m[4];
-    if (key.includes("+") || key.includes("'")) continue; // 跳过动态模板按钮
-    const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
-    const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
-    const level1 = key.startsWith("self_") ? "自定义" : sectionOf(m.index);
-    rows.push({ level1, name: label, daily: count, did, sid, link: url });
-  }
-  // 2) 入口区固定按钮：<button ... openTaobaoApp('url', 'key') data-btn-key="entrance_...">...<span class="btn-label">LABEL</span>
-  const btnRe = /<button\b([^>]*)>/g;
-  while ((m = btnRe.exec(html)) !== null) {
+  const tokens = [];
+  for (const m of html.matchAll(/<div class="level2-title">([^<]+)<\/div>/g))
+    tokens.push({ pos: m.index, type: "l2", text: m[1].trim() });
+  for (const m of html.matchAll(/<div class="btn-section-title level3-title">([^<]+)<\/div>/g))
+    tokens.push({ pos: m.index, type: "l3", text: m[1].trim() });
+  for (const m of html.matchAll(/generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*\)/g))
+    tokens.push({ pos: m.index, type: "gq", count: m[1], url: m[2], label: m[3], key: m[4] });
+  for (const m of html.matchAll(/<button\b([^>]*)>/g)) {
     const tag = m[1];
     const keyM = tag.match(/data-btn-key="([^"]+)"/);
-    if (!keyM || !keyM[1].startsWith("entrance_")) continue;
-    const oc = tag.match(/openTaobaoApp\(\s*'([^']*)'/);
-    const url = oc ? oc[1] : "";
-    const end = html.indexOf("</button>", m.index);
-    const inner = html.slice(m.index, end);
-    const lbl = (inner.match(/btn-label">([^<]+)</) || [])[1] || keyM[1];
-    const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
-    const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
-    rows.push({ level1: "入口区", name: lbl, daily: "", did, sid, link: url });
+    if (keyM && keyM[1].startsWith("entrance_")) tokens.push({ pos: m.index, type: "ent", tag });
+  }
+  tokens.sort((a, b) => a.pos - b.pos);
+
+  const rows = [];
+  let curL2 = null, curL3 = null;
+  for (const t of tokens) {
+    if (t.type === "l2") { curL2 = t.text; curL3 = null; }
+    else if (t.type === "l3") { curL3 = t.text; }
+    else if (t.type === "gq") {
+      const key = t.key;
+      if (key.includes("+") || key.includes("'")) continue; // 跳过动态模板按钮
+      const did = (t.url.match(/deliveryId=(\d+)/) || [])[1] || "";
+      const sid = (t.url.match(/sceneId=(\d+)/) || [])[1] || "";
+      const level1 = key.startsWith("self_") ? "自定义" : stripParen(curL2 || "?");
+      const subtitle = key.startsWith("self_") ? "" : (curL3 ? stripParen(curL3) : "");
+      rows.push({ level1, subtitle, name: t.label, daily: t.count, did, sid, link: t.url });
+    }
+    else if (t.type === "ent") {
+      const tag = t.tag;
+      const keyM = tag.match(/data-btn-key="([^"]+)"/);
+      const key = keyM[1];
+      const oc = tag.match(/openTaobaoApp\(\s*'([^']*)'/);
+      const url = oc ? oc[1] : "";
+      const end = html.indexOf("</button>", t.pos);
+      const inner = html.slice(t.pos, end);
+      const lbl = (inner.match(/btn-label">([^<]+)</) || [])[1] || key;
+      const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
+      const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
+      const level1 = stripParen(curL2 || "入口区");
+      const subtitle = curL3 ? stripParen(curL3) : "";
+      rows.push({ level1, subtitle, name: lbl, daily: "", did, sid, link: url });
+    }
   }
   return rows;
 }
@@ -90,7 +98,6 @@ function parseHtmlButtons(html) {
 function reconcile(htmlText, csvText) {
   const autoRows = parseHtmlButtons(htmlText);
   const autoDids = new Set(autoRows.map(r => r.did).filter(Boolean));
-  const rewardByDid = {};
   const origByDid = {};
   const manualRows = [];
   if (csvText && csvText.trim()) {
@@ -99,19 +106,19 @@ function reconcile(htmlText, csvText) {
       if (row.length < 9) continue;
       const [l1, reward, name, daily, did, sid, used, link, orig] = row;
       if (did && autoDids.has(did)) {
-        // 命中 HTML：转为自动行，仅取 奖励(第2列) 与 原链接(第9列)
-        if (reward) rewardByDid[did] = reward;
+        // 命中 HTML：转为自动行，仅取第9列 原链接
         if (orig) origByDid[did] = orig;
       } else {
-        // 未命中：保留为手动记录行
+        // 未命中：保留为手动记录行（第1-8列沿用 CSV）
         manualRows.push(row);
       }
     }
   }
-  const finalRows = autoRows.map(a => [
-    a.level1, rewardByDid[a.did] || "", a.name, a.daily, a.did, a.sid, "是", a.link, origByDid[a.did] || ""
+  const autoFinal = autoRows.map(a => [
+    a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.link, origByDid[a.did] || ""
   ]);
-  for (const r of manualRows) finalRows.push(r);
+  // 手动记录行置顶（用户要求汇总到表格最上方）
+  const finalRows = [...manualRows, ...autoFinal];
   return finalRows;
 }
 
@@ -136,7 +143,7 @@ function buildHtml(htmlText, csvText, srcNote) {
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = finalRows.map(r => {
-    const [level1, reward, name, daily, did, sid, used, link, orig] = r;
+    const [level1, subtitle, name, daily, did, sid, used, link, orig] = r;
     const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
@@ -145,7 +152,7 @@ function buildHtml(htmlText, csvText, srcNote) {
     if (counts.hasOwnProperty(level1)) counts[level1]++;
     return `<tr class="${rowCls}">
       <td class="${catCls}">${esc(level1)}</td>
-      <td>${esc(reward)}</td>
+      <td>${esc(subtitle)}</td>
       <td>${esc(name)}</td>
       <td>${esc(daily)}</td>
       <td>${esc(did)}</td>
@@ -215,7 +222,7 @@ function buildHtml(htmlText, csvText, srcNote) {
   <div class="meta">${meta}</div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>一级标题</th><th>奖励</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
+      <thead><tr><th>一级标题</th><th>二级标题</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
