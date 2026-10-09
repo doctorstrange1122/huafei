@@ -9,7 +9,7 @@ export async function onRequestGet(context) {
 
   // HTML（自动列来源）：raw 优先，jsDelivr 兜底，均 no-store
   htmlText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${HTML_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${HTML_PATH}`);
-  // CSV（手动层：第9列原链接 + 手动记录行）
+  // CSV（手动层：第10列原链接 + 手动记录行）
   csvText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${CSV_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${CSV_PATH}`);
   if (csvText) srcNote = "raw/jsdelivr";
 
@@ -46,6 +46,13 @@ function stripParen(s) {
   return (s || "").replace(/[（(][^（）()]*[)）]/g, "").trim();
 }
 
+// 从按钮块中提取状态：status-badge testing -> 待测，status-badge available -> 可用
+function statusInBlock(block) {
+  if (/status-badge\s+testing/.test(block)) return "待测";
+  if (/status-badge\s+available/.test(block)) return "可用";
+  return "";
+}
+
 // 按文档顺序遍历，同时跟踪 一级标题(level2-title) 与 二级标题(level3-title)
 function parseHtmlButtons(html) {
   const tokens = [];
@@ -74,7 +81,12 @@ function parseHtmlButtons(html) {
       const sid = (t.url.match(/sceneId=(\d+)/) || [])[1] || "";
       const level1 = key.startsWith("self_") ? "自定义" : stripParen(curL2 || "?");
       const subtitle = key.startsWith("self_") ? "" : (curL3 ? stripParen(curL3) : "");
-      rows.push({ level1, subtitle, name: t.label, daily: t.count, did, sid, link: t.url });
+      // 状态：取该按钮块内的 status-badge
+      const bStart = html.lastIndexOf("<button", t.pos);
+      const bEnd = html.indexOf("</button>", t.pos);
+      const block = (bStart >= 0 && bEnd >= 0) ? html.slice(bStart, bEnd) : "";
+      const status = statusInBlock(block);
+      rows.push({ level1, subtitle, name: t.label, daily: t.count, did, sid, status, link: t.url });
     }
     else if (t.type === "ent") {
       const tag = t.tag;
@@ -89,33 +101,36 @@ function parseHtmlButtons(html) {
       const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
       const level1 = stripParen(curL2 || "入口区");
       const subtitle = curL3 ? stripParen(curL3) : "";
-      rows.push({ level1, subtitle, name: lbl, daily: "", did, sid, link: url });
+      const status = statusInBlock(inner);
+      rows.push({ level1, subtitle, name: lbl, daily: "", did, sid, status, link: url });
     }
   }
   return rows;
 }
 
+// 列顺序（10 列）：一级标题,二级标题,奖励名,每日次数,deliveryId,sceneId,是否使用,状态,链接,原链接
 function reconcile(htmlText, csvText) {
   const autoRows = parseHtmlButtons(htmlText);
   const autoDids = new Set(autoRows.map(r => r.did).filter(Boolean));
-  const origByDid = {};
+  const autoLinks = new Set(autoRows.map(r => r.link).filter(Boolean));
+  const origByLink = {};
   const manualRows = [];
   if (csvText && csvText.trim()) {
     const csvRows = parseCSV(csvText);
     for (const row of csvRows) {
-      if (row.length < 9) continue;
-      const [l1, reward, name, daily, did, sid, used, link, orig] = row;
+      if (row.length < 10) continue;
+      const [l1, reward, name, daily, did, sid, used, status, link, orig] = row;
+      // 命中 HTML（按 deliveryId 判断已在 HTML 中）：转为自动行，仅取第10列 原链接
       if (did && autoDids.has(did)) {
-        // 命中 HTML：转为自动行，仅取第9列 原链接
-        if (orig) origByDid[did] = orig;
+        if (orig && link && autoLinks.has(link)) origByLink[link] = orig;
       } else {
-        // 未命中：保留为手动记录行（第1-8列沿用 CSV）
+        // 未命中：保留为手动记录行（沿用 CSV 全部 10 列）
         manualRows.push(row);
       }
     }
   }
   const autoFinal = autoRows.map(a => [
-    a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.link, origByDid[a.did] || ""
+    a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.status, a.link, origByLink[a.link] || ""
   ]);
   // 手动记录行置顶（用户要求汇总到表格最上方）
   const finalRows = [...manualRows, ...autoFinal];
@@ -143,10 +158,11 @@ function buildHtml(htmlText, csvText, srcNote) {
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = finalRows.map(r => {
-    const [level1, subtitle, name, daily, did, sid, used, link, orig] = r;
+    const [level1, subtitle, name, daily, did, sid, used, status, link, orig] = r;
     const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
+    const statusCls = status === "待测" ? "st-testing" : (status === "可用" ? "st-available" : "st-none");
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
     const origHtml = orig ? `<a href="${esc(orig)}" target="_blank" rel="noopener">${esc(orig)}</a>` : "";
     if (counts.hasOwnProperty(level1)) counts[level1]++;
@@ -158,6 +174,7 @@ function buildHtml(htmlText, csvText, srcNote) {
       <td>${esc(did)}</td>
       <td>${esc(sid)}</td>
       <td class="${usedCls}">${esc(used)}</td>
+      <td class="status ${statusCls}">${esc(status)}</td>
       <td class="link">${linkHtml}</td>
       <td class="link">${origHtml}</td>
     </tr>`;
@@ -184,7 +201,7 @@ function buildHtml(htmlText, csvText, srcNote) {
   h1 { font-size:20px; margin:0 0 4px; }
   .meta { color:#888; font-size:13px; margin-bottom:16px; }
   .table-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-  table { border-collapse:collapse; width:100%; min-width:1100px; font-size:13px; margin:0 auto; }
+  table { border-collapse:collapse; width:100%; min-width:1220px; font-size:13px; margin:0 auto; }
   th,td { padding:9px 12px; text-align:center; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
@@ -205,6 +222,11 @@ function buildHtml(htmlText, csvText, srcNote) {
   tbody tr.cat-other:hover  { background:hsl(190,14%,45%); }
   .yes { color:#7ee2a8; font-weight:600; }
   .no { color:#ff9b9b; font-weight:600; }
+  /* 状态列徽标 */
+  td.status { font-weight:700; }
+  td.status.st-testing { color:#ffce85; }
+  td.status.st-available { color:#8fe3b0; }
+  td.status.st-none { color:#cfcfcf; }
   td.link a { color:#9ecbff; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
   td.link a:hover { text-decoration:underline; }
   .err { color:#c0392b; }
@@ -221,6 +243,8 @@ function buildHtml(htmlText, csvText, srcNote) {
     .cat-rukou{color:#74b9ff;}
     .cat-zdy{color:#a29bfe;}
     td.link a{color:#63b3ed;}
+    td.status.st-testing{color:#ffd479;}
+    td.status.st-available{color:#7ee2a8;}
   }
 </style>
 </head>
@@ -229,7 +253,7 @@ function buildHtml(htmlText, csvText, srcNote) {
   <div class="meta">${meta}</div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>一级标题</th><th>二级标题</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>链接</th><th>原链接</th></tr></thead>
+      <thead><tr><th>一级标题</th><th>二级标题</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>状态</th><th>链接</th><th>原链接</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
