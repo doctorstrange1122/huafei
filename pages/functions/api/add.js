@@ -1,3 +1,4 @@
+// env-check v2: ensure new env vars are picked up after redeploy
 const REPO = "doctorstrange1122/huafei";
 const PATH = "data/links.csv";
 const BRANCH = "main";
@@ -14,7 +15,7 @@ export async function onRequestPost({ request, env }) {
   if (!token) {
     return new Response(JSON.stringify({
       ok: false,
-      error: "服务器未配置 GITHUB_TOKEN。请在 Cloudflare Pages 项目 → Settings → Environment variables 中添加变量 GITHUB_TOKEN（值 = 具有该仓库写权限的 GitHub PAT），保存后本录入页即可使用。"
+      error: "服务器未配置 GITHUB_TOKEN。若已添加，请在 Cloudflare 后台重新部署 Pages；未配置请在项目 Settings → Environment variables 中添加 GITHUB_TOKEN（值 = 具有该仓库写权限的 GitHub PAT），保存后等待自动重部署。"
     }), { status: 500, headers });
   }
   // 可选二次鉴权：若配置了 ADD_KEY，则请求头必须带 x-add-key
