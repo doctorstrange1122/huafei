@@ -194,6 +194,21 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
   // 追加 tktool 自定义链接（不去重，全部保留）
   if (Array.isArray(extraRows) && extraRows.length) finalRows = finalRows.concat(extraRows);
 
+  // 每列去重值，用于表头筛选下拉
+  const COLS = ["一级标题","二级标题","奖励名","每日次数","deliveryId","sceneId","是否使用","状态","链接","原链接"];
+  const LONG_COLS = new Set([8, 9]); // 链接/原链接：选项文本截断，value 仍用完整值
+  const colValues = COLS.map((_, c) => {
+    const set = new Set();
+    for (const r of finalRows) { const v = String(r[c] || "").trim(); if (v) set.add(v); }
+    return [...set].sort((a, b) => a.localeCompare(b, "zh"));
+  });
+  const theadCells = COLS.map((name, c) => {
+    const opts = ['<option value="">全部</option>'].concat(
+      colValues[c].map(v => `<option value="${esc(v)}">${esc(LONG_COLS.has(c) && v.length > 30 ? v.slice(0, 30) + "…" : v)}</option>`)
+    ).join("");
+    return `<th><div class="th-name">${esc(name)}</div><select class="col-filter" data-col="${c}">${opts}</select></th>`;
+  }).join("");
+
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = finalRows.map(r => {
     const [level1, subtitle, name, daily, did, sid, used, status, link, orig] = r;
@@ -268,8 +283,14 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
   td.link a { color:#9ecbff; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
   td.link a:hover { text-decoration:underline; }
   .err { color:#c0392b; }
+  /* 表头筛选下拉 */
+  th .th-name { font-weight:600; margin-bottom:4px; line-height:1.2; }
+  th select.col-filter { display:block; width:100%; max-width:150px; margin:2px auto 0; font-size:12px; padding:3px 4px; border-radius:5px; border:1px solid #c7ccd1; background:#fff; color:#222; box-sizing:border-box; }
+  .filter-info { color:#666; font-size:13px; margin-bottom:10px; min-height:18px; }
   @media (prefers-color-scheme:dark){
     body{background:#15171a;color:#e6e6e6;}
+    th select.col-filter{background:#2a2e34;color:#e6e6e6;border-color:#3a3f47;}
+    .filter-info{color:#aaa;}
     .table-wrap{background:#1e2125;box-shadow:none;}
     th{background:#262a2f;}
     th,td{border-bottom-color:#2c2f34;}
@@ -289,12 +310,37 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
 <body>
   <h1>链接数据表</h1>
   <div class="meta">${meta}</div>
+  <div class="filter-info" id="metaCount"></div>
   <div class="table-wrap">
-    <table>
-      <thead><tr><th>一级标题</th><th>二级标题</th><th>奖励名</th><th>每日次数</th><th>deliveryId</th><th>sceneId</th><th>是否使用</th><th>状态</th><th>链接</th><th>原链接</th></tr></thead>
+    <table id="dataTable">
+      <thead><tr>${theadCells}</tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
   </div>
+  <script>
+  (function(){
+    var table = document.getElementById('dataTable');
+    if (!table) return;
+    var selects = Array.prototype.slice.call(document.querySelectorAll('.col-filter'));
+    function apply(){
+      var crit = selects.map(function(s){ return s.value; });
+      var rows = table.tBodies[0].rows;
+      var shown = 0;
+      for (var i=0;i<rows.length;i++){
+        var tds = rows[i].children;
+        var ok = true;
+        for (var c=0;c<crit.length;c++){
+          if (crit[c] && (tds[c].textContent||'').trim() !== crit[c]) { ok=false; break; }
+        }
+        rows[i].style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      }
+      var el = document.getElementById('metaCount');
+      if (el) el.textContent = '筛选后显示 ' + shown + ' / ' + rows.length + ' 条';
+    }
+    selects.forEach(function(s){ s.addEventListener('change', apply); });
+  })();
+  </script>
 </body>
 </html>`;
 }
