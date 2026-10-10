@@ -2,6 +2,7 @@ export async function onRequestGet(context) {
   const REPO = "doctorstrange1122/huafei";
   const HTML_PATH = "super/index.html";
   const CSV_PATH = "data/links.csv";
+  const TKTOOL_LIST = "https://tktool.pages.dev/api/huafei-list";
 
   let htmlText = "";
   let csvText = "";
@@ -13,7 +14,28 @@ export async function onRequestGet(context) {
   csvText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${CSV_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${CSV_PATH}`);
   if (csvText) srcNote = "raw/jsdelivr";
 
-  const html = buildHtml(htmlText, csvText, srcNote);
+  // tktool 自定义链接（软件“自定义链接输入框”保存的 hfself:*），直接拉取合并到“自定义”区
+  const tktoolRows = [];
+  let tktoolNote = "";
+  try {
+    const r = await fetch(TKTOOL_LIST, { cache: "no-store", headers: { "User-Agent": "huafei-links/1.0" } });
+    if (r.ok) {
+      const data = await r.json();
+      const items = (data && Array.isArray(data.items)) ? data.items : [];
+      for (const it of items) {
+        const url = it.url || "";
+        if (!url) continue;
+        const key = String(it.key || "").replace(/^hfself:/, "") || "自定义链接";
+        const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
+        const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
+        // 不去重：每一条都保留，直接并入“自定义”区
+        tktoolRows.push(["自定义", "", key, "", did, sid, "是", "", url, ""]);
+      }
+      tktoolNote = `tktool ${items.length} 条`;
+    }
+  } catch (e) {}
+
+  const html = buildHtml(htmlText, csvText, srcNote, tktoolRows, tktoolNote);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
@@ -160,7 +182,7 @@ function classForLevel1(level1) {
   return "cat-" + (map[level1] || "other");
 }
 
-function buildHtml(htmlText, csvText, srcNote) {
+function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
   let errMsg = "";
   let finalRows = [];
   if (htmlText && htmlText.trim()) {
@@ -169,6 +191,8 @@ function buildHtml(htmlText, csvText, srcNote) {
   } else {
     errMsg = "HTML 加载失败，请确认仓库 super/index.html 是否存在";
   }
+  // 追加 tktool 自定义链接（不去重，全部保留）
+  if (Array.isArray(extraRows) && extraRows.length) finalRows = finalRows.concat(extraRows);
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = finalRows.map(r => {
@@ -201,7 +225,7 @@ function buildHtml(htmlText, csvText, srcNote) {
 
   const meta = errMsg
     ? `<span class="err">${errMsg}</span>`
-    : `共 ${finalRows.length} 条 · ${countParts} · 数据源 ${srcNote || "未知"} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
+    : `共 ${finalRows.length} 条 · ${countParts} · 数据源 ${srcNote || "未知"}${extraNote ? " · " + extraNote : ""} · 更新时间 ${new Date().toLocaleString("zh-CN")}`;
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
