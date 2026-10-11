@@ -2,7 +2,7 @@ export async function onRequestGet(context) {
   const REPO = "doctorstrange1122/huafei";
   const HTML_PATH = "super/index.html";
   const CSV_PATH = "data/links.csv";
-  const TKTOOL_LIST = "https://tktool.pages.dev/api/huafei-list";
+  const TKTOOL_LIST = "https://huafei-redirect-pages.pages.dev/api/huafei-list";
 
   let htmlText = "";
   let csvText = "";
@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
         // 不去重：每一条都保留，直接并入“自定义”区
         tktoolRows.push(["自定义", "", key, "", did, sid, "是", "", url, ""]);
       }
-      tktoolNote = `tktool ${items.length} 条`;
+      tktoolNote = `huafei ${items.length} 条`;
     }
   } catch (e) {}
 

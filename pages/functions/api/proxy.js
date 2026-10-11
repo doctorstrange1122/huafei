@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: 淘宝短链/分享文本解析代理
-// 用法: https://tktool.pages.dev/api/proxy?url=<target_url>
+// 用法: https://huafei-redirect-pages.pages.dev/api/proxy?url=<target_url>
 //
 // 优化点（针对 e.tb.cn / m.tb.cn 短链 + tk 淘口令在低端设备经常解析失败）：
 //  1. UA 池并行请求（Promise.allSettled），谁先返回有效结果用谁，避免串行轮询浪费时间
