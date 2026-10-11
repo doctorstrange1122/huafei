@@ -112,9 +112,21 @@ async function resolveShortLink(target) {
 
 async function resolve(input) {
   // 0. 纯数字 id 直接返回（零网络，毫秒）
-  const cleaned = input.replace(/[^\d]/g, '');
-  if (/^\d{7,}$/.test(cleaned)) {
-    return { ids: [cleaned], url: '', status: 0, body: '' };
+  //    仅当输入“整体就是一个/多个 id”时才走此路径：允许 id=/itemIds=/topIds= 前缀，
+  //    逗号/分号/顿号/空白/各类括号分隔，以及 ¥￥₳₴ 等货币符号。
+  //    含字母、链接或汉字的分享文案（如“【淘宝】xxx https://e.tb.cn/h.jY24.. HU926 拷贝链接”）
+  //    绝不能走此路径——否则把非数字全部删掉后会拼出伪 id：
+  //    真实案例：短链路径数字 24/3/9 + 淘口令 926 拼成 7 位 2439926，覆盖了正确 id 1088746595790。
+  const raw = (input || '').trim();
+  const stripped = raw.replace(/\b(?:id|itemIds|topIds)\s*=\s*/gi, ' ');
+  if (/^[\d\s,，;；、·()（）\[\]{}【】¥￥₳₴]+$/.test(stripped)) {
+    const ids = [];
+    const seen = new Set();
+    for (const part of stripped.split(/[\s,，;；、·]+/)) {
+      const p = part.replace(/[()（）\[\]{}【】¥￥₳₴]/g, '').trim();
+      if (/^\d{7,}$/.test(p) && !seen.has(p)) { seen.add(p); ids.push(p); }
+    }
+    if (ids.length) return { ids, url: '', status: 0, body: '' };
   }
   // 1. 先对分享文本里所有 URL 试直读（长链 / 纯 id 秒回，不联网）
   const urls = findUrls(input);
