@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="秒杀商品奖励">
     <meta name="theme-color" content="#6b82a0">
-    <link rel="manifest" href="/tktool/manifest.json">
     <title>奖励汇总</title>
     <style>
         :root {
@@ -847,7 +846,7 @@
     // 主题初始化（尽早执行，避免闪屏）
     (function () {
         var t = null;
-        try { t = localStorage.getItem('tktool-theme'); } catch (e) {}
+        try { t = localStorage.getItem('huafei-theme'); } catch (e) {}
         if (!t) {
             t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         }
@@ -855,7 +854,7 @@
     })();
     function applyTheme(t) {
         document.documentElement.setAttribute('data-theme', t);
-        try { localStorage.setItem('tktool-theme', t); } catch (e) {}
+        try { localStorage.setItem('huafei-theme', t); } catch (e) {}
         var m = document.querySelector('meta[name="theme-color"]');
         if (m) m.setAttribute('content', t === 'dark' ? '#12161b' : '#6b82a0');
     }
@@ -1052,11 +1051,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/tktool/sw.js');
-        }
-    </script>
     <script>
         // 全局变量
         let currentQRCodeCanvas = null;
@@ -1579,7 +1573,7 @@
         // ====== 扫码功能结束 ======
 
         // 自建 CORS 代理
-        const PROXY_URL = 'https://tktool.pages.dev/api/proxy';
+        const PROXY_URL = 'https://huafei-redirect-pages.pages.dev/api/proxy';
 
         // 从分享文本中提取短链
         function extractShortUrl(text) {
@@ -2200,7 +2194,7 @@
             
             if (!i || !d || !s) return fullUrl;
             
-            let shortUrl = 'https://tktool.pages.dev/r?i=' + i + '&d=' + d + '&s=' + s;
+            let shortUrl = 'https://huafei-redirect-pages.pages.dev/r?i=' + i + '&d=' + d + '&s=' + s;
             if (p) shortUrl += '&p=' + p;
             if (b && b !== '46023237') shortUrl += '&b=' + b;
             
@@ -2281,7 +2275,7 @@ async function resolveProductId(productLink) {
             try {
                 // 改用 GET 发送：WebView 内 POST JSON 会触发 CORS 预检，部分环境下预检失败导致 Failed to fetch；
                 // GET 为简单请求，不经过预检，兼容性与解析代理保持一致。
-                const saveUrl = 'https://tktool.pages.dev/api/huafei-save?url=' + encodeURIComponent(url) + '&key=' + encodeURIComponent(key);
+                const saveUrl = 'https://huafei-redirect-pages.pages.dev/api/huafei-save?url=' + encodeURIComponent(url) + '&key=' + encodeURIComponent(key);
                 const res = await fetch(saveUrl, { method: 'GET' });
                 let data = {};
                 try { data = await res.json(); } catch (e) {}
@@ -2379,12 +2373,12 @@ async function resolveProductId(productLink) {
                 let fullContent;
                 if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
                     // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
-                    // 自定义链接（self_ 开头）走 tktool.pages.dev 的独立 /h/ 中转：
-                    // 原 huafei-redirect-pages 在 APK WebView 内 POST fetch 不通，而 tktool 域名 WebView 已验证可用
+                    // 自定义链接（self_ 开头）走 huafei-redirect-pages 的 /h/ 中转（GET 跳转，WebView 内可用）
+                    // 后端已统一迁移至 huafei-redirect-pages，与文档同域闭环
                     let redirectOrigin = REDIRECT_ORIGIN;
                     let pathPrefix = '/r/';
                     if (btnKey.indexOf('self_') === 0) {
-                        redirectOrigin = 'https://tktool.pages.dev';
+                        redirectOrigin = 'https://huafei-redirect-pages.pages.dev';
                         pathPrefix = '/h/';
                     }
                     fullContent = redirectOrigin + pathPrefix + encodeURIComponent(btnKey) + '?pid=' + encodeURIComponent(productId);
@@ -2608,7 +2602,7 @@ async function resolveProductId(productLink) {
     <script>
     // 密钥验证系统
     (function() {
-        const KEY_API_BASE = 'https://tktool.pages.dev/api/key';
+        const KEY_API_BASE = 'https://huafei-redirect-pages.pages.dev/api/key';
         const STORAGE_KEY = 'app_activate_key';
         const STORAGE_DEVICE = 'app_device_id';
 
