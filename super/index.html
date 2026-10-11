@@ -2199,20 +2199,35 @@
         }
 
         // 抽取商品ID解析逻辑（直接id / 淘口令解析 / 链接提取），支持多id逗号拼接
-        async function resolveProductId(productLink) {
+        // 解析结果缓存：同一分享链接在同一页面会话内只解析一次，
+// 避免重复生成多个二维码时反复走网络解析（短链展开/代理）浪费时间
+const _parsedIdCache = new Map();
+
+async function resolveProductId(productLink) {
+            const cacheKey = (productLink || '').trim();
+            if (cacheKey && _parsedIdCache.has(cacheKey)) {
+                console.log('命中解析缓存，跳过重复解析:', cacheKey.slice(0, 40));
+                return _parsedIdCache.get(cacheKey);
+            }
+            let result = null;
             if (isDirectIdInput(productLink)) {
                 const ids = extractAllProductIds(productLink);
                 if (ids.length > 0) {
-                    return ids.join(',');
+                    result = ids.join(',');
                 }
             }
-            try {
-                const p = await parseItemIdFromShareText(productLink);
-                if (p) return p;
-            } catch (e) {
-                console.warn('淘口令解析异常:', e.message);
+            if (!result) {
+                try {
+                    const p = await parseItemIdFromShareText(productLink);
+                    if (p) result = p;
+                } catch (e) {
+                    console.warn('淘口令解析异常:', e.message);
+                }
             }
-            return extractProductId(productLink);
+            if (!result) result = extractProductId(productLink);
+            // 仅缓存成功结果，失败不缓存以便后续重试
+            if (result) _parsedIdCache.set(cacheKey, result);
+            return result;
         }
 
         // 当前已保存的自定义 key（每链接一个随机 key，存内存 + localStorage 兜底）
