@@ -190,7 +190,7 @@ function escHtml(s) {
 async function delRow(row, rowEl) {
   const btn = rowEl.querySelector(".rec-del");
   const tip = row.did ? ("deliveryId=" + row.did) : "无 deliveryId";
-  if (!confirm("确认删除「" + row.level1 + " / " + row.name + "」（" + tip + "）？\n删除后会直接写入 data/links.csv，无法恢复。")) return;
+  if (!confirm("确认删除「" + row.level1 + " / " + row.name + "」（" + tip + "）？删除后会直接写入 data/links.csv，无法恢复。")) return;
   btn.disabled = true; btn.textContent = "删除中…";
   try {
     const r = await fetch("/api/delete", {
@@ -212,7 +212,7 @@ async function delRow(row, rowEl) {
     btn.disabled = false; btn.textContent = "删除";
   }
 }
-$("refreshRows").addEventListener("click", loadRows);
+const _rb = $("refreshRows"); if (_rb) _rb.addEventListener("click", loadRows);
 loadRows();
 $("submit").addEventListener("click", submit);
 </script>
