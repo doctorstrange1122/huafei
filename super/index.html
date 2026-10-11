@@ -1583,7 +1583,8 @@
 
         // 从分享文本中提取短链
         function extractShortUrl(text) {
-            const m = text.match(/https?:\/\/[^\s，。￥¥₳【】\]\[]+/);
+            // 仅提取合法 URL 字符，避免 tk 参数后混入空格、-、#、> 等杂质
+            const m = text.match(/https?:\/\/[a-zA-Z0-9\-._~:\/\/?&=%+]+/);
             return m ? m[0] : null;
         }
 
