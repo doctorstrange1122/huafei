@@ -14,7 +14,7 @@ export async function onRequestGet(context) {
   csvText = await fetchText(`https://raw.githubusercontent.com/${REPO}/main/${CSV_PATH}`, `https://cdn.jsdelivr.net/gh/${REPO}@main/${CSV_PATH}`);
   if (csvText) srcNote = "raw/jsdelivr";
 
-  // tktool 自定义链接（软件“自定义链接输入框”保存的 hfself:*），直接拉取合并到“自定义”区
+  // huafei 自定义链接（软件“自定义链接输入框”保存的 hfself:*），直接拉取合并到“自定义”区
   const huafeiRows = [];
   let huafeiNote = "";
   try {
@@ -191,7 +191,7 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
   } else {
     errMsg = "HTML 加载失败，请确认仓库 super/index.html 是否存在";
   }
-  // 追加 tktool 自定义链接（不去重，全部保留）
+  // 追加 huafei 自定义链接（不去重，全部保留）
   if (Array.isArray(extraRows) && extraRows.length) finalRows = finalRows.concat(extraRows);
 
   // 每列去重值，用于表头筛选下拉
