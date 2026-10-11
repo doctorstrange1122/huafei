@@ -1592,7 +1592,7 @@
         async function fetchWithProxy(targetUrl) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const resp = await fetch(`${PROXY_URL}?url=${encodeURIComponent(targetUrl)}`, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (!resp.ok) throw new Error('bad status');
@@ -1636,7 +1636,7 @@
                     // 方法1：标准 fetch + redirect follow + body 提取
                     (async () => {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 3000);
+                        const timeoutId = setTimeout(() => controller.abort(), 8000);
                         const resp = await fetch(shortUrl, {
                             redirect: 'follow',
                             signal: controller.signal,
