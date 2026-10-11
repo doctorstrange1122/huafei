@@ -41,7 +41,7 @@ export async function onRequestPost({ request, env }) {
     if (!g.ok) return new Response(JSON.stringify({ ok: false, error: `读取 CSV 失败: ${g.status}` }), { status: 502, headers });
     const gj = await g.json();
     let content = b64decode(gj.content);
-    content = content.length ? content.replace(/\n+$/, "\n") + newLine + "\n" : newLine + "\n";
+    content = content.length ? content.replace(/\n+$/, "") + "\n" + newLine + "\n" : newLine + "\n";
     const putBody = JSON.stringify({
       message: `add row via web form: ${body.name || ""}`,
       content: b64encode(content),
