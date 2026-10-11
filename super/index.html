@@ -1943,9 +1943,11 @@
         }
 
         // 跳转淘宝APP（兼容 Android / iOS / 鸿蒙系统）
-        // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议；
-        // “App 已打开”用多信号探测（visibilitychange 在鸿蒙不可靠），任一信号即停止后续协议；
-        // 裸 taobao:// 仅作远古设备兜底，鸿蒙上它只会弹淘宝“为你推荐了一个新的页面”，禁止补发。
+        // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议。
+        // 曾用裸 taobao:// 做兜底，但淘宝冷启动（用户清过后台）时 2.5s 内收不到"已打开"信号，
+        // 兜底被误发，淘宝接单后弹"为你推荐了一个新的页面"降级页并压在活动页下方；
+        // 且鸿蒙安卓兼容层的 UA 不含 HarmonyOS，靠 UA 禁兜底不可靠。故彻底移除兜底：
+        // 只发 tbopen，活动页打开即终止，不再补发任何其他协议。
         function openTaobaoApp(url, btnKey) {
             // 入口区按钮点击时计入使用次数（btnKey 为空则不计数，如结果区一键跳转）
             if (btnKey) {
@@ -1953,28 +1955,6 @@
                 syncUsageToFloat();
             }
             const tbopenUrl = `tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=${encodeURIComponent(url)}`;
-            const taobaoScheme = `taobao://${url.replace('https://', '')}`;
-            const isHarmonyOS = /HarmonyOS|OpenHarmony/i.test(navigator.userAgent);
-
-            // “App 已打开”多信号探测：visibilitychange + pagehide/blur 事件
-            // + hasFocus 失焦轮询 + rAF 心跳停摆轮询（鸿蒙安卓兼容层不保证派发可见性事件，
-            // 旧逻辑 1s 后补发 taobao:// 被淘宝接单弹出推荐页，活动页后方多开一个页面）
-            let appOpened = false;
-            let lastTick = Date.now();
-            let pollTimer = null;
-            let fallbackTimer = null;
-            function markOpened() { appOpened = true; }
-            (function heartbeat() { lastTick = Date.now(); requestAnimationFrame(heartbeat); })();
-            function startPoll() {
-                if (pollTimer) clearInterval(pollTimer);
-                pollTimer = setInterval(function() {
-                    if (!document.hasFocus() || Date.now() - lastTick > 600) markOpened();
-                }, 200);
-            }
-            document.addEventListener('visibilitychange', function() { if (document.hidden) markOpened(); });
-            window.addEventListener('pagehide', markOpened);
-            window.addEventListener('blur', markOpened);
-            startPoll();
 
             // 尝试通过 scheme 唤起 APP（APK中由 Java 拦截，浏览器中由系统处理）
             function tryScheme(schemeUrl) {
@@ -1993,15 +1973,8 @@
                 }
             }
 
-            // 唯一自动唤起：tbopen://
+            // 唯一自动唤起：tbopen://，不补发任何其他协议
             tryScheme(tbopenUrl);
-
-            // 2.5s 后仍无任何“已打开”信号、且非鸿蒙，才补发 taobao:// 兜底
-            fallbackTimer = setTimeout(function() {
-                if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-                if (appOpened || isHarmonyOS) return;
-                tryScheme(taobaoScheme);
-            }, 2500);
         }
 
         // 跳转支付宝APP（com.eg.android.AlipayGphone）
