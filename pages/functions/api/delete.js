@@ -42,7 +42,7 @@ export async function onRequestGet({ request, env }) {
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cells = splitCsvLine(lines[i]);
-    if (cells.length < 10) continue;
+    if (cells.length !== 10) continue; // 列数异常（如粘连行）：跳过，避免误判
     if (!DELETABLE.has(cells[0])) continue; // 只列出可删除的行
     const row = {};
     FIELDS.forEach((f, ci) => { row[f] = cells[ci] || ""; });
@@ -67,6 +67,9 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch {
     return new Response(JSON.stringify({ ok: false, error: "请求体不是合法 JSON" }), { status: 400, headers });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return new Response(JSON.stringify({ ok: false, error: "请求体必须是 JSON 对象" }), { status: 400, headers });
   }
 
   // 目标行：10 列全部参与精确匹配，避免误删
@@ -97,9 +100,10 @@ export async function onRequestPost({ request, env }) {
       if (!line.trim()) { kept.push(line); continue; }
       if (!headerDone) { headerDone = true; kept.push(line); continue; } // 表头不动
       const cells = splitCsvLine(line);
+      if (cells.length !== 10) { kept.push(line); continue; } // 列数异常：原样保留
       const row = {};
       FIELDS.forEach((f, ci) => { row[f] = (cells[ci] ?? "").trim(); });
-      if (FIELDS.every(f => row[f] === target[f])) { deleted++; continue; } // 命中：删除
+      if (deleted === 0 && FIELDS.every(f => row[f] === target[f])) { deleted++; continue; } // 命中：仅删第一条（重复行逐条删）
       kept.push(line);
     }
     if (!deleted) {
