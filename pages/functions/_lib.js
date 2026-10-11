@@ -38,7 +38,7 @@ export function forceRefresh() {
 }
 
 export function buildTransitHtml(realUrl) {
-  // 内联 super/index.html 结果区 openTaobaoApp 逻辑（tbopen 唯一自动协议 + 多信号探测 + 鸿蒙禁裸 scheme 兜底）
+  // 内联 super/index.html 结果区 openTaobaoApp 逻辑（tbopen 唯一自动协议，不补发任何其他协议）
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -66,36 +66,15 @@ export function buildTransitHtml(realUrl) {
 <script>
 const REAL_URL = ${JSON.stringify(realUrl).replace(/</g, '\\u003c')};
 function openTaobaoApp(url) {
-  // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议
+  // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议。
+  // 曾用裸 taobao:// 做兜底，但淘宝冷启动（用户清过后台）时 2.5s 内收不到"已打开"信号，
+  // 兜底被误发，淘宝接单后弹"为你推荐了一个新的页面"降级页并压在活动页下方；
+  // 且鸿蒙安卓兼容层的 UA 不含 HarmonyOS，靠 UA 禁兜底不可靠。故彻底移除兜底：
+  // 只发 tbopen，活动页打开即终止，不再补发任何其他协议。
   const tbopenUrl = 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + encodeURIComponent(url);
-  // taobao:// 裸 scheme 仅作远古设备兜底（tbopen 未注册时）；鸿蒙上它只会弹淘宝推荐页，禁止补发
-  const taobaoScheme = 'taobao://' + url.replace('https://', '');
   // iPadOS 14+ 的 UA 是 MacIntel，需结合触摸点判断
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
-  // 鸿蒙（系统浏览器/WebView UA 含 HarmonyOS/OpenHarmony）
-  const isHarmonyOS = /HarmonyOS|OpenHarmony/i.test(navigator.userAgent);
-
-  // “App 已打开”多信号探测：
-  // 仅靠 visibilitychange 在鸿蒙不可靠——tbopen 成功唤起淘宝后浏览器不派发可见性事件，
-  // 旧逻辑 1s 后补发 taobao://，被淘宝接单弹出“为你推荐了一个新的页面”（活动页后方多一个页面）。
-  // 现叠加：pagehide/blur 事件 + hasFocus 失焦轮询 + rAF 心跳停摆轮询，任一信号即认定已打开。
-  let appOpened = false;
-  let lastTick = Date.now();
-  let pollTimer = null;
-  let fallbackTimer = null;
-  function markOpened() { appOpened = true; }
-  (function heartbeat() { lastTick = Date.now(); requestAnimationFrame(heartbeat); })();
-  function startPoll() {
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(function() {
-      if (!document.hasFocus() || Date.now() - lastTick > 600) markOpened();
-    }, 200);
-  }
-  document.addEventListener('visibilitychange', function() { if (document.hidden) markOpened(); });
-  window.addEventListener('pagehide', markOpened);
-  window.addEventListener('blur', markOpened);
-  startPoll();
 
   function fire(schemeUrl) {
     if (isIOS || isAPK) {
@@ -108,32 +87,20 @@ function openTaobaoApp(url) {
       setTimeout(function() { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 3000);
     }
   }
-  function go(force) {
-    // 手动点击（按钮/遮罩）= 用户明确要求重试：重置探测状态，重新走完整流程
-    if (force) {
-      appOpened = false;
-      lastTick = Date.now();
-      startPoll();
-    }
+  function go() {
+    // 唯一自动唤起：tbopen://，不补发任何其他协议
     fire(tbopenUrl);
-    if (fallbackTimer) clearTimeout(fallbackTimer);
-    fallbackTimer = setTimeout(function() {
-      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-      // 已探测到 App 打开、或鸿蒙（裸 scheme 只会弹推荐页）→ 停止，不再补发任何其他协议
-      if (appOpened || isHarmonyOS) return;
-      fire(taobaoScheme);
-    }, 2500);
   }
   if (isIOS) {
     // 自动试一次（多数被 Safari 拦截），弹出手势遮罩兜底
     go();
     const mask = document.getElementById('iosMask');
     mask.style.display = 'flex';
-    mask.addEventListener('click', function() { go(true); });
+    mask.addEventListener('click', go);
   } else {
     go();
   }
-  document.getElementById('openBtn').addEventListener('click', function() { go(true); });
+  document.getElementById('openBtn').addEventListener('click', go);
 }
 window.onload = function() {
   openTaobaoApp(REAL_URL);
