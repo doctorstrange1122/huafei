@@ -6,8 +6,8 @@
 // 前端把分享文案整体发给本接口，服务端：
 //   0) 纯数字 id 直接返回（零网络，毫秒）
 //   1) 对文案里所有 URL 试直读（长链 / itemIds= 等秒回，不联网）
-//   2) 短链 → 服务端用多 UA 并行抓取 + 重定向跟随 + 正则抽 id（主路径）
-//   3) 兜底二次跟随 item.taobao.com/item.htm
+//   2) 短链 → 同时尝试 e.tb.cn 与等价 m.tb.cn 变体，多 UA 并行抓取 + 重定向跟随 + 正则抽 id
+//   3) 首轮失败（上游抖动）后短暂重试一次；body 含 item/tmall 链接则二次跟随
 // 兼容 CORS（前端跨域简单 GET 调用，无需预检）。
 
 const UA_POOL = [
@@ -23,7 +23,7 @@ const CORS = {
   'Content-Type': 'application/json'
 };
 
-// 从任意文本中抽取商品 id（多 id 去重，支持 itemIds=/id=/topIds=/i数字.htm/数字.html/var url=/JSON itemId/item.taobao.com）
+// 从任意文本中抽取商品 id（多 id 去重，支持 itemIds=/id=/topIds=/i数字.htm/数字.html/var url=/JSON itemId/item.taobao.com/detail.tmall.com）
 function extractIds(text) {
   if (!text) return [];
   const ids = new Set();
@@ -39,6 +39,8 @@ function extractIds(text) {
     const reVar = /var\s+url\s*=\s*['"]([^'"]+)['"]/g; while ((m = reVar.exec(s))) push(m[1]);
     const reJson = /"itemId"\s*:\s*"?(\d{7,})/g; while ((m = reJson.exec(s))) ids.add(m[1]);
     const reLink = /item\.taobao\.com\/item\.htm[^'"]*?id=(\d{7,})/gi; while ((m = reLink.exec(s))) ids.add(m[1]);
+    const reTmall = /detail\.tmall\.com\/item\.htm[^'"]*?id=(\d{7,})/gi; while ((m = reTmall.exec(s))) ids.add(m[1]);
+    const reUland = /uland\.taobao\.com\/[^'"]*?id=(\d{7,})/gi; while ((m = reUland.exec(s))) ids.add(m[1]);
   };
   push(text);
   return [...ids];
@@ -47,6 +49,16 @@ function extractIds(text) {
 // 从分享文本中提取所有 URL
 function findUrls(text) {
   return (text.match(/https?:\/\/[^\s，。￥¥₳【】\]\['"<>]+/g) || []);
+}
+
+// 由 e.tb.cn / m.tb.cn 短链生成等价变体，提升跟随成功率
+function buildVariants(target) {
+  const variants = [target];
+  const me = target.match(/https?:\/\/e\.tb\.cn\/h\.([A-Za-z0-9]+)/i);
+  if (me) variants.push('https://m.tb.cn/h.' + me[1]);
+  const mm = target.match(/https?:\/\/m\.tb\.cn\/h\.([A-Za-z0-9]+)/i);
+  if (mm) variants.push('https://e.tb.cn/h.' + mm[1]);
+  return variants;
 }
 
 async function tryFetch(u, ua, referer, timeoutMs) {
@@ -68,23 +80,27 @@ async function tryFetch(u, ua, referer, timeoutMs) {
   }
 }
 
-// 服务端展开短链并抽 id（多 UA 并行，单 UA 4s 超时，谁先返回有效结果用谁）
+// 服务端展开短链并抽 id（多 UA 并行，单 UA 4s 超时；变体 + 二次跟随兜底）
 async function resolveShortLink(target) {
   const referer = 'https://tb.cn/';
-  const settled = await Promise.allSettled(UA_POOL.map(ua => tryFetch(target, ua, referer, 4000)));
+  const variants = buildVariants(target);
   let best = { url: '', status: 0, body: '', ids: [] };
-  for (const s of settled) {
-    if (s.status !== 'fulfilled') continue;
-    const r = s.value;
-    if (r.error) continue;
-    if (r.ids.length) return { url: r.finalUrl, status: r.status, body: r.body, ids: r.ids };
-    if (r.finalUrl !== target || r.body.length > best.body.length) {
-      best = { url: r.finalUrl, status: r.status, body: r.body, ids: best.ids };
+  for (const v of variants) {
+    const settled = await Promise.allSettled(UA_POOL.map(ua => tryFetch(v, ua, referer, 4000)));
+    for (const s of settled) {
+      if (s.status !== 'fulfilled') continue;
+      const r = s.value;
+      if (r.error) continue;
+      if (r.ids.length) return { url: r.finalUrl, status: r.status, body: r.body, ids: r.ids };
+      if (r.finalUrl !== v || r.body.length > best.body.length) {
+        best = { url: r.finalUrl, status: r.status, body: r.body, ids: best.ids };
+      }
     }
   }
-  // 二次跟随：body 含 item.taobao.com/item.htm 链接 → 追一层拿真实商品页再抽
+  // 二次跟随：body 含 item.taobao.com / detail.tmall.com 链接 → 追一层拿真实商品页再抽
   if (best.body) {
-    const mm = best.body.match(/item\.taobao\.com\/item\.htm[^'"]*/i);
+    const mm = best.body.match(/item\.taobao\.com\/item\.htm[^'"]*/i)
+            || best.body.match(/detail\.tmall\.com\/item\.htm[^'"]*/i);
     if (mm) {
       const next = mm[0].startsWith('http') ? mm[0] : 'https://' + mm[0];
       const r2 = await tryFetch(next, UA_POOL[0], referer, 4000);
@@ -106,13 +122,18 @@ async function resolve(input) {
     const direct = extractIds(u);
     if (direct.length) return { ids: direct, url: u, status: 0, body: '' };
   }
-  // 2. 短链 → 服务端展开抽 id（主路径）
+  // 2. 短链 → 服务端展开抽 id（最多两轮：首轮失败的上游抖动后短暂重试一次）
   const candidates = urls.length ? urls : [input];
-  for (const c of candidates) {
-    const r = await resolveShortLink(c);
-    if (r.ids && r.ids.length) return { ids: r.ids, url: r.url, status: r.status, body: r.body };
+  let last = { ids: [], url: '', status: 0, body: '' };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const c of candidates) {
+      const r = await resolveShortLink(c);
+      if (r.ids && r.ids.length) return { ids: r.ids, url: r.url, status: r.status, body: r.body };
+      if (r.url || r.body) last = r;
+    }
+    if (attempt === 0) await new Promise(res => setTimeout(res, 400));
   }
-  return { ids: [], url: '', status: 0, body: '' };
+  return last;
 }
 
 export async function onRequest(context) {
@@ -132,10 +153,10 @@ export async function onRequest(context) {
   let tk = '';
   try { tk = new URL(target).searchParams.get('tk') || ''; } catch (e) {}
 
-  // 总超时 10s：e.tb.cn 偶发卡死时，到点即返回失败，不让前端无限等待
+  // 总超时 9s：e.tb.cn 偶发卡死时，到点即返回失败，不让前端无限等待
   const winner = await Promise.race([
     resolve(target).then(r => ({ ...r, timedout: false })),
-    new Promise(res => setTimeout(() => res({ ids: [], url: '', status: 0, body: '', timedout: true }), 10000))
+    new Promise(res => setTimeout(() => res({ ids: [], url: '', status: 0, body: '', timedout: true }), 9000))
   ]);
 
   if (!winner.ids || winner.ids.length === 0) {
