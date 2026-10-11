@@ -2,7 +2,7 @@ export async function onRequestGet(context) {
   const REPO = "doctorstrange1122/huafei";
   const HTML_PATH = "super/index.html";
   const CSV_PATH = "data/links.csv";
-  const TKTOOL_LIST = "https://huafei-redirect-pages.pages.dev/api/huafei-list";
+  const HUAFEI_LIST = "https://huafei-redirect-pages.pages.dev/api/huafei-list";
 
   let htmlText = "";
   let csvText = "";
@@ -15,10 +15,10 @@ export async function onRequestGet(context) {
   if (csvText) srcNote = "raw/jsdelivr";
 
   // tktool 自定义链接（软件“自定义链接输入框”保存的 hfself:*），直接拉取合并到“自定义”区
-  const tktoolRows = [];
-  let tktoolNote = "";
+  const huafeiRows = [];
+  let huafeiNote = "";
   try {
-    const r = await fetch(TKTOOL_LIST, { cache: "no-store", headers: { "User-Agent": "huafei-links/1.0" } });
+    const r = await fetch(HUAFEI_LIST, { cache: "no-store", headers: { "User-Agent": "huafei-links/1.0" } });
     if (r.ok) {
       const data = await r.json();
       const items = (data && Array.isArray(data.items)) ? data.items : [];
@@ -29,13 +29,13 @@ export async function onRequestGet(context) {
         const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
         const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
         // 不去重：每一条都保留，直接并入“自定义”区
-        tktoolRows.push(["自定义", "", key, "", did, sid, "是", "", url, ""]);
+        huafeiRows.push(["自定义", "", key, "", did, sid, "是", "", url, ""]);
       }
-      tktoolNote = `huafei ${items.length} 条`;
+      huafeiNote = `huafei ${items.length} 条`;
     }
   } catch (e) {}
 
-  const html = buildHtml(htmlText, csvText, srcNote, tktoolRows, tktoolNote);
+  const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
