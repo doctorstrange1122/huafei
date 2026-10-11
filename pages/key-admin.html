@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>密钥管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 16px;
+            color: #333;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+
+        /* 登录页 */
+        .login-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px 24px;
+            margin-top: 60px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .login-card h1 { font-size: 22px; text-align: center; margin-bottom: 20px; color: #4a5568; }
+        .login-card input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .login-card input:focus { border-color: #667eea; }
+        .login-card button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .login-card button:active { transform: scale(0.98); }
+        .error-msg { color: #e53e3e; font-size: 13px; text-align: center; margin-top: 10px; min-height: 18px; }
+
+        /* 管理后台 */
+        .admin-panel { display: none; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            color: #fff;
+        }
+        .header h1 { font-size: 20px; font-weight: 700; }
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .stat-num { font-size: 24px; font-weight: 700; color: #667eea; }
+        .stat-label { font-size: 11px; color: #718096; margin-top: 4px; }
+
+        /* 生成区域 */
+        .generate-section h3 { font-size: 15px; margin-bottom: 12px; color: #4a5568; }
+        .generate-row { display: flex; gap: 10px; align-items: center; }
+        .generate-row input {
+            flex: 1;
+            padding: 12px 14px;
+            font-size: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            outline: none;
+        }
+        .generate-row input:focus { border-color: #667eea; }
+        .generate-row button {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* 密钥列表 */
+        .keys-section h3 {
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: #4a5568;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .export-btn {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #edf2f7;
+            color: #4a5568;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .keys-table { width: 100%; font-size: 13px; }
+        .keys-table th {
+            text-align: left;
+            padding: 8px 6px;
+            border-bottom: 2px solid #e2e8f0;
+            color: #718096;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .keys-table td {
+            padding: 10px 6px;
+            border-bottom: 1px solid #f0f4f8;
+            font-family: "SF Mono", Menlo, monospace;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: -apple-system, sans-serif;
+        }
+        .status-active { background: #c6f6d5; color: #22543d; }
+        .status-unused { background: #bee3f8; color: #2a4365; }
+        .status-revoked { background: #fed7d7; color: #742a2a; }
+        .revoke-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            background: #fed7d7;
+            color: #c53030;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .revoke-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .copy-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            background: #e6fffa;
+            color: #234e52;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .copy-btn.copied {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .key-cell {
+            font-family: "SF Mono", Menlo, monospace;
+            display: flex;
+            align-items: center;
+        }
+        .key-text { flex: 1; }
+        .date-text { font-family: -apple-system, sans-serif; font-size: 11px; color: #a0aec0; }
+        .key-checkbox { width: 16px; height: 16px; cursor: pointer; margin-right: 8px; accent-color: #667eea; }
+        .select-all-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #4a5568;
+        }
+        .select-all-bar label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .select-all-bar .select-info { margin-left: auto; font-size: 12px; color: #718096; }
+        .export-selected-btn {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* 筛选与分页 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #4a5568;
+        }
+        .filter-select {
+            padding: 5px 10px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            outline: none;
+            background: #fff;
+            color: #4a5568;
+            cursor: pointer;
+        }
+        .filter-select:focus { border-color: #667eea; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .page-btn {
+            padding: 6px 14px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #4a5568;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .page-btn:hover:not(:disabled) { border-color: #667eea; color: #667eea; }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .page-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border-color: transparent;
+        }
+        .page-info { font-size: 12px; color: #718096; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 登录页 -->
+        <div id="loginView" class="login-card">
+            <h1>🔐 密钥管理后台</h1>
+            <input type="password" id="passwordInput" placeholder="请输入管理员密码" autocomplete="off">
+            <button onclick="adminLogin()">登录</button>
+            <div class="error-msg" id="loginError"></div>
+        </div>
+
+        <!-- 管理后台 -->
+        <div id="adminView" class="admin-panel">
+            <div class="header">
+                <h1>🔐 密钥管理</h1>
+                <button class="logout-btn" onclick="adminLogout()">退出</button>
+            </div>
+
+            <!-- 统计 -->
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-num" id="statTotal">0</div>
+                    <div class="stat-label">总数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" id="statActivated">0</div>
+                    <div class="stat-label">已激活</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" id="statUnused">0</div>
+                    <div class="stat-label">未使用</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num" id="statRevoked">0</div>
+                    <div class="stat-label">已作废</div>
+                </div>
+            </div>
+
+            <!-- 生成密钥 -->
+            <div class="card generate-section">
+                <h3>生成新密钥</h3>
+                <div class="generate-row">
+                    <input type="number" id="generateCount" value="20" min="1" max="200">
+                    <button onclick="generateKeys()">生成</button>
+                </div>
+            </div>
+
+            <!-- 密钥列表 -->
+            <div class="card keys-section">
+                <h3>
+                    <span>密钥列表</span>
+                    <div style="display: flex; align-items: center;">
+                        <button class="export-btn" onclick="exportKeys()">导出未使用</button>
+                        <button class="export-selected-btn" onclick="exportSelected()">导出选中</button>
+                    </div>
+                </h3>
+                <div class="toolbar">
+                    <div class="filter-group">
+                        <span>状态：</span>
+                        <select class="filter-select" id="statusFilter" onchange="onFilterChange()">
+                            <option value="all">全部</option>
+                            <option value="unused">未使用</option>
+                            <option value="active">已激活</option>
+                            <option value="revoked">已作废</option>
+                        </select>
+                    </div>
+                    <span class="page-info" id="pageInfo"></span>
+                </div>
+                <div class="select-all-bar">
+                    <label><input type="checkbox" class="key-checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)"> 本页全选</label>
+                    <label><input type="checkbox" class="key-checkbox" id="selectAllFilteredCheckbox" onchange="toggleSelectAllFiltered(this)"> 全选筛选结果</label>
+                    <span class="select-info" id="selectInfo">已选 0 个</span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="keys-table">
+                        <thead>
+                            <tr>
+                                <th style="width:30px;">选</th>
+                                <th>密钥</th>
+                                <th>状态</th>
+                                <th>激活时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keysTableBody">
+                            <tr><td colspan="5" style="text-align:center; color:#a0aec0; padding:20px;">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const API_BASE = location.origin + '/api/key';
+let adminPwd = '';
+let allKeys = [];          // 全部密钥数据
+let currentPage = 1;       // 当前页码
+const PAGE_SIZE = 20;       // 每页显示数量
+let selectedKeys = new Set(); // 选中的密钥集合
+
+// 初始化：检查是否已登录
+window.onload = function() {
+    const saved = localStorage.getItem('admin_pwd');
+    if (saved) {
+        adminPwd = saved;
+        showAdminPanel();
+        loadKeys();
+    }
+
+    // 回车登录
+    document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') adminLogin();
+    });
+};
+
+function adminLogin() {
+    const pwd = document.getElementById('passwordInput').value;
+    if (!pwd) return;
+
+    adminPwd = pwd;
+    // 用list接口验证密码
+    fetch(API_BASE + '/admin/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword: pwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            localStorage.setItem('admin_pwd', pwd);
+            showAdminPanel();
+            renderData(data);
+        } else {
+            document.getElementById('loginError').textContent = data.error || '登录失败';
+        }
+    })
+    .catch(e => {
+        document.getElementById('loginError').textContent = '网络错误：' + e.message;
+    });
+}
+
+function adminLogout() {
+    localStorage.removeItem('admin_pwd');
+    adminPwd = '';
+    location.reload();
+}
+
+function showAdminPanel() {
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('adminView').style.display = 'block';
+}
+
+function loadKeys() {
+    fetch(API_BASE + '/admin/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            renderData(data);
+        } else {
+            alert(data.error || '加载失败');
+            if (data.error === '密码错误') adminLogout();
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+function renderData(data) {
+    // 统计
+    document.getElementById('statTotal').textContent = data.stats.total;
+    document.getElementById('statActivated').textContent = data.stats.activated;
+    document.getElementById('statUnused').textContent = data.stats.unused;
+    document.getElementById('statRevoked').textContent = data.stats.revoked;
+
+    // 保存全部密钥数据
+    allKeys = data.keys || [];
+
+    // 渲染列表（带筛选和分页）
+    renderKeysList();
+}
+
+function getFilteredKeys() {
+    const filter = document.getElementById('statusFilter').value;
+    if (filter === 'all') return allKeys;
+    return allKeys.filter(k => {
+        if (filter === 'unused') return !k.activated && !k.revoked;
+        if (filter === 'active') return k.activated && !k.revoked;
+        if (filter === 'revoked') return k.revoked;
+        return true;
+    });
+}
+
+function onFilterChange() {
+    currentPage = 1;
+    renderKeysList();
+}
+
+function renderKeysList() {
+    const filtered = getFilteredKeys();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageKeys = filtered.slice(start, start + PAGE_SIZE);
+
+    // 页码信息
+    const infoEl = document.getElementById('pageInfo');
+    if (filtered.length === 0) {
+        infoEl.textContent = '';
+    } else {
+        infoEl.textContent = `共 ${filtered.length} 个，第 ${currentPage}/${totalPages} 页`;
+    }
+
+    // 列表
+    const tbody = document.getElementById('keysTableBody');
+    if (pageKeys.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</td></tr>';
+    } else {
+        tbody.innerHTML = pageKeys.map(k => {
+            let statusClass, statusText;
+            if (k.revoked) { statusClass = 'status-revoked'; statusText = '已作废'; }
+            else if (k.activated) { statusClass = 'status-active'; statusText = '已激活'; }
+            else { statusClass = 'status-unused'; statusText = '未使用'; }
+
+            const dateStr = k.activatedAt ? formatDate(k.activatedAt) : '-';
+            const canRevoke = !k.revoked;
+            const checked = selectedKeys.has(k.key) ? 'checked' : '';
+
+            return `<tr>
+                <td><input type="checkbox" class="key-checkbox row-checkbox" value="${k.key}" ${checked} onchange="toggleKeySelection('${k.key}', this.checked)"></td>
+                <td>
+                    <div class="key-cell">
+                        <span class="key-text">${k.key}</span>
+                        <button class="copy-btn" onclick="copyKey('${k.key}', this)">复制</button>
+                    </div>
+                </td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td><span class="date-text">${dateStr}</span></td>
+                <td>${canRevoke ? `<button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : '-'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // 更新选择状态
+    updateSelectInfo();
+
+    // 分页按钮
+    renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+    const pagEl = document.getElementById('pagination');
+    if (totalPages <= 1) {
+        pagEl.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+    // 上一页
+    html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">上一页</button>`;
+
+    // 页码按钮（最多显示7个）
+    let startPage = Math.max(1, currentPage - 3);
+    let endPage = Math.min(totalPages, startPage + 6);
+    if (endPage - startPage < 6) startPage = Math.max(1, endPage - 6);
+
+    if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) html += `<span class="page-info">...</span>`;
+    }
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+    }
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="page-info">...</span>`;
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+    }
+
+    // 下一页
+    html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">下一页</button>`;
+    pagEl.innerHTML = html;
+}
+
+function goToPage(page) {
+    currentPage = page;
+    renderKeysList();
+}
+
+function generateKeys() {
+    const count = parseInt(document.getElementById('generateCount').value);
+    if (!count || count < 1 || count > 200) {
+        alert('数量范围 1-200');
+        return;
+    }
+
+    if (!confirm(`确定生成 ${count} 个新密钥吗？`)) return;
+
+    fetch(API_BASE + '/admin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count, adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`成功生成 ${data.count} 个密钥`);
+            loadKeys();
+        } else {
+            alert(data.error || '生成失败');
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+function copyKey(key, btn) {
+    navigator.clipboard.writeText(key).then(() => {
+        const origText = btn.textContent;
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = origText;
+            btn.classList.remove('copied');
+        }, 1500);
+    }).catch(() => {
+        // 降级方案
+        const ta = document.createElement('textarea');
+        ta.value = key;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const origText = btn.textContent;
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = origText;
+            btn.classList.remove('copied');
+        }, 1500);
+    });
+}
+
+function revokeKey(key) {
+    if (!confirm(`确定作废密钥 ${key} 吗？作废后无法恢复。`)) return;
+
+    fetch(API_BASE + '/admin/revoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('已作废');
+            loadKeys();
+        } else {
+            alert(data.error || '操作失败');
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+function toggleKeySelection(key, checked) {
+    if (checked) {
+        selectedKeys.add(key);
+    } else {
+        selectedKeys.delete(key);
+    }
+    updateSelectInfo();
+}
+
+function toggleSelectAll(checkbox) {
+    // 本页全选
+    const filtered = getFilteredKeys();
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageKeys = filtered.slice(start, start + PAGE_SIZE);
+    pageKeys.forEach(k => {
+        if (checkbox.checked) selectedKeys.add(k.key);
+        else selectedKeys.delete(k.key);
+    });
+    renderKeysList();
+    // 保持本页全选框状态
+    document.getElementById('selectAllCheckbox').checked = checkbox.checked;
+}
+
+function toggleSelectAllFiltered(checkbox) {
+    const filtered = getFilteredKeys();
+    if (checkbox.checked) {
+        filtered.forEach(k => selectedKeys.add(k.key));
+    } else {
+        filtered.forEach(k => selectedKeys.delete(k.key));
+    }
+    renderKeysList();
+    document.getElementById('selectAllFilteredCheckbox').checked = checkbox.checked;
+}
+
+function updateSelectInfo() {
+    const count = selectedKeys.size;
+    document.getElementById('selectInfo').textContent = `已选 ${count} 个`;
+
+    // 更新本页全选框状态
+    const filtered = getFilteredKeys();
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageKeys = filtered.slice(start, start + PAGE_SIZE);
+    const pageAllChecked = pageKeys.length > 0 && pageKeys.every(k => selectedKeys.has(k.key));
+    document.getElementById('selectAllCheckbox').checked = pageAllChecked;
+
+    // 更新全选筛选框状态
+    const filteredAllChecked = filtered.length > 0 && filtered.every(k => selectedKeys.has(k.key));
+    document.getElementById('selectAllFilteredCheckbox').checked = filteredAllChecked;
+}
+
+function getStatusText(k) {
+    if (k.revoked) return '已作废';
+    if (k.activated) return '已激活';
+    return '未使用';
+}
+
+function exportToExcel(rows, filename) {
+    // 生成Excel格式的HTML表格
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>密钥列表</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1">';
+    // 表头
+    html += '<tr><th style="background:#667eea;color:#fff;padding:6px;">序号</th><th style="background:#667eea;color:#fff;padding:6px;">密钥</th><th style="background:#667eea;color:#fff;padding:6px;">状态</th></tr>';
+    // 数据行
+    rows.forEach((row, i) => {
+        html += `<tr><td style="padding:4px;text-align:center;">${i + 1}</td><td style="padding:4px;font-family:monospace;">${row.key}</td><td style="padding:4px;">${row.status}</td></tr>`;
+    });
+    html += '</table></body></html>';
+
+    const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportSelected() {
+    if (selectedKeys.size === 0) {
+        alert('请先选择要导出的密钥');
+        return;
+    }
+    // 从allKeys中找到选中密钥的完整信息
+    const rows = Array.from(selectedKeys).map(key => {
+        const k = allKeys.find(item => item.key === key);
+        return {
+            key: key,
+            status: k ? getStatusText(k) : '未知'
+        };
+    });
+    exportToExcel(rows, `keys_selected_${new Date().toISOString().slice(0,10)}.xls`);
+}
+
+function exportKeys() {
+    fetch(API_BASE + '/admin/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert(data.error || '导出失败');
+            return;
+        }
+        const unused = data.keys.filter(k => !k.activated && !k.revoked);
+        if (unused.length === 0) {
+            alert('没有未使用的密钥');
+            return;
+        }
+        const rows = unused.map(k => ({
+            key: k.key,
+            status: getStatusText(k)
+        }));
+        exportToExcel(rows, `keys_unused_${new Date().toISOString().slice(0,10)}.xls`);
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+function formatDate(ts) {
+    if (!ts) return '-';
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+</script>
+</body>
+</html>
