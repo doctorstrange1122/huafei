@@ -44,6 +44,10 @@ export async function onRequestGet(context) {
 
   const html = buildTransitHtml(target);
   return new Response(html, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      // 中转页逻辑更新频繁，禁止任何中间层/浏览器缓存旧版跳转代码
+      'Cache-Control': 'no-store',
+    },
   });
 }
