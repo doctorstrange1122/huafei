@@ -104,3 +104,5 @@ export async function onRequest(context) {
     return jsonResponse({ success: false, message: e.message }, 500);
   }
 }
+
+// redeploy trigger: bind GH_PAT env
