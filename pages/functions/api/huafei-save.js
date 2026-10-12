@@ -47,8 +47,8 @@ export async function onRequest(context) {
         return badRequest('参数解析失败');
     }
 
-    if (!/^https:\/\/pages-fast\.m\.taobao\.com\//i.test(url)) {
-        return badRequest('只支持淘宝 pages-fast.m.taobao.com 链接');
+    if (!/^https:\/\/pages-(fast|g)\.m\.taobao\.com\//i.test(url)) {
+        return badRequest('只支持淘宝 pages-fast / pages-g 链接');
     }
 
     if (!/^self_[a-z0-9]{6,}$/i.test(key)) {
