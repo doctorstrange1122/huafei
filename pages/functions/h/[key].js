@@ -1,64 +1,18 @@
 // huafei 自定义链接中转页
 // 访问 /h/<key>?pid=<商品id>
 // 从 KV 取 self key 对应的真实链接，替换 itemIds 后返回唤起淘宝的 HTML
+// 中转页逻辑统一复用 _lib.js 的 buildTransitHtml（与 r/[key].js 保持一致，避免重复实现漂移）
 
-function buildTransitHtml(realUrl) {
-    return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>正在打开淘宝…</title>
-<style>
-  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
-       text-align:center;padding:56px 16px;color:#333;background:#fff}
-  .btn{margin-top:28px;padding:12px 30px;font-size:16px;color:#fff;background:#ff5000;
-       border:0;border-radius:24px}
-  #tip{color:#999;font-size:13px;margin-top:18px}
-</style>
-</head>
-<body>
-  <p>正在唤起淘宝 App…</p>
-  <button class="btn" id="openBtn">手动打开淘宝</button>
-  <p id="tip">若未自动打开，请点击上方按钮</p>
-<script>
-const REAL_URL = ${JSON.stringify(realUrl)};
-function openTaobaoApp(url) {
-  const tbopenUrl = 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + encodeURIComponent(url);
-  const taobaoScheme = 'taobao://' + url.replace('https://', '');
-  let appOpened = false;
-  const visibilityHandler = function() { if (document.hidden) { appOpened = true; } };
-  document.addEventListener('visibilitychange', visibilityHandler);
-  function tryScheme(schemeUrl) {
-    if (window.NativeBridge || (window.Android && typeof window.Android !== 'undefined')) {
-      window.location.href = schemeUrl;
-    } else {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = schemeUrl;
-      document.body.appendChild(iframe);
-      setTimeout(function() { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 3000);
-    }
-  }
-  tryScheme(tbopenUrl);
-  setTimeout(function() {
-    if (appOpened) { document.removeEventListener('visibilitychange', visibilityHandler); return; }
-    tryScheme(taobaoScheme);
-  }, 1000);
-}
-window.onload = function() {
-  openTaobaoApp(REAL_URL);
-  document.getElementById('openBtn').addEventListener('click', function(){ openTaobaoApp(REAL_URL); });
-};
-</script>
-</body>
-</html>`;
-}
+import { buildTransitHtml } from '../_lib.js';
 
 function htmlResponse(body, status) {
     return new Response(body, {
         status: status || 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        headers: {
+            'Content-Type': 'text/html; charset=utf-8',
+            // 中转页逻辑更新频繁，禁止任何中间层/浏览器缓存旧版跳转代码
+            'Cache-Control': 'no-store',
+        }
     });
 }
 
