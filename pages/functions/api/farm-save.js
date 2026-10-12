@@ -77,12 +77,12 @@ export async function onRequest(context) {
     }
 
     // 2) 追加一行（去重：已存在同 key 则跳过写入）
-    const lines = text.replace(/\r/g, '').split('\n').filter(l => l.length);
+    const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(l => l.length);
     const exists = lines.some(l => l.split(',')[0].trim() === key);
     if (!exists) {
       const ts = new Date().toISOString();
-      const newLine = (lines.length && lines[lines.length - 1] !== '' ? '\n' : '') + key + ',' + url + ',' + ts + '\n';
-      const newText = (text && !text.endsWith('\n') ? text + '\n' : text) + newLine;
+      const newRow = key + ',' + url + ',' + ts + '\n';
+      const newText = (text && text.trim().length ? (text.endsWith('\n') ? text : text + '\n') : '') + newRow;
       const putBody = {
         message: 'farm-exchange: add self key ' + key,
         content: Buffer.from(newText, 'utf-8').toString('base64'),
