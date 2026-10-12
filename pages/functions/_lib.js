@@ -66,6 +66,14 @@ export function buildTransitHtml(realUrl) {
 <script>
 const REAL_URL = ${JSON.stringify(realUrl).replace(/</g, '\\u003c')};
 function openTaobaoApp(url) {
+  // 在淘宝/一淘 App 内（如用淘宝“扫一扫”打开本中转页）：其 WebView 会二次解析
+  // tbopen 携带的 h5Url，导致同时打开“目标页 + 随机页（如好运签）”。
+  // 故在淘宝/一淘 WebView 内直接 location.replace 真实链接（单页），不再使用 tbopen。
+  const isInsideTaobao = /AliApp\\(TB|AliApp\\(TM|taobao|etao/i.test(navigator.userAgent);
+  if (isInsideTaobao) {
+    location.replace(url);
+    return;
+  }
   // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议。
   // 曾用裸 taobao:// 做兜底，但淘宝冷启动（用户清过后台）时 2.5s 内收不到"已打开"信号，
   // 兜底被误发，淘宝接单后弹"为你推荐了一个新的页面"降级页并压在活动页下方；
