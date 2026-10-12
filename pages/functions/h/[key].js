@@ -88,7 +88,12 @@ export async function onRequest(context) {
     }
 
     if (pid) {
-        target = target.replace(/itemIds=[^&]+/, 'itemIds=' + pid);
+        // 兼容两种参数名：淘宝活动页用 itemIds=，农场兑换链接用 index?id=
+        if (/[?&]itemIds=/.test(target)) {
+            target = target.replace(/itemIds=[^&]+/, 'itemIds=' + pid);
+        } else if (/[?&]id=/.test(target)) {
+            target = target.replace(/([?&]id=)[^&]+/, '$1' + pid);
+        }
     }
 
     return htmlResponse(buildTransitHtml(target));
