@@ -826,6 +826,22 @@
             opacity: 1;
         }
 
+        /* iOS 手势遮罩：Safari 禁止无用户手势唤起 scheme（如自动跳转），需用户点击触发 */
+        #iosGestureMask {
+            position: fixed;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            z-index: 99998;
+            cursor: pointer;
+        }
+        #iosGestureMask .igm-big { font-size: 20px; margin-bottom: 10px; }
+        #iosGestureMask .igm-sub { font-size: 14px; opacity: 0.85; }
+
         .fold-toggle {
             background: linear-gradient(135deg, #7a93ac, #6b82a0) !important;
             opacity: 0.95;
@@ -1941,44 +1957,90 @@
             }
         }
 
+        // ====== iOS 适配（2026-10 修复：苹果设备结果区按钮/自动跳转复选框无法唤起淘宝）=====
+        // 根因：Safari 中隐藏 iframe 加载自定义 scheme（tbopen://）会被静默忽略，无法唤起 App，
+        // 必须用 window.location.href；且 Safari 禁止"无用户手势"的 scheme 唤起
+        // （勾选自动跳转复选框后，生成完成时才触发跳转，已不在手势窗口内），需手势遮罩兜底。
+        // iPadOS 14+ 的 UA 是 MacIntel，需结合触摸点判断。
+        function _isIOSDevice() {
+            return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+        var _lastUserGestureTime = 0;
+        (function() {
+            ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function(evt) {
+                document.addEventListener(evt, function() { _lastUserGestureTime = Date.now(); }, true);
+            });
+        })();
+        // iOS 手势遮罩：无手势上下文时展示，用户点一下即完成 scheme 跳转
+        function _showIOSGestureMask(onTap) {
+            var mask = document.getElementById('iosGestureMask');
+            if (!mask) {
+                mask = document.createElement('div');
+                mask.id = 'iosGestureMask';
+                var big = document.createElement('div');
+                big.className = 'igm-big';
+                big.textContent = '点击打开淘宝 App';
+                var sub = document.createElement('div');
+                sub.className = 'igm-sub';
+                sub.textContent = '如已安装将自动跳转';
+                mask.appendChild(big);
+                mask.appendChild(sub);
+                document.body.appendChild(mask);
+            }
+            mask.onclick = function() {
+                mask.style.display = 'none';
+                onTap();
+            };
+            mask.style.display = 'flex';
+        }
+        // 统一的 scheme 唤起：iOS/APK 用 location.href，安卓浏览器用隐藏 iframe
+        function _fireScheme(schemeUrl, isIOS, isAPK) {
+            if (isIOS || isAPK) {
+                // iOS Safari 的隐藏 iframe 无法唤起 scheme，必须 location.href
+                window.location.href = schemeUrl;
+            } else {
+                // 安卓浏览器用隐藏 iframe，避免页面导航错误
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = schemeUrl;
+                document.body.appendChild(iframe);
+                setTimeout(function() {
+                    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                }, 3000);
+            }
+        }
+
         // 跳转淘宝APP（兼容 Android / iOS / 鸿蒙系统）
         // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议。
         // 曾用裸 taobao:// 做兜底，但淘宝冷启动（用户清过后台）时 2.5s 内收不到"已打开"信号，
         // 兜底被误发，淘宝接单后弹"为你推荐了一个新的页面"降级页并压在活动页下方；
         // 且鸿蒙安卓兼容层的 UA 不含 HarmonyOS，靠 UA 禁兜底不可靠。故彻底移除兜底：
         // 只发 tbopen，活动页打开即终止，不再补发任何其他协议。
-        function openTaobaoApp(url, btnKey) {
+        function openTaobaoApp(url, btnKey, fromAutoJump) {
             // 入口区按钮点击时计入使用次数（btnKey 为空则不计数，如结果区一键跳转）
             if (btnKey) {
                 incrementUsageCount(btnKey);
                 syncUsageToFloat();
             }
             const tbopenUrl = `tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=${encodeURIComponent(url)}`;
-
-            // 尝试通过 scheme 唤起 APP（APK中由 Java 拦截，浏览器中由系统处理）
-            function tryScheme(schemeUrl) {
-                if (window.NativeBridge || (window.Android && typeof window.Android !== 'undefined')) {
-                    // APK 环境：Java shouldOverrideUrlLoading 会拦截 scheme
-                    window.location.href = schemeUrl;
-                } else {
-                    // 浏览器环境：用隐藏 iframe 避免页面导航错误
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = schemeUrl;
-                    document.body.appendChild(iframe);
-                    setTimeout(function() {
-                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 3000);
-                }
-            }
+            const isIOS = _isIOSDevice();
+            const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
 
             // 唯一自动唤起：tbopen://，不补发任何其他协议
-            tryScheme(tbopenUrl);
+            _fireScheme(tbopenUrl, isIOS, isAPK);
+
+            // iOS：若本次调用不在用户手势窗口内（如勾选"自动跳转淘宝"后生成完成时触发），
+            // Safari 会拦截 scheme 跳转，弹手势遮罩兜底，用户点一下即可完成跳转。
+            // fromAutoJump=true 时无视手势新鲜度直接弹遮罩，保证自动跳转必有兜底
+            if (isIOS && !isAPK && (fromAutoJump || (Date.now() - _lastUserGestureTime) > 1500)) {
+                _showIOSGestureMask(function() { _fireScheme(tbopenUrl, isIOS, isAPK); });
+            }
         }
 
         // 跳转支付宝APP（com.eg.android.AlipayGphone）
         function openAlipayApp(url) {
-            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isIOS = _isIOSDevice();
             const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
 
             // APK环境：直接通过 NativeBridge 调用 Java 层跳转
@@ -2012,25 +2074,9 @@
         }
 
         // 跳转天猫APP（com.tmall.wireless）
-        function openTmallApp(url) {
-            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        function openTmallApp(url, fromAutoJump) {
+            const isIOS = _isIOSDevice();
             const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
-
-            function tryScheme(schemeUrl) {
-                if (isAPK) {
-                    window.location.href = schemeUrl;
-                } else if (isIOS) {
-                    window.location.href = schemeUrl;
-                } else {
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = schemeUrl;
-                    document.body.appendChild(iframe);
-                    setTimeout(function() {
-                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 3000);
-                }
-            }
 
             if (isAPK) {
                 // APK环境：通过 NativeBridge 调用 Java 层跳转天猫
@@ -2038,15 +2084,18 @@
                     window.NativeBridge.openApp('com.tmall.wireless', url);
                     return;
                 }
-                tryScheme('tmall://tmallclient/');
+                _fireScheme('tmall://tmallclient/', isIOS, isAPK);
                 showToast('正在打开天猫...');
             } else if (isIOS) {
-                // iOS：尝试用 tmall:// scheme 直接打开页面，失败回落启动天猫
-                try {
-                    var tmallSchemeUrl = url.replace(/^https?:\/\//, 'tmall://');
-                    tryScheme(tmallSchemeUrl);
-                } catch(e) {
-                    tryScheme('tmall://tmallclient/');
+                // iOS：用淘宝官方 tbopen:// Deep Link（天猫 App 同样注册该协议；若同时安装了
+                // 淘宝/天猫，iOS 会弹出应用选择框，选天猫即可，且保留目标页面）。
+                // 曾用 tmall:// + 网址拼接的方案，天猫并不识别该格式，静默失败——已废弃。
+                const tbopenUrl = 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + encodeURIComponent(url);
+                _fireScheme(tbopenUrl, isIOS, isAPK);
+                // 无手势上下文（如勾选"自动跳转天猫"后生成完成时触发）时 Safari 会拦截，弹手势遮罩兜底。
+                // fromAutoJump=true 时无视手势新鲜度直接弹遮罩
+                if (fromAutoJump || (Date.now() - _lastUserGestureTime) > 1500) {
+                    _showIOSGestureMask(function() { _fireScheme(tbopenUrl, isIOS, isAPK); });
                 }
                 showToast('正在打开天猫...');
             } else {
@@ -2055,9 +2104,9 @@
                     var intentUrl = 'intent://' + urlObj.host + urlObj.pathname + urlObj.search +
                         '#Intent;scheme=https;package=com.tmall.wireless;S.browser_fallback_url=' +
                         encodeURIComponent(url) + ';end';
-                    tryScheme(intentUrl);
+                    _fireScheme(intentUrl, isIOS, isAPK);
                 } catch(e) {
-                    tryScheme('tmall://tmallclient/');
+                    _fireScheme('tmall://tmallclient/', isIOS, isAPK);
                     showToast('正在打开天猫...');
                 }
             }
@@ -2486,10 +2535,12 @@ async function resolveProductId(productLink) {
                 // 此处无需重复操作，避免重复声明与二次滚动抖动。
 
                 // 自动跳转：根据复选框选择跳转对应APP（结果区始终用真实链接直跳）
+                // fromAutoJump=true：iOS 下必然弹手势遮罩兜底，避免 setTimeout 落在手势
+                // 新鲜度窗口内时 Safari 拦截 scheme 而无任何提示
                 if (getAutoJumpEnabled()) {
-                    setTimeout(function() { openTaobaoApp(directUrl); }, 300);
+                    setTimeout(function() { openTaobaoApp(directUrl, '', true); }, 300);
                 } else if (getAutoJumpTmallEnabled()) {
-                    setTimeout(function() { openTmallApp(directUrl); }, 300);
+                    setTimeout(function() { openTmallApp(directUrl, true); }, 300);
                 }
             } catch (error) {
                 console.error('生成失败:', error);
