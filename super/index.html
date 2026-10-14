@@ -1629,6 +1629,10 @@
                 }).join(',');
                 if (ids) return ids;
             }
+            // 淘宝分享落地页新格式：pages-fast.m.taobao.com 的 var url 里用
+            // shareDetailItemId= 携带商品id（2026-10 发现，老格式 itemIds= 并存）
+            const shareIdMatch = url.match(/[?&]shareDetailItemId=(\d{7,})/);
+            if (shareIdMatch) return shareIdMatch[1];
             // 按最常见的格式优先匹配（id= 至少7位数字避免匹配短值如 YES）
             const m = url.match(/[?&]id=(\d{7,})/)          // id= 后至少7位数字
                 || url.match(/topIds=(\d+)/)                 // 淘宝分享页的 topIds 参数
