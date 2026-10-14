@@ -19,6 +19,7 @@ const UA_POOL = [
 ];
 
 // 从任意文本中抽取商品 id（支持多 id 逗号拼接、自动去重）
+// shareDetailItemId=：淘宝分享落地页 var url 的新格式（2026-10 起，与 itemIds= 并存）
 function extractIds(text) {
   if (!text) return [];
   const ids = new Set();
@@ -27,6 +28,7 @@ function extractIds(text) {
     let m;
     const reItem = /[?&]itemIds=([^&\s'"<>]+)/g;
     while ((m = reItem.exec(s))) m[1].split(',').forEach(x => { const t = x.trim(); if (/^\d{7,}$/.test(t)) ids.add(t); });
+    const reShare = /[?&]shareDetailItemId=(\d{7,})/g; while ((m = reShare.exec(s))) ids.add(m[1]);
     const reId = /[?&]id=(\d{7,})/g;        while ((m = reId.exec(s))) ids.add(m[1]);
     const reTop = /topIds=(\d+)/g;           while ((m = reTop.exec(s))) ids.add(m[1]);
     const reI = /\/i(\d+)\.htm/g;            while ((m = reI.exec(s))) ids.add(m[1]);
