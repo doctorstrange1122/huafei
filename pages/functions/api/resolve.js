@@ -23,7 +23,9 @@ const CORS = {
   'Content-Type': 'application/json'
 };
 
-// 从任意文本中抽取商品 id（多 id 去重，支持 itemIds=/id=/topIds=/i数字.htm/数字.html/var url=/JSON itemId/item.taobao.com/detail.tmall.com）
+// 从任意文本中抽取商品 id（多 id 去重，支持 itemIds=/shareDetailItemId=/id=/topIds=/i数字.htm/数字.html/var url=/JSON itemId/item.taobao.com/detail.tmall.com）
+// shareDetailItemId=：淘宝分享落地页（pages-fast.m.taobao.com 的 var url）2026-10 起使用的新格式，
+// 与老格式 itemIds= 并存；只认老格式会漏抽（真实案例：e.tb.cn/h.jYO0YKTrj0CVDUj 的 id 949977297895）。
 function extractIds(text) {
   if (!text) return [];
   const ids = new Set();
@@ -32,6 +34,7 @@ function extractIds(text) {
     let m;
     const reItem = /[?&]itemIds=([^&\s'"<>]+)/g;
     while ((m = reItem.exec(s))) m[1].split(',').forEach(x => { const t = x.trim(); if (/^\d{7,}$/.test(t)) ids.add(t); });
+    const reShare = /[?&]shareDetailItemId=(\d{7,})/g; while ((m = reShare.exec(s))) ids.add(m[1]);
     const reId = /[?&]id=(\d{7,})/g;        while ((m = reId.exec(s))) ids.add(m[1]);
     const reTop = /topIds=(\d+)/g;           while ((m = reTop.exec(s))) ids.add(m[1]);
     const reI = /\/i(\d+)\.htm/g;            while ((m = reI.exec(s))) ids.add(m[1]);
@@ -162,8 +165,11 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing url parameter' }), { status: 400, headers: CORS });
   }
 
+  // tk 诊断字段：分享文案整体不是合法 URL，new URL 会失败，改用正则从文本中提取
   let tk = '';
-  try { tk = new URL(target).searchParams.get('tk') || ''; } catch (e) {}
+  const tkM = target.match(/[?&]tk=([A-Za-z0-9]+)/);
+  if (tkM) tk = tkM[1];
+  else { try { tk = new URL(target).searchParams.get('tk') || ''; } catch (e) {} }
 
   // 总超时 9s：e.tb.cn 偶发卡死时，到点即返回失败，不让前端无限等待
   const winner = await Promise.race([
