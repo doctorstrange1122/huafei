@@ -1,6 +1,11 @@
 // 激活密钥 API
 // POST /api/key/activate
 // body: { key: "DT-XXXX-XXXX-XXXX", deviceId: "uuid" }
+
+// 固定测试密钥：不写入 KV、不绑定设备，任何设备反复激活都直接通过，方便联调测试。
+// 安全提醒：该字符串一旦外泄，任何人都能激活使用；仅用于测试，正式环境请从下方常量移除。
+const TEST_KEY = 'DT-TEST-TEST-TEST';
+
 export async function onRequestPost(context) {
     const { request, env } = context;
     const KV = env.KEY_STORE;
@@ -23,6 +28,16 @@ export async function onRequestPost(context) {
                 status: 400,
                 headers: corsHeaders
             });
+        }
+
+        // 固定测试密钥：跳过 KV 与设备校验，任何设备都能反复激活
+        if (key === TEST_KEY) {
+            return new Response(JSON.stringify({
+                success: true,
+                activated: true,
+                activatedAt: Date.now(),
+                testKey: true
+            }), { headers: corsHeaders });
         }
 
         // 从 KV 查找密钥
