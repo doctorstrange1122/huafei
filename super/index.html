@@ -477,8 +477,9 @@
         .scan-button:active { background: #5f7590; }
         .paste-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
         .paste-button:active { background: #5f7590; }
-        .parse-button { background: linear-gradient(135deg, #3a7bd5, #3a67b0); color: #fff; }
-        .parse-button:active { background: #2f66b8; }
+        /* 解析按钮：使用页面主题强调色（--tip-accent，暗色模式自动适配） */
+        .parse-button { background: var(--tip-accent); color: #fff; }
+        .parse-button:active { filter: brightness(0.88); }
         .clear-button { background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff; }
         .clear-button:active { background: #9aa0a6; }
 
@@ -1037,6 +1038,7 @@
                 <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?spmb=xsmsxiadan02&spma=farm&status_bar_transparent=true&hd_from_id=100085&sceneId=5387&deliveryId=90777&prismTrace=90777&itemIds=967940856218&awardIndex=1', 'entrance_miaosha13')" data-btn-key="entrance_miaosha13"><span class="btn-label">秒杀13(3)</span><span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
                 <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-cooperation/home?spmb=xsmsxiadan02&spma=farm&status_bar_transparent=true&hd_from_id=100085&sceneId=5387&deliveryId=88506&prismTrace=88506&itemIds=967940856218', 'entrance_miaosha13_1')" data-btn-key="entrance_miaosha13_1"><span class="btn-label">秒杀13①</span><span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
                 <button onclick="openTaobaoApp('https://huodong.taobao.com/wow/z/vip/hbqd5/hbqd5-detail?disableNav=YES&spm=hbqd5.27182761.c1.d1', '')" data-btn-key="entrance_yuanbao_detail"><span class="btn-label">元宝明细</span><span class="status-badge available">可用</span></button>
+                <button onclick="openTaobaoApp('https://web.m.taobao.com/app/tmall-wireless/tmall_farm_other/energys?disableNav=YES&x-preload=true&spm=farm.newfarm.c1.d1', '')" data-btn-key="entrance_sunshine_detail"><span class="btn-label">阳光明细</span><span class="status-badge available">可用</span></button>
             </div>
             </div>
         </div>
