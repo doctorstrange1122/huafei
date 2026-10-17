@@ -477,6 +477,8 @@
         .scan-button:active { background: #5f7590; }
         .paste-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
         .paste-button:active { background: #5f7590; }
+        .parse-button { background: linear-gradient(135deg, #3a7bd5, #3a67b0); color: #fff; }
+        .parse-button:active { background: #2f66b8; }
         .clear-button { background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff; }
         .clear-button:active { background: #9aa0a6; }
 
@@ -930,6 +932,7 @@
                 </div>
                 <div class="action-btn-group">
                     <button class="paste-button" onclick="pasteFromClipboard()" title="粘贴剪贴板">粘贴</button>
+                    <button class="parse-button" onclick="parseOnly()" title="仅解析：解析淘口令/分享文本，在结果区显示商品ID，不生成二维码">解析</button>
                     <button class="clear-button" onclick="clearInput()">清空</button>
                 </div>
             </div>
@@ -1636,6 +1639,11 @@
             // shareDetailItemId= 携带商品id（2026-10 发现，老格式 itemIds= 并存）
             const shareIdMatch = url.match(/[?&]shareDetailItemId=(\d{7,})/);
             if (shareIdMatch) return shareIdMatch[1];
+            // itemId=（单数，query 形式）：2026-10-17 新变体，m.tb.cn/h.jcrMiTk 落地页 var url 为
+            // .../tbms-limited-grad/detail?...&itemId=894516091577&...&skuId=5924516584641...
+            // 注意：只写 id= 匹配不到它（id= 前是字母 m）；切勿把 skuId= 当商品id
+            const itemIdMatch = url.match(/[?&]itemId=(\d{7,})/);
+            if (itemIdMatch) return itemIdMatch[1];
             // 按最常见的格式优先匹配（id= 至少7位数字避免匹配短值如 YES）
             const m = url.match(/[?&]id=(\d{7,})/)          // id= 后至少7位数字
                 || url.match(/topIds=(\d+)/)                 // 淘宝分享页的 topIds 参数
@@ -2364,6 +2372,67 @@ async function resolveProductId(productLink) {
             }
             // 复用主流程：自定义 key 不计入次数、二维码经中转域名包装（无百分号）
             await generateQRCodes(1, replacedUrl, '自定义链接', _customSelfKey);
+        }
+
+        // 仅解析：点击"解析"按钮 → 解析淘口令/分享文本 → 滚动到结果区展示商品ID（不生成二维码、不计次数）
+        async function parseOnly() {
+            const productLink = document.getElementById('productLink').value.trim();
+            if (!productLink) {
+                alert('请先输入淘口令或分享文本');
+                return;
+            }
+
+            const resultArea = document.getElementById('resultArea');
+            const resultCard = document.getElementById('resultCard');
+
+            // 与生成流程一致：先显示结果卡片并滚动到可视区，再展示"正在解析"
+            if (resultCard) {
+                resultCard.style.display = 'block';
+                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析，请稍候...</p>';
+
+            // 复用统一解析入口（直接id / 淘口令 / 链接提取，支持多id；带缓存）
+            const parseStart = Date.now();
+            const productId = await resolveProductId(productLink);
+            const elapsed = Date.now() - parseStart;
+            if (elapsed < 500) {
+                await new Promise(function(r) { setTimeout(r, 500 - elapsed); });
+            }
+
+            if (!productId) {
+                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
+                return;
+            }
+
+            // 保存解析结果，供"复制ID"与后续生成流程复用
+            window._lastGeneratedProductId = productId;
+
+            // 结果区展示：解析出的商品ID（多id 为逗号分隔）+ 复制按钮
+            const wrap = document.createElement('div');
+            const info = document.createElement('div');
+            info.className = 'result-info';
+            const label = document.createElement('div');
+            label.className = 'info-label';
+            label.textContent = '解析结果（商品ID）';
+            const value = document.createElement('div');
+            value.className = 'info-value';
+            value.textContent = productId;
+            value.style.wordBreak = 'break-all';
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '复制ID';
+            copyBtn.style.cssText = 'margin-top:8px;padding:6px 18px;font-size:13px;font-weight:600;border:none;border-radius:8px;background:linear-gradient(135deg,#7a93ac,#6b82a0);color:#fff;cursor:pointer;';
+            copyBtn.onclick = function() { copyProductId(); };
+            info.appendChild(label);
+            info.appendChild(value);
+            info.appendChild(copyBtn);
+            wrap.appendChild(info);
+            const tip = document.createElement('p');
+            tip.style.cssText = 'font-size:12px;color:#999;margin-top:8px;';
+            tip.textContent = '解析完成，未生成二维码。可直接使用该ID，或点击功能区按钮生成奖励链接。';
+            wrap.appendChild(tip);
+            resultArea.innerHTML = '';
+            resultArea.appendChild(wrap);
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
