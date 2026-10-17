@@ -20,6 +20,8 @@ const UA_POOL = [
 
 // 从任意文本中抽取商品 id（支持多 id 逗号拼接、自动去重）
 // shareDetailItemId=：淘宝分享落地页 var url 的新格式（2026-10 起，与 itemIds= 并存）
+// itemId=（单数）：2026-10-17 新变体（m.tb.cn 落地页 tbms-limited-grad/detail?...&itemId=894516091577）；
+//   只写 id= 正则匹配不到（id= 前是字母 m），且切勿抽 skuId=（SKU id 非商品 id）
 function extractIds(text) {
   if (!text) return [];
   const ids = new Set();
@@ -28,6 +30,7 @@ function extractIds(text) {
     let m;
     const reItem = /[?&]itemIds=([^&\s'"<>]+)/g;
     while ((m = reItem.exec(s))) m[1].split(',').forEach(x => { const t = x.trim(); if (/^\d{7,}$/.test(t)) ids.add(t); });
+    const reItemId = /[?&]itemId=(\d{7,})/g; while ((m = reItemId.exec(s))) ids.add(m[1]);
     const reShare = /[?&]shareDetailItemId=(\d{7,})/g; while ((m = reShare.exec(s))) ids.add(m[1]);
     const reId = /[?&]id=(\d{7,})/g;        while ((m = reId.exec(s))) ids.add(m[1]);
     const reTop = /topIds=(\d+)/g;           while ((m = reTop.exec(s))) ids.add(m[1]);
@@ -36,6 +39,8 @@ function extractIds(text) {
     const reVar = /var\s+url\s*=\s*['"]([^'"]+)['"]/g; while ((m = reVar.exec(s))) push(m[1]);
     const reJson = /"itemId"\s*:\s*"?(\d{7,})/g; while ((m = reJson.exec(s))) ids.add(m[1]);
     const reLink = /item\.taobao\.com\/item\.htm[^'"]*?id=(\d{7,})/gi; while ((m = reLink.exec(s))) ids.add(m[1]);
+    const reTmall = /detail\.tmall\.com\/item\.htm[^'"]*?id=(\d{7,})/gi; while ((m = reTmall.exec(s))) ids.add(m[1]);
+    const reUland = /uland\.taobao\.com\/[^'"]*?id=(\d{7,})/gi; while ((m = reUland.exec(s))) ids.add(m[1]);
   };
   push(text);
   return [...ids];
@@ -80,9 +85,10 @@ async function resolve(target) {
     }
   }
 
-  // 二次跟随：首轮没抽到 id，但 body 里含 item.taobao.com/item.htm 链接 → 追到真实商品页再抽
+  // 二次跟随：首轮没抽到 id，但 body 里含 item.taobao.com/item.htm 或 detail.tmall.com/item.htm 链接 → 追到真实商品页再抽
   if (best.ids.length === 0 && best.body) {
-    const mm = best.body.match(/item\.taobao\.com\/item\.htm[^'"]*/i);
+    const mm = best.body.match(/item\.taobao\.com\/item\.htm[^'"]*/i)
+            || best.body.match(/detail\.tmall\.com\/item\.htm[^'"]*/i);
     if (mm) {
       const next = mm[0].startsWith('http') ? mm[0] : 'https://' + mm[0];
       const r2 = await tryFetch(next, UA_POOL[0], referer, 4000);
