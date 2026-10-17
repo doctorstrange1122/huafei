@@ -881,7 +881,14 @@
             flex-shrink: 0;
         }
         .level2-fold-toggle .fold-arrow.open { transform: rotate(180deg); }
-        .level2-fold-panel { padding-top: 10px; }
+        /* 二级大区折叠面板：覆盖 fold-panel 的 grid 布局，恢复子分区垂直排列、按钮组每行3个 */
+        .level2-fold-panel {
+            display: none;
+            grid-template-columns: none;
+            grid-column: auto;
+            padding-top: 10px;
+        }
+        .level2-fold-panel.show { display: block; }
     </style>
 </head>
 <body>
