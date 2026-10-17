@@ -477,11 +477,12 @@
         .scan-button:active { background: #5f7590; }
         .paste-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
         .paste-button:active { background: #5f7590; }
-        /* 解析按钮：使用页面主题强调色（--tip-accent，暗色模式自动适配） */
-        .parse-button { background: var(--tip-accent); color: #fff; }
-        .parse-button:active { filter: brightness(0.88); }
-        .clear-button { background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff; }
-        .clear-button:active { background: #9aa0a6; }
+        /* 解析按钮：灰色系（与两侧灰蓝的粘贴/清空区分，A-B-A 轮流配色） */
+        .parse-button { background: linear-gradient(135deg, #c2c7cc, #aeb3b8); color: #fff; }
+        .parse-button:active { background: #9aa0a6; }
+        /* 清空与粘贴同色（灰蓝系），与中间“解析”（主题强调色）形成 A-B-A 轮流配色 */
+        .clear-button { background: linear-gradient(135deg, #7a93ac, #6b82a0); color: #fff; }
+        .clear-button:active { background: #5f7590; }
 
         /* 扫码弹窗 */
         .scan-modal {
