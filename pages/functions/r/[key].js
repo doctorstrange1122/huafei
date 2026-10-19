@@ -34,7 +34,14 @@ export async function onRequestGet(context) {
   let target = entry.url;
   if (pid) {
     target = target.replace(/itemIds=[^&]+/, 'itemIds=' + pid);
+    // itemId=（单数，query 形式）：8点秒杀模板 tbms-limited-grad/detail 使用的参数
+    target = target.replace(/([?&]itemId=)\d+/, '$1' + pid);
   }
+  // batchId 前 8 位改为当天日期（中国时区 UTC+8；仅对含 batchId 的链接生效，如 8点秒杀模板，
+  // 形如 batchId=202610172000 → 当天8位+2000）。无 batchId 的按钮链接不受影响。
+  const nowCn = new Date(Date.now() + 8 * 3600 * 1000);
+  const today8 = nowCn.toISOString().slice(0, 10).replace(/-/g, '');
+  target = target.replace(/(batchId=)\d{8}/, '$1' + today8);
 
   // scheme=taobao 时直接返回裸 scheme 重定向（安卓兼容，鸿蒙不行）——默认走 HTML 中转页
   if (scheme === 'taobao') {
