@@ -80,9 +80,14 @@ function parseHtmlButtons(html) {
   const tokens = [];
   for (const m of html.matchAll(/<div class="level2-title">([^<]+)<\/div>/g))
     tokens.push({ pos: m.index, type: "l2", text: m[1].trim() });
+  // 下拉按钮形式（2026-10 起三大区标题改为可折叠按钮）：
+  // <button ... class="level2-title level2-fold-toggle" ...>秒杀区(默认每日1次)<span class="fold-arrow">▼</span></button>
+  for (const m of html.matchAll(/<button[^>]*class="level2-title[^"]*"[^>]*>([^<]+)<span class="fold-arrow">/g))
+    tokens.push({ pos: m.index, type: "l2", text: m[1].trim() });
   for (const m of html.matchAll(/<div class="btn-section-title level3-title">([^<]+)<\/div>/g))
     tokens.push({ pos: m.index, type: "l3", text: m[1].trim() });
-  for (const m of html.matchAll(/generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*\)/g))
+  // 第5参数（如 skipCount=true）可选：8点秒杀走中转但不计数，调用形如 generateQRCodes(1,'URL','label','key',true)
+  for (const m of html.matchAll(/generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*(?:,[^)]*)?\)/g))
     tokens.push({ pos: m.index, type: "gq", count: m[1], url: m[2], label: m[3], key: m[4] });
   for (const m of html.matchAll(/<button\b([^>]*)>/g)) {
     const tag = m[1];
