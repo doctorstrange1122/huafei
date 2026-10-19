@@ -6,7 +6,7 @@ let cacheTime = 0;
 
 export function parseButtonMap(html) {
   // 解析 generateQRCodes(数量, '真实URL', '标签', 'key')
-  const re = /generateQRCodes\(\s*\d+\s*,\s*'([^']+)'\s*,\s*'([^']*)'\s*,\s*'([^']+)'\s*\)/g;
+  // 第5参数（如 skipCount=true）可选：8点秒杀走中转但不计数，调用形如 generateQRCodes(1,'URL','label','key',true)\n  const re = /generateQRCodes\(\s*\d+\s*,\s*'([^']+)'\s*,\s*'([^']*)'\s*,\s*'([^']+)'\s*(?:,[^)]*)?\)/g;
   const map = {};
   let m;
   while ((m = re.exec(html)) !== null) {
