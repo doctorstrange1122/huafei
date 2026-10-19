@@ -86,9 +86,18 @@ function parseHtmlButtons(html) {
     tokens.push({ pos: m.index, type: "l2", text: m[1].trim() });
   for (const m of html.matchAll(/<div class="btn-section-title level3-title">([^<]+)<\/div>/g))
     tokens.push({ pos: m.index, type: "l3", text: m[1].trim() });
+  // 按钮 HTML 位置索引：data-btn-key -> <button 标签位置
+  // generateSpecialQR 等函数体内的 generateQRCodes 调用位置在 <script> 末尾（入口区之后），
+  // 不在按钮处；用按钮位置覆盖后，一级/二级标题与状态归属才正确（8点秒杀）
+  const btnPosByKey = {};
+  for (const m of html.matchAll(/<button\b[^>]*data-btn-key="([^"]+)"/g))
+    if (!(m[1] in btnPosByKey)) btnPosByKey[m[1]] = m.index;
   // 第5参数（如 skipCount=true）可选：8点秒杀走中转但不计数，调用形如 generateQRCodes(1,'URL','label','key',true)
-  for (const m of html.matchAll(/generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*(?:,[^)]*)?\)/g))
-    tokens.push({ pos: m.index, type: "gq", count: m[1], url: m[2], label: m[3], key: m[4] });
+  for (const m of html.matchAll(/generateQRCodes\(\s*(\d+)\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*(?:,[^)]*)?\)/g)) {
+    const key = m[4];
+    const pos = (key in btnPosByKey) ? btnPosByKey[key] : m.index;
+    tokens.push({ pos, type: "gq", count: m[1], url: m[2], label: m[3], key });
+  }
   for (const m of html.matchAll(/<button\b([^>]*)>/g)) {
     const tag = m[1];
     const keyM = tag.match(/data-btn-key="([^"]+)"/);
