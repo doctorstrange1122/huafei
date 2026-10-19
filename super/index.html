@@ -2346,17 +2346,24 @@
                 return;
             }
 
-            // 用解析到的 id 替换 itemId=；batchId 前8位改为当天日期（保留后续数字，如 202610172000 → 当天+2000）
-            let finalUrl = templateUrl.replace(/([?&]itemId=)\d+/, '$1' + productId);
-            finalUrl = finalUrl.replace(/(batchId=)\d{8}/, '$1' + today8());
-            console.log('专用区最终链接:', finalUrl);
-
-            // 复用主生成流程（内部 replaceIdInUrl 已支持 itemId=，不会追加多余参数；空 btnKey 不计数、直出真实链接）
-            await generateQRCodes(1, finalUrl, label, '');
+            // 复用主生成流程：二维码走中转加密（key=zhuanYong8dian），
+            // 真实链接由中转服务端查表拼回（替换 itemId= 为 pid + batchId 前8位改为当天日期）。
+            // 第5参 skipCount=true：不计使用次数（保持“不计数”要求）。
+            //
+            // ⚠️ 下面 generateQRCodes 调用中的模板 URL 必须保持字面量内联：
+            // 中转服务后端通过正则解析本文件中的 generateQRCodes(数量,'模板URL','标签','key')
+            // 构建 key→URL 映射表；若改用变量（如 templateUrl）传递，后端将查不到该 key，
+            // 扫码会命中 404“该二维码已失效”。
+            await generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/app/ltao-fe/tbms-limited-grad/detail?x-ssr=true&disableNav=YES&disableProgress=true&status_bar_transparent=true&itemId=894516091577&batchId=202610172000&umpChannel=tbmsxsfq&skuId=6186475538163&forceThemis=true&spmb=appointmentpage&spm=mspd.xscd', '8点秒杀', 'zhuanYong8dian', true);
         }
 
         // 与现有 itemIds= 替换一致；兼容 id=；二者都没有则末尾追加 &itemIds=解析到的id
         function replaceIdInUrl(url, productId) {
+            // 含 batchId 的链接（如 8点秒杀模板）：前 8 位改为当天日期，保留后续数字
+            // （如 batchId=202610172000 → 当天8位+2000）。无 batchId 的链接不受影响。
+            if (/batchId=\d{8}/.test(url)) {
+                url = url.replace(/(batchId=)\d{8}/, '$1' + today8());
+            }
             const ids = String(productId);
             if (/itemIds=[^&]*/.test(url)) {
                 return url.replace(/itemIds=[^&]+/, 'itemIds=' + ids);
@@ -2546,7 +2553,7 @@ async function resolveProductId(productLink) {
             resultArea.appendChild(wrap);
         }
 
-        async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey) {
+        async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
             const userCustomText = document.getElementById('customText').value.trim();
@@ -2620,8 +2627,8 @@ async function resolveProductId(productLink) {
                 window._lastGeneratedLink = fullContent;
                 window._lastGeneratedProductId = productId;
 
-                // 增加按钮使用次数（自定义链接 key 不计入统计，无角标）
-                if (btnKey && btnKey.indexOf('self_') !== 0) {
+                // 增加按钮使用次数（自定义链接 key 不计入统计，无角标；skipCount=true 同样不计数）
+                if (btnKey && !skipCount && btnKey.indexOf('self_') !== 0) {
                     incrementUsageCount(btnKey);
                 }
 
