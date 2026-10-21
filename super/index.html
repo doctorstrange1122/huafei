@@ -644,7 +644,54 @@
         .button-group button:has(.status-badge.testing):active {
             transform: scale(0.97);
             box-shadow: 0 2px 8px rgba(150,155,160,0.18);
-        }        .button-group button .usage-badge.zero {
+        }
+
+        /* ===== 入口区"自设"子分区：用户自建按钮 ===== */
+        /* 空白按钮：与待测同色（灰）；已配置按钮：与可用同色（蓝灰，默认样式） */
+        .button-group button.self-btn.blank {
+            background: linear-gradient(135deg, #c2c7cc, #aeb3b8);
+            box-shadow: 0 4px 14px rgba(150,155,160,0.18);
+            color: rgba(255,255,255,0.85);
+        }
+        .button-group button.self-btn.blank:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(150,155,160,0.18);
+        }
+        .button-group button.self-btn .btn-label {
+            pointer-events: none;
+        }
+        /* 长按操作菜单（插入/编辑/删除） */
+        .self-menu {
+            position: fixed; z-index: 1300; min-width: 124px;
+            background: #fff; border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.22);
+            padding: 6px; display: none;
+        }
+        .self-menu.show { display: block; }
+        .self-menu .self-menu-item {
+            display: block; width: 100%; padding: 10px 14px;
+            font-size: 14px; font-weight: 600; text-align: left;
+            border: none; background: none; border-radius: 8px;
+            color: #333; cursor: pointer;
+        }
+        .self-menu .self-menu-item:active { background: #eef1f5; }
+        .self-menu .self-menu-item.danger { color: #c0392b; }
+        /* 反馈输入框（复用弹窗卡片） */
+        #feedbackInput {
+            width: 100%; box-sizing: border-box; margin-top: 12px;
+            border: 1px solid #d5dbe3; border-radius: 10px;
+            padding: 10px 12px; font-size: 14px; font-family: inherit;
+            resize: none; background: #f7f9fb; color: #333;
+        }
+        #feedbackInput:focus { outline: none; border-color: #7a93ac; background: #fff; }
+        /* 底部反馈入口 */
+        .feedback-link {
+            color: #5b7a9d; cursor: pointer;
+            text-decoration: underline;
+            -webkit-user-select: none; user-select: none;
+        }
+        .feedback-link:active { color: #46617e; }
+        .button-group button .usage-badge.zero {
             background: rgba(255,255,255,0.25);
             color: rgba(255,255,255,0.7);
             box-shadow: none;
@@ -1085,6 +1132,12 @@
                 <button onclick="openTaobaoApp('https://tyssr.m.taobao.com/app/alisports-fe/monopoly/placeOrderGoods?moduleId=268&asTaskId=37390&asTaskType=GOODS_AD_ITEM_ORDER_TASK&spm=a21i0.28763914.tasklist.37390&spm=a2141.7631565.tbshopmod-photo_retouch_26152088049.0&ttid=227200%40taobao_android_10.66.40', '')" data-btn-key="entrance_ledong"><span class="btn-label">一分乐动力</span><span class="status-badge available">可用</span></button>
                 <button onclick="openTaobaoApp('https://m.duanqu.com?_ariver_appid=8651693&page=pages%2Fwakuang%2Findex&query=noshunt%3DYES%26originPage%3DDAILY_CHECKIN&spm=a21i0.23424722a21i0.headerActivity.miniapp_other_daka&chn=taobao.erlou.erlouyundongyinhang&utparam=%7B%22miniapp_id%22%3A%228651693%22%2C%22spm_ori%22%3A%22a2141.miniapplist.zjsy.4%22%7D&spm_ori=a2141.miniapplist.zjsy.4&src_riv_id=8651693', '')" data-btn-key="entrance_ledong_daka"><span class="btn-label">打卡乐动力</span><span class="status-badge available">可用</span></button>
                 <button onclick="openTaobaoApp('https://pages-fast.m.taobao.com/wow/z/tmtjb/town/home?utparam={&quot;ranger_buckets_native&quot;:&quot;tsp6443_32421_standardVersion&quot;}&spm=a2141.1.iconsv5.8&miniappSourceChannel=homepage&scm=1007.home_icon.lingjb.d&x-ssr=true&disableNav=YES&x-sec=wua&asac=2A21B017LSI0KGN210C6D7&pha_h5=true&pha_nav=true&uniapp_id=1011525&uniapp_page=home&hd_from=tbHome', '')" data-btn-key="entrance_taojinbi"><span class="btn-label">淘金币活动</span><span class="status-badge available">可用</span></button>
+            <div class="btn-section-title level3-title">自设</div>
+            <div class="button-group" id="selfBtnGroup">
+                <button type="button" class="self-btn blank" data-self-id=""><span class="btn-label">空白</span></button>
+                <button type="button" class="self-btn blank" data-self-id=""><span class="btn-label">空白</span></button>
+                <button type="button" class="self-btn blank" data-self-id=""><span class="btn-label">空白</span></button>
+            </div>
             </div>
             </div>
             </div>
@@ -1096,7 +1149,7 @@
         <div id="resultArea"></div>
     </div>
 
-    <div class="footer">秒杀商品奖励工具</div>
+    <div class="footer"><span class="feedback-link" id="feedbackLink">有问题可点此反馈</span></div>
 </div>
 
     <!-- 扫码弹窗 -->
@@ -1115,6 +1168,52 @@
             <div class="custom-text-actions">
                 <button type="button" class="btn-cancel" onclick="closeCustomTextModal()">取消</button>
                 <button type="button" class="btn-confirm" onclick="confirmCustomTextModal()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自设按钮：长按操作菜单 -->
+    <div class="self-menu" id="selfMenu">
+        <button type="button" class="self-menu-item" id="selfMenuInsert">插入</button>
+        <button type="button" class="self-menu-item" id="selfMenuEdit">编辑</button>
+        <button type="button" class="self-menu-item danger" id="selfMenuDelete">删除</button>
+    </div>
+
+    <!-- 自设按钮：编辑弹窗（名称 + 链接） -->
+    <div class="custom-text-modal" id="selfEditModal" style="display:none;">
+        <div class="custom-text-overlay" onclick="closeSelfEditModal()"></div>
+        <div class="custom-text-card">
+            <div class="custom-text-title">编辑按钮</div>
+            <input type="text" id="selfEditName" placeholder="按钮名称" maxlength="12">
+            <input type="text" id="selfEditUrl" placeholder="跳转链接，需以 http(s):// 开头" maxlength="2000">
+            <div class="custom-text-actions">
+                <button type="button" class="btn-cancel" onclick="closeSelfEditModal()">取消</button>
+                <button type="button" class="btn-confirm" onclick="confirmSelfEditModal()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自设按钮：删除二次确认 -->
+    <div class="custom-text-modal" id="selfDeleteModal" style="display:none;">
+        <div class="custom-text-overlay" onclick="closeSelfDeleteModal()"></div>
+        <div class="custom-text-card">
+            <div class="custom-text-title" id="selfDeleteTitle">确定删除该按钮？</div>
+            <div class="custom-text-actions">
+                <button type="button" class="btn-cancel" onclick="closeSelfDeleteModal()">取消</button>
+                <button type="button" class="btn-confirm" onclick="confirmSelfDeleteModal()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 问题反馈弹窗 -->
+    <div class="custom-text-modal" id="feedbackModal" style="display:none;">
+        <div class="custom-text-overlay" onclick="closeFeedbackModal()"></div>
+        <div class="custom-text-card">
+            <div class="custom-text-title">问题反馈</div>
+            <textarea id="feedbackInput" rows="4" maxlength="500" placeholder="请描述遇到的问题或建议（500字以内）"></textarea>
+            <div class="custom-text-actions">
+                <button type="button" class="btn-cancel" onclick="closeFeedbackModal()">取消</button>
+                <button type="button" class="btn-confirm" id="feedbackSubmitBtn" onclick="submitFeedback()">提交</button>
             </div>
         </div>
     </div>
@@ -2101,6 +2200,262 @@
                 _showIOSGestureMask(function() { _fireScheme(tbopenUrl, isIOS, isAPK); });
             }
         }
+        /* ==================== 入口区"自设"子分区（用户自建按钮） ==================== */
+        // 存储：localStorage self_buttons_v1 = [{id, name, url}]，url 为空表示空白按钮
+        // 行为：空白按钮灰色，单击提示长按；已配置按钮蓝灰色，单击 openTaobaoApp 隐式跳转；
+        //       长按 500ms 弹出操作菜单（插入/编辑/删除），删除有二次确认。
+        var SELF_STORAGE_KEY = 'self_buttons_v1';
+
+        function selfNewId() {
+            return 'sb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        }
+
+        function selfLoadButtons() {
+            try {
+                var raw = localStorage.getItem(SELF_STORAGE_KEY);
+                if (raw) {
+                    var arr = JSON.parse(raw);
+                    if (Array.isArray(arr) && arr.length) {
+                        return arr.filter(function (b) { return b && b.id; }).map(function (b) {
+                            return { id: String(b.id), name: String(b.name || ''), url: String(b.url || '') };
+                        });
+                    }
+                }
+            } catch (e) {}
+            // 首次使用：三个空白按钮
+            var init3 = [];
+            for (var i = 0; i < 3; i++) init3.push({ id: selfNewId(), name: '', url: '' });
+            return init3;
+        }
+
+        function selfSaveButtons(list) {
+            try { localStorage.setItem(SELF_STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+        }
+
+        var selfButtons = selfLoadButtons();
+        selfSaveButtons(selfButtons); // 首次即落库，保证 id 稳定
+
+        function selfRender() {
+            var group = document.getElementById('selfBtnGroup');
+            if (!group) return;
+            group.innerHTML = '';
+            selfButtons.forEach(function (btn) {
+                var el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'self-btn ' + (btn.url ? 'configured' : 'blank');
+                el.setAttribute('data-self-id', btn.id);
+                var label = document.createElement('span');
+                label.className = 'btn-label';
+                label.textContent = btn.url ? (btn.name || '未命名') : '空白';
+                el.appendChild(label);
+                selfBindButton(el, btn.id);
+                group.appendChild(el);
+            });
+        }
+
+        // 长按检测（500ms）+ 点击行为
+        function selfBindButton(el, id) {
+            var pressTimer = null;
+            var longFired = false;
+            function clearPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+            el.addEventListener('pointerdown', function (e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                longFired = false;
+                clearPress();
+                pressTimer = setTimeout(function () {
+                    longFired = true;
+                    if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+                    selfOpenMenu(el, id);
+                }, 500);
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+                el.addEventListener(ev, clearPress);
+            });
+            // 阻止系统长按菜单 / 文本选择
+            el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+            el.addEventListener('click', function () {
+                if (longFired) { longFired = false; return; } // 长按已处理，抑制本次 click
+                var item = selfButtons.find(function (b) { return b.id === id; });
+                if (!item) return;
+                if (item.url) {
+                    openTaobaoApp(item.url, '');
+                } else {
+                    showToast('长按编辑按钮内容');
+                }
+            });
+        }
+
+        // 长按操作菜单（插入/编辑/删除）
+        var selfMenuTargetId = null;
+
+        function selfOpenMenu(el, id) {
+            var menu = document.getElementById('selfMenu');
+            if (!menu) return;
+            selfMenuTargetId = id;
+            menu.classList.add('show');
+            var rect = el.getBoundingClientRect();
+            var mh = menu.offsetHeight, mw = menu.offsetWidth;
+            var top = rect.top - mh - 6;
+            if (top < 8) top = rect.bottom + 6;
+            var left = rect.left + rect.width / 2 - mw / 2;
+            left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+        }
+
+        function selfCloseMenu() {
+            var menu = document.getElementById('selfMenu');
+            if (menu) menu.classList.remove('show');
+            selfMenuTargetId = null;
+        }
+
+        // 点菜单以外的区域关闭菜单（pointerdown 先行，避开长按结束时的 click）
+        document.addEventListener('pointerdown', function (e) {
+            var menu = document.getElementById('selfMenu');
+            if (!menu || !menu.classList.contains('show')) return;
+            if (menu.contains(e.target)) return;
+            selfCloseMenu();
+        }, true);
+
+        function selfBindMenu() {
+            document.getElementById('selfMenuInsert').addEventListener('click', function () {
+                var id = selfMenuTargetId;
+                selfCloseMenu();
+                if (!id) return;
+                var idx = selfButtons.findIndex(function (b) { return b.id === id; });
+                if (idx < 0) return;
+                selfButtons.splice(idx, 0, { id: selfNewId(), name: '', url: '' });
+                selfSaveButtons(selfButtons);
+                selfRender();
+                showToast('已插入空白按钮');
+            });
+            document.getElementById('selfMenuEdit').addEventListener('click', function () {
+                var id = selfMenuTargetId;
+                selfCloseMenu();
+                if (!id) return;
+                selfOpenEditModal(id);
+            });
+            document.getElementById('selfMenuDelete').addEventListener('click', function () {
+                var id = selfMenuTargetId;
+                selfCloseMenu();
+                if (!id) return;
+                selfOpenDeleteModal(id);
+            });
+        }
+
+        // 编辑弹窗（按钮名称 + 跳转链接）
+        var selfEditingId = null;
+
+        function selfOpenEditModal(id) {
+            var item = selfButtons.find(function (b) { return b.id === id; });
+            if (!item) return;
+            selfEditingId = id;
+            document.getElementById('selfEditName').value = item.name || '';
+            document.getElementById('selfEditUrl').value = item.url || '';
+            var modal = document.getElementById('selfEditModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+
+        function closeSelfEditModal() {
+            document.getElementById('selfEditModal').style.display = 'none';
+            selfEditingId = null;
+        }
+
+        function confirmSelfEditModal() {
+            if (!selfEditingId) return;
+            var name = document.getElementById('selfEditName').value.trim();
+            var url = document.getElementById('selfEditUrl').value.trim();
+            if (!name) { showToast('请输入按钮名称'); return; }
+            if (!/^https?:\/\//i.test(url)) { showToast('链接需以 http:// 或 https:// 开头'); return; }
+            var item = selfButtons.find(function (b) { return b.id === selfEditingId; });
+            if (item) { item.name = name; item.url = url; }
+            selfSaveButtons(selfButtons);
+            closeSelfEditModal();
+            selfRender();
+            showToast('已保存');
+        }
+
+        // 删除二次确认
+        var selfDeletingId = null;
+
+        function selfOpenDeleteModal(id) {
+            var item = selfButtons.find(function (b) { return b.id === id; });
+            if (!item) return;
+            selfDeletingId = id;
+            document.getElementById('selfDeleteTitle').textContent = item.url
+                ? ('确定删除按钮「' + (item.name || '未命名') + '」？')
+                : '确定删除该空白按钮？';
+            var modal = document.getElementById('selfDeleteModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        }
+
+        function closeSelfDeleteModal() {
+            document.getElementById('selfDeleteModal').style.display = 'none';
+            selfDeletingId = null;
+        }
+
+        function confirmSelfDeleteModal() {
+            if (!selfDeletingId) return;
+            selfButtons = selfButtons.filter(function (b) { return b.id !== selfDeletingId; });
+            if (!selfButtons.length) {
+                // 删光后补一个空白，避免子分区消失
+                selfButtons.push({ id: selfNewId(), name: '', url: '' });
+            }
+            selfSaveButtons(selfButtons);
+            closeSelfDeleteModal();
+            selfRender();
+            showToast('已删除');
+        }
+
+        selfRender();
+        selfBindMenu();
+
+        /* ==================== 问题反馈 ==================== */
+        var FEEDBACK_API = 'https://huafei-redirect-pages.pages.dev/api/feedback';
+
+        document.getElementById('feedbackLink').addEventListener('click', function () {
+            document.getElementById('feedbackInput').value = '';
+            var btn = document.getElementById('feedbackSubmitBtn');
+            btn.disabled = false;
+            btn.textContent = '提交';
+            var modal = document.getElementById('feedbackModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        });
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').style.display = 'none';
+        }
+
+        function submitFeedback() {
+            var text = (document.getElementById('feedbackInput').value || '').trim();
+            if (!text) { showToast('请先输入反馈内容'); return; }
+            if (text.length > 500) { showToast('反馈内容不能超过500字'); return; }
+            var btn = document.getElementById('feedbackSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = '提交中…';
+            // GET 方式提交（与 huafei-save 一致：WebView 内 POST JSON 的 CORS 预检偶发失败，GET 更稳）
+            fetch(FEEDBACK_API + '?text=' + encodeURIComponent(text), { method: 'GET' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    btn.disabled = false;
+                    btn.textContent = '提交';
+                    if (d && d.success) {
+                        closeFeedbackModal();
+                        showToast('已收到反馈，谢谢！');
+                    } else {
+                        showToast((d && d.message) ? String(d.message) : '提交失败，请稍后重试');
+                    }
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    btn.textContent = '提交';
+                    showToast('提交失败，请稍后重试');
+                });
+        }
+
 
         // 跳转支付宝APP（com.eg.android.AlipayGphone）
         function openAlipayApp(url) {
