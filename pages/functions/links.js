@@ -35,7 +35,34 @@ export async function onRequestGet(context) {
     }
   } catch (e) {}
 
-  const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote);
+  // 反馈记录（KV KEY_STORE 中 feedback:*，时间倒序最多 50 条）
+  const feedbackRows = [];
+  let feedbackNote = "";
+  const KV = context.env && context.env.KEY_STORE;
+  if (KV) {
+    try {
+      let cursor;
+      do {
+        const opts = { prefix: "feedback:" };
+        if (cursor) opts.cursor = cursor;
+        const res = await KV.list(opts);
+        for (const k of res.keys) {
+          const v = await KV.get(k.name);
+          if (!v) continue;
+          try {
+            const obj = JSON.parse(v);
+            feedbackRows.push({ text: String(obj.text || ""), ts: Number(obj.ts) || 0, ua: String(obj.ua || "") });
+          } catch (e) {}
+        }
+        cursor = res.list_complete ? undefined : res.cursor;
+      } while (cursor);
+      feedbackRows.sort((a, b) => b.ts - a.ts);
+      if (feedbackRows.length > 50) feedbackRows.length = 50;
+      feedbackNote = feedbackRows.length + " 条";
+    } catch (e) { feedbackNote = "读取失败"; }
+  }
+
+  const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote, feedbackRows, feedbackNote);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
@@ -196,7 +223,7 @@ function classForLevel1(level1) {
   return "cat-" + (map[level1] || "other");
 }
 
-function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
+function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRows, feedbackNote) {
   let errMsg = "";
   let finalRows = [];
   if (htmlText && htmlText.trim()) {
@@ -330,6 +357,19 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote) {
       <thead><tr>${theadCells}</tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">反馈记录 <span style="font-size:12px;color:#999;font-weight:400;">（${feedbackNote || "0 条"}，按时间倒序，最多显示 50 条，90 天自动清理）</span></div>
+    ${feedbackRows && feedbackRows.length ? `<div style="max-height:420px;overflow:auto;">${feedbackRows.map(fb => {
+      const t = fb.ts ? new Date(fb.ts + 8 * 3600 * 1000) : null;
+      const p = n => String(n).padStart(2, "0");
+      const time = t ? (t.getUTCFullYear() + "-" + p(t.getUTCMonth() + 1) + "-" + p(t.getUTCDate()) + " " + p(t.getUTCHours()) + ":" + p(t.getUTCMinutes())) : "";
+      const text = String(fb.text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `<div style="padding:10px 4px;border-bottom:1px solid #eef1f5;">
+        <div style="font-size:12px;color:#999;margin-bottom:4px;">${time}</div>
+        <div style="font-size:14px;color:#333;line-height:1.5;word-break:break-all;">${text}</div>
+      </div>`;
+    }).join("")}</div>` : `<div style="padding:18px 4px;color:#999;font-size:14px;">暂无反馈</div>`}
   </div>
   <script>
   (function(){
