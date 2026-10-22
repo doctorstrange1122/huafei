@@ -1185,7 +1185,7 @@
         <div class="custom-text-card">
             <div class="custom-text-title">编辑按钮</div>
             <input type="text" id="selfEditName" placeholder="按钮名称" maxlength="12">
-            <input type="text" id="selfEditUrl" placeholder="跳转链接，需以 http(s):// 开头" maxlength="2000">
+            <input type="text" id="selfEditUrl" placeholder="跳转链接 / 淘口令 / 淘宝分享文本均可" maxlength="2000">
             <div class="custom-text-actions">
                 <button type="button" class="btn-cancel" onclick="closeSelfEditModal()">取消</button>
                 <button type="button" class="btn-confirm" onclick="confirmSelfEditModal()">保存</button>
@@ -2217,7 +2217,7 @@
                     var arr = JSON.parse(raw);
                     if (Array.isArray(arr) && arr.length) {
                         return arr.filter(function (b) { return b && b.id; }).map(function (b) {
-                            return { id: String(b.id), name: String(b.name || ''), url: String(b.url || '') };
+                            return { id: String(b.id), name: String(b.name || ''), url: String(b.url || ''), kind: selfDetectKind(String(b.url || '')) };
                         });
                     }
                 }
@@ -2226,6 +2226,33 @@
             var init3 = [];
             for (var i = 0; i < 3; i++) init3.push({ id: selfNewId(), name: '', url: '' });
             return init3;
+        }
+
+        // 识别链接类型：'short'=淘宝短链(m/e.tb.cn，tbopen 直接跳，由淘宝 App 内落地)；
+        // 'cmd'=淘口令/分享文本(点击复制并唤起淘宝)；'url'=普通链接
+        function selfDetectKind(url) {
+            if (/^https?:\/\/(m|e)\.tb\.cn\//i.test(url || '')) return 'short';
+            return 'url';
+        }
+
+        // 解析链接输入框内容：干净URL / 含短链的分享文本 / 纯口令，无法识别返回 null
+        function selfParseLinkInput(raw) {
+            if (!raw) return null;
+            // 1. 本身就是干净 URL（无空白）
+            if (/^https?:\/\//i.test(raw) && !/\s/.test(raw)) {
+                return { kind: selfDetectKind(raw), url: raw };
+            }
+            // 2. 分享文本（如"【淘宝】98xx https://m.tb.cn/h.xxx 我分享了..."）：提取其中的短链
+            var short = (typeof extractShortUrl === 'function') ? extractShortUrl(raw) : null;
+            if (short && /^https?:\/\//i.test(short)) {
+                return { kind: selfDetectKind(short), url: short };
+            }
+            // 3. 纯口令（无链接）：淘口令形如 "98🔐XQngTEgWEdP£"，可带中文描述，整段存原文
+            var compact = raw.replace(/\s+/g, '');
+            if (compact.length >= 5 && compact.length <= 200 && /[a-zA-Z0-9]{4,}/.test(compact)) {
+                return { kind: 'cmd', url: raw };
+            }
+            return null;
         }
 
         function selfSaveButtons(list) {
@@ -2277,10 +2304,20 @@
                 if (longFired) { longFired = false; return; } // 长按已处理，抑制本次 click
                 var item = selfButtons.find(function (b) { return b.id === id; });
                 if (!item) return;
-                if (item.url) {
-                    openTaobaoApp(item.url, '');
+                if (!item.url) { showToast('长按编辑按钮内容'); return; }
+                var kind = item.kind || 'url';
+                if (kind === 'cmd') {
+                    // 淘口令：复制整段分享文本 → 唤起淘宝 App（淘宝启动时自动识别剪贴板口令）
+                    copyToClipboard(item.url);
+                    var isIOS = _isIOSDevice();
+                    var isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
+                    setTimeout(function () {
+                        showToast('已复制分享内容，打开淘宝即可识别', 2500);
+                        _fireScheme('taobao://m.taobao.com', isIOS, isAPK);
+                    }, 350);
                 } else {
-                    showToast('长按编辑按钮内容');
+                    // 普通链接 / 淘宝短链：tbopen 隐式跳转（短链由淘宝 App 内落地到商品/店铺页）
+                    openTaobaoApp(item.url, '');
                 }
             });
         }
@@ -2365,15 +2402,17 @@
         function confirmSelfEditModal() {
             if (!selfEditingId) return;
             var name = document.getElementById('selfEditName').value.trim();
-            var url = document.getElementById('selfEditUrl').value.trim();
+            var raw = document.getElementById('selfEditUrl').value.trim();
             if (!name) { showToast('请输入按钮名称'); return; }
-            if (!/^https?:\/\//i.test(url)) { showToast('链接需以 http:// 或 https:// 开头'); return; }
+            // 支持：干净链接 / 含短链的分享文本 / 纯淘口令
+            var parsed = selfParseLinkInput(raw);
+            if (!parsed) { showToast('无法识别：请粘贴链接、淘口令或整段分享文本'); return; }
             var item = selfButtons.find(function (b) { return b.id === selfEditingId; });
-            if (item) { item.name = name; item.url = url; }
+            if (item) { item.name = name; item.url = parsed.url; item.kind = parsed.kind; }
             selfSaveButtons(selfButtons);
             closeSelfEditModal();
             selfRender();
-            showToast('已保存');
+            showToast(parsed.kind === 'cmd' ? '已保存（口令类：点击将复制并唤起淘宝）' : '已保存');
         }
 
         // 删除二次确认
