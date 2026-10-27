@@ -2157,13 +2157,25 @@
             };
             mask.style.display = 'flex';
         }
-        // 统一的 scheme 唤起：iOS/APK 用 location.href，安卓浏览器用隐藏 iframe
+        // 统一的 scheme 唤起：iOS/APK/鸿蒙(含卓易通) 用 location.href，普通安卓浏览器用隐藏 iframe
+        // 鸿蒙兼容层（卓易通）里隐藏 iframe 加载 tbopen:// 会被"双层处理"：iframe 唤起淘宝的同时，
+        // 浏览器自身也被导航/拉回首页 → 每次点击都出现"淘宝界面 + 浏览器首页"两次切换（冷/热启动都复现）。
+        // 故鸿蒙环境改顶层 location.href 唤起，并在全局加 3 秒去重，防御兼容层对 scheme 的重复处理。
+        var _lastSchemeUrl = '', _lastSchemeTs = 0;
+        function _isHarmonyEnv() {
+            return /HarmonyOS|OpenHarmony|HuaweiBrowser|zhuoyi/i.test(navigator.userAgent);
+        }
         function _fireScheme(schemeUrl, isIOS, isAPK) {
-            if (isIOS || isAPK) {
-                // iOS Safari 的隐藏 iframe 无法唤起 scheme，必须 location.href
+            // 去重：3 秒内同一 scheme 不重复发起，防御兼容层对 iframe scheme 的双层处理造成双跳转
+            var _now = Date.now();
+            if (schemeUrl === _lastSchemeUrl && _now - _lastSchemeTs < 3000) return;
+            _lastSchemeUrl = schemeUrl; _lastSchemeTs = _now;
+
+            if (isIOS || isAPK || _isHarmonyEnv()) {
+                // iOS Safari / APK / 鸿蒙(卓易通)：隐藏 iframe 无法唤起或会被双层处理，必须顶层 location.href
                 window.location.href = schemeUrl;
             } else {
-                // 安卓浏览器用隐藏 iframe，避免页面导航错误
+                // 普通安卓浏览器用隐藏 iframe，避免页面导航错误
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 iframe.src = schemeUrl;
