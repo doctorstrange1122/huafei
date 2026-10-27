@@ -2186,28 +2186,6 @@
             }
         }
 
-        // === 唤起 scheme 可切换试验（鸿蒙/卓易通双跳转排查用，?scheme= 控制，默认 tbopen）===
-        // 用法：页面 URL 后加 ?scheme=intent 或 ?scheme=taobao 切换；不改界面，真机对比哪种不双跳
-        // 预期：若安卓版淘宝对某种 scheme 直接单页落地（跳过 Welcome/恢复栈），即能消除双跳
-        var _schemeMode = (function() {
-            try { return (new URLSearchParams(location.search).get('scheme') || 'tbopen').toLowerCase(); }
-            catch (e) { return 'tbopen'; }
-        })();
-        function buildOpenUrl(rawUrl) {
-            var enc = encodeURIComponent(rawUrl);
-            if (_schemeMode === 'taobao') {
-                // 直接 taobao:// 协议（跳过 tbopen 包装，看安卓版淘宝是否绕过 Welcome 单页落地）
-                return 'taobao://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + enc;
-            }
-            if (_schemeMode === 'intent') {
-                // 安卓原生 intent 深链：显式指定 package，避免兼容层二次处理；带 browser_fallback_url 兜底
-                return 'intent://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + enc +
-                       '#Intent;scheme=tbopen;package=com.taobao.taobao;S.browser_fallback_url=' + encodeURIComponent(rawUrl) + ';end';
-            }
-            // 基线：tbopen://
-            return 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + enc;
-        }
-
         // 跳转淘宝APP（兼容 Android / iOS / 鸿蒙系统）
         // tbopen:// 是淘宝官方 Deep Link，鸿蒙兼容性最好——唯一自动唤起协议。
         // 曾用裸 taobao:// 做兜底，但淘宝冷启动（用户清过后台）时 2.5s 内收不到"已打开"信号，
@@ -2227,7 +2205,7 @@
                 incrementUsageCount(btnKey);
                 syncUsageToFloat();
             }
-            const tbopenUrl = buildOpenUrl(url);
+            const tbopenUrl = `tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=${encodeURIComponent(url)}`;
             const isIOS = _isIOSDevice();
             const isAPK = !!window.NativeBridge || (window.Android && typeof window.Android !== 'undefined');
 
