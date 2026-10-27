@@ -156,7 +156,13 @@ function parseHtmlButtons(html) {
       const keyM = tag.match(/data-btn-key="([^"]+)"/);
       const key = keyM[1];
       const oc = tag.match(/openTaobaoApp\(\s*'([^']*)'/);
-      const url = oc ? oc[1] : "";
+      let url = oc ? oc[1] : "";
+      // 动态日期占位符：__TODAY_MMDD__ → 当天月日（UTC+8，与用户设备一致）
+      if (url.indexOf('__TODAY_MMDD__') !== -1) {
+        const _now = new Date(Date.now() + 8 * 3600 * 1000);
+        const _mmdd = ('0' + (_now.getUTCMonth() + 1)).slice(-2) + ('0' + _now.getUTCDate()).slice(-2);
+        url = url.replace(/__TODAY_MMDD__/g, _mmdd);
+      }
       const end = html.indexOf("</button>", t.pos);
       const inner = html.slice(t.pos, end);
       const lbl = (inner.match(/btn-label">([^<]+)</) || [])[1] || key;
