@@ -186,7 +186,7 @@
           </div>
         </div>
         <div class="qr-tip" id="qrTip"></div>
-        <div class="qr-save-hint" id="saveHint" style="display:none;">长按上方二维码图片也可保存</div>
+        <div class="qr-save-hint" id="saveHint" style="display:none;">点击「存」按钮，或长按二维码图片即可保存</div>
       </div>
     </div>
 
@@ -336,6 +336,7 @@
   var taobaoBtn = document.getElementById('taobaoBtn');
   var saveBtn = document.getElementById('saveBtn');
   var lastText = '';
+  var currentDataURL = '';   // 最新生成的二维码 dataURL（供保存/长按使用）
 
   // 美化选项
   var opts = {
@@ -512,10 +513,11 @@
     // 导出
     var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
     try {
-      qrImg.src = off.toDataURL(mime, 0.92);
+      currentDataURL = off.toDataURL(mime, 0.92);
     } catch(e){
-      qrImg.src = off.toDataURL('image/png');
+      currentDataURL = off.toDataURL('image/png');
     }
+    qrImg.src = currentDataURL;
     qrImg.style.display='block';
     qrEmpty.style.display='none';
     saveHint.style.display='block';
@@ -534,6 +536,7 @@
     saveBtn.disabled = true;
     qrTip.textContent='';
     lastText='';
+    currentDataURL='';
   }
 
   /* ---------- 防抖自动生成 ---------- */
@@ -566,9 +569,17 @@
     input.value=''; clearQR(); input.focus();
   });
 
-  /* ---------- 保存图片（系统分享面板优先，可存相册） ---------- */
-  saveBtn.addEventListener('click', function(){
-    if (saveBtn.disabled) return;
+  /* ---------- 保存图片：App 内走原生存图库，否则分享/下载 ---------- */
+  // 与主界面结果区同源：App 注入的 NativeBridge.saveImage 可直达系统图库
+  function hasNativeSave(){ return (typeof NativeBridge !== 'undefined') && !!NativeBridge.saveImage; }
+  function doSave(){
+    if (saveBtn.disabled || !currentDataURL) return;
+    // 1) App 原生接口：直接存入系统图库
+    if (hasNativeSave()){
+      NativeBridge.saveImage(currentDataURL);
+      return;
+    }
+    // 2) Web Share：弹出系统分享面板，可直接存相册/发微信
     var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
     var ext  = opts.format==='jpg' ? 'jpg' : 'png';
     off.toBlob(function(b){
@@ -576,19 +587,37 @@
       var fname = 'qrcode_' + Date.now() + '.' + ext;
       var file = null;
       try { file = new File([b], fname, {type:mime}); } catch(e){}
-      // 1) Web Share：弹出系统分享面板，可直接存相册/发微信
       if (file && navigator.canShare && navigator.canShare({files:[file]})){
         navigator.share({files:[file], title:'二维码'}).catch(function(){});
         return;
       }
-      // 2) 降级：blob 链接触发下载
+      // 3) 降级：blob 链接触发下载
       var a=document.createElement('a');
       a.href=URL.createObjectURL(b);
       a.download=fname;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
     }, mime, 0.92);
+  }
+  saveBtn.addEventListener('click', doSave);
+
+  /* ---------- 长按二维码：App 内直接保存图片到图库（与主界面一致） ---------- */
+  qrImg.style.webkitTouchCallout = hasNativeSave() ? 'none' : '';
+  qrImg.addEventListener('contextmenu', function(e){
+    if (hasNativeSave()) e.preventDefault();
   });
+  var lpTimer=null;
+  qrImg.addEventListener('touchstart', function(){
+    if (!hasNativeSave()) return;            // 浏览器环境交给系统长按菜单
+    if (lpTimer) clearTimeout(lpTimer);
+    lpTimer = setTimeout(function(){
+      if (hasNativeSave() && currentDataURL){
+        if (confirm('是否保存二维码到图库？')) NativeBridge.saveImage(currentDataURL);
+      }
+    }, 600);
+  }, {passive:true});
+  qrImg.addEventListener('touchend', function(){ if(lpTimer){clearTimeout(lpTimer);lpTimer=null;} });
+  qrImg.addEventListener('touchmove', function(){ if(lpTimer){clearTimeout(lpTimer);lpTimer=null;} });
 
   /* ---------- 美化面板交互 ---------- */
   var beautyToggle=document.getElementById('beautyToggle');
