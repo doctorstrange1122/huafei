@@ -1275,8 +1275,10 @@
         // 两个参数任一缺失则返回空串（该按钮不参与跨板块共享计数）。
         function getBtnSceneDeliveryKey(btn) {
             const onclick = btn.getAttribute('onclick') || '';
-            const s = (onclick.match(/[?&]sceneId=([^&]+)/) || [])[1] || '';
-            const d = (onclick.match(/[?&]deliveryId=([^&]+)/) || [])[1] || '';
+            // 注意：参数值必须截止到引号为止，否则 sceneId/deliveryId 在 URL 末尾时
+            // 会连带吞掉 onclick 的 '5.7万', '5.7wan') 等后续参数串，导致同组按钮提取出的键不一致、无法关联
+            const s = (onclick.match(/[?&]sceneId=([^&'"]+)/) || [])[1] || '';
+            const d = (onclick.match(/[?&]deliveryId=([^&'"]+)/) || [])[1] || '';
             if (!s || !d) return '';
             return s + '|' + d;
         }
