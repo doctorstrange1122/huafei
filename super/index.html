@@ -395,6 +395,7 @@
         .checkbox-label {
             display: inline-flex;
             align-items: center;
+            vertical-align: middle; /* 修复：勾选后 ::after 出现文字导致基线变化、整行下移 */
             gap: 8px;
             font-size: 13px;
             color: var(--text-title);
