@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2b6cff">
+<title>二维码工具</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<style>
+  :root{
+    --accent:#2b6cff; --accent-2:#4d8bff; --bg:#f4f6fa; --card:#ffffff;
+    --text:#1f2733; --sub:#7a8699; --border:#e6eaf0; --field:#f7f9fc;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .topbar{
+    width:100%;max-width:560px;display:flex;align-items:center;gap:10px;
+    padding:14px 16px 6px;
+  }
+  .back-btn{
+    border:none;background:var(--card);color:var(--sub);font-size:13px;
+    padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;
+  }
+  .topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.5px;}
+  .wrap{width:100%;max-width:560px;padding:10px 16px 40px;}
+
+  .card{
+    background:var(--card);border-radius:18px;padding:18px;
+    box-shadow:0 6px 24px rgba(43,108,255,.06);margin-bottom:16px;
+  }
+  .card-title{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+
+  textarea#qrInput{
+    width:100%;min-height:92px;resize:vertical;font-size:15px;line-height:1.5;
+    padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;
+    background:var(--field);color:var(--text);outline:none;font-family:inherit;
+    transition:border-color .2s;
+  }
+  textarea#qrInput:focus{border-color:var(--accent);}
+
+  .input-actions{display:flex;gap:10px;margin-top:12px;}
+  .input-actions button{
+    flex:1;border:none;border-radius:12px;padding:11px 0;font-size:14px;font-weight:600;
+    cursor:pointer;transition:transform .08s,opacity .2s;
+  }
+  .input-actions button:active{transform:scale(.97);}
+  .btn-paste{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+  .btn-clear{background:#eef1f6;color:var(--sub);}
+
+  .qr-stage{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px;}
+  .qr-canvas-box{
+    width:260px;height:260px;border-radius:16px;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);position:relative;overflow:hidden;
+  }
+  .qr-canvas-box canvas{max-width:100%;max-height:100%;display:block;}
+  .qr-empty{color:#c2c9d4;font-size:13px;text-align:center;padding:0 20px;}
+  .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
+
+  .qr-actions{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;margin-top:14px;}
+  .qr-actions button{
+    width:100%;border:none;border-radius:12px;padding:13px 0;font-size:15px;font-weight:600;
+    cursor:pointer;transition:transform .08s,opacity .2s;
+  }
+  .qr-actions button:active{transform:scale(.98);}
+  .btn-taobao{background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .btn-download{background:#eef1f6;color:var(--text);}
+  .btn-taobao:disabled,.btn-download:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* 美化面板 */
+  .beauty-toggle{
+    width:100%;border:1px dashed var(--border);background:#fafbfd;color:var(--sub);
+    border-radius:12px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:4px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .beauty-panel{display:none;margin-top:12px;}
+  .beauty-panel.show{display:block;}
+  .field-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f3f8;}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-size:14px;color:var(--text);}
+  .field-label small{display:block;color:var(--sub);font-size:11px;margin-top:2px;}
+  .seg{display:flex;background:#eef1f6;border-radius:10px;padding:3px;gap:3px;}
+  .seg button{
+    border:none;background:transparent;color:var(--sub);font-size:13px;padding:6px 12px;
+    border-radius:8px;cursor:pointer;transition:.15s;font-weight:600;
+  }
+  .seg button.active{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  input[type=color]{width:40px;height:32px;border:1px solid var(--border);border-radius:8px;background:#fff;padding:2px;cursor:pointer;}
+  .color-switch{display:flex;align-items:center;gap:10px;}
+  .logo-box{display:flex;align-items:center;gap:10px;}
+  .logo-prev{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:#f7f9fc;object-fit:cover;display:none;}
+  .logo-btn{font-size:13px;color:var(--accent);background:#eef3ff;border:none;padding:7px 12px;border-radius:9px;cursor:pointer;font-weight:600;}
+
+  /* iOS 手势遮罩 */
+  #iosMask{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:99999;color:#fff;text-align:center;padding:30px;}
+  #iosMask .big{font-size:20px;font-weight:700;margin-bottom:8px;}
+  #iosMask .sub{font-size:14px;opacity:.85;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="back-btn" id="backBtn">← 返回</button>
+    <h1>二维码工具</h1>
+  </div>
+
+  <div class="wrap">
+    <!-- 输入区 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>内容输入</div>
+      <textarea id="qrInput" placeholder="输入文字或链接，自动生成二维码（支持网址 / 文本 / 淘口令）"></textarea>
+      <div class="input-actions">
+        <button class="btn-paste" id="pasteBtn">📋 粘贴</button>
+        <button class="btn-clear" id="clearBtn">🗑 清空</button>
+      </div>
+    </div>
+
+    <!-- 二维码预览 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>二维码</div>
+      <div class="qr-stage">
+        <div class="qr-canvas-box" id="qrBox">
+          <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
+          <canvas id="qrCanvas" style="display:none;"></canvas>
+        </div>
+        <div class="qr-tip" id="qrTip"></div>
+        <div class="qr-actions">
+          <button class="btn-taobao" id="taobaoBtn" disabled>🛒 跳转淘宝</button>
+          <button class="btn-download" id="downloadBtn" disabled>⬇ 下载二维码</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 美化面板 -->
+    <div class="card">
+      <button class="beauty-toggle" id="beautyToggle">🎨 二维码美化 <span id="beautyArrow">▸</span></button>
+      <div class="beauty-panel" id="beautyPanel">
+        <div class="field-row">
+          <div class="field-label">容错级别<small>越高越易扫描，推荐 M / 带logo用 H</small></div>
+          <div class="seg" id="eclSeg">
+            <button data-v="L">L</button>
+            <button data-v="M" class="active">M</button>
+            <button data-v="Q">Q</button>
+            <button data-v="H">H</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">码点样式</div>
+          <div class="seg" id="dotSeg">
+            <button data-v="square" class="active">方形</button>
+            <button data-v="rounded">圆角</button>
+            <button data-v="circle">圆点</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">前景色<small>可开渐变，第二个颜色留空则纯色</small></div>
+          <div class="color-switch">
+            <input type="color" id="fgColor" value="#1f2733">
+            <input type="color" id="fgColor2" value="#2b6cff" title="渐变第二色（留空=纯色）">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">背景色</div>
+          <input type="color" id="bgColor" value="#ffffff">
+        </div>
+        <div class="field-row">
+          <div class="field-label">中心logo<small>建议方形图片，自动留白描边</small></div>
+          <div class="logo-box">
+            <img class="logo-prev" id="logoPrev" alt="logo">
+            <button class="logo-btn" id="logoBtn">选择图片</button>
+            <input type="file" id="logoInput" accept="image/*" style="display:none;">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="iosMask"><div class="big">点击打开淘宝 App</div><div class="sub">如已安装将自动跳转</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var input = document.getElementById('qrInput');
+  var canvas = document.getElementById('qrCanvas');
+  var qrEmpty = document.getElementById('qrEmpty');
+  var qrTip = document.getElementById('qrTip');
+  var taobaoBtn = document.getElementById('taobaoBtn');
+  var downloadBtn = document.getElementById('downloadBtn');
+  var currentDataURL = null;     // 当前二维码 dataURL（用于下载）
+  var lastText = '';
+
+  // 美化选项
+  var opts = { ecl:'M', dot:'square', fg:'#1f2733', fg2:'', bg:'#ffffff', logo:null };
+  var logoImg = null;
+
+  /* ---------- 圆角矩形辅助 ---------- */
+  function roundRect(ctx,x,y,w,h,r){
+    if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  /* ---------- 绘制二维码（含美化） ---------- */
+  function render(){
+    var text = input.value.trim();
+    if (!text){ clearQR(); return; }
+    lastText = text;
+    var qr;
+    try {
+      qr = QRCode.create(text, { errorCorrectionLevel: (logoImg ? 'H' : opts.ecl) });
+    } catch(e){
+      clearQR();
+      qrTip.textContent = '内容过长，无法生成，请缩短后重试';
+      return;
+    }
+    var count = qr.modules.size;
+    var margin = 4;                 // 安静区（模块数）
+    var ppm = 12;                   // 每模块像素
+    var dim = (count + margin*2) * ppm;
+    canvas.width = dim; canvas.height = dim;
+    var ctx = canvas.getContext('2d');
+
+    // 背景
+    ctx.fillStyle = opts.bg;
+    ctx.fillRect(0,0,dim,dim);
+
+    // 前景（纯色或渐变）
+    var fill = opts.fg;
+    if (opts.fg2){
+      var g = ctx.createLinearGradient(0,0,dim,dim);
+      g.addColorStop(0, opts.fg); g.addColorStop(1, opts.fg2);
+      fill = g;
+    }
+    ctx.fillStyle = fill;
+
+    // 判定定位角（三个“眼睛”），眼睛保持方形
+    function inFinder(r,c){
+      var f=7;
+      var a = r<f && c<f;
+      var b = r<f && c>=count-f;
+      var c2= r>=count-f && c<f;
+      return a||b||c2;
+    }
+
+    // 数据模块
+    for (var r=0;r<count;r++){
+      for (var c=0;c<count;c++){
+        if (!qr.modules.get(r,c)) continue;
+        if (inFinder(r,c)) continue;
+        var x=(c+margin)*ppm, y=(r+margin)*ppm;
+        if (opts.dot==='circle'){
+          ctx.beginPath();
+          ctx.arc(x+ppm/2,y+ppm/2,ppm*0.5*0.92,0,Math.PI*2);
+          ctx.fill();
+        } else if (opts.dot==='rounded'){
+          roundRect(ctx,x,y,ppm,ppm,ppm*0.3); ctx.fill();
+        } else {
+          ctx.fillRect(x,y,ppm,ppm);
+        }
+      }
+    }
+
+    // 三个定位角（外黑、白环、内黑）
+    function drawFinder(r0,c0){
+      var x0=(c0+margin)*ppm, y0=(r0+margin)*ppm;
+      ctx.fillStyle = fill;
+      ctx.fillRect(x0,y0,ppm*7,ppm*7);
+      ctx.fillStyle = opts.bg;
+      ctx.fillRect(x0+ppm,y0+ppm,ppm*5,ppm*5);
+      ctx.fillStyle = fill;
+      ctx.fillRect(x0+ppm*2,y0+ppm*2,ppm*3,ppm*3);
+    }
+    drawFinder(0,0); drawFinder(0,count-7); drawFinder(count-7,0);
+
+    // 中心 logo
+    if (logoImg){
+      var lw = dim*0.22;
+      var lx = (dim-lw)/2, ly=(dim-lw)/2;
+      ctx.fillStyle = '#fff';
+      roundRect(ctx, lx-5, ly-5, lw+10, lw+10, 10); ctx.fill();
+      ctx.drawImage(logoImg, lx, ly, lw, lw);
+    }
+
+    canvas.style.display='block';
+    qrEmpty.style.display='none';
+    canvas.toBlob(function(b){ currentDataURL = b ? URL.createObjectURL(b) : canvas.toDataURL('image/png'); }, 'image/png');
+
+    taobaoBtn.disabled = false;
+    downloadBtn.disabled = false;
+    qrTip.textContent = '已生成 · 容错 '+((logoImg?'H':opts.ecl))+' · 尺寸 '+count+'×'+count;
+  }
+
+  function clearQR(){
+    canvas.style.display='none';
+    qrEmpty.style.display='block';
+    taobaoBtn.disabled = true;
+    downloadBtn.disabled = true;
+    qrTip.textContent='';
+    currentDataURL=null;
+    lastText='';
+  }
+
+  /* ---------- 防抖自动生成 ---------- */
+  var timer=null;
+  function scheduleRender(){
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(render, 280);
+  }
+  input.addEventListener('input', scheduleRender);
+
+  /* ---------- 粘贴 ---------- */
+  document.getElementById('pasteBtn').addEventListener('click', async function(){
+    try{
+      if (navigator.clipboard && navigator.clipboard.readText){
+        var t = await navigator.clipboard.readText();
+        input.value = (input.value ? input.value + '\n' : '') + t;
+      } else {
+        input.focus();
+        document.execCommand && document.execCommand('paste');
+      }
+    } catch(e){
+      input.focus();
+      alert('无法自动读取剪贴板，请长按输入框手动粘贴');
+    }
+    scheduleRender();
+  });
+
+  /* ---------- 清空 ---------- */
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    input.value=''; clearQR(); input.focus();
+  });
+
+  /* ---------- 下载 ---------- */
+  downloadBtn.addEventListener('click', function(){
+    if (!currentDataURL){ return; }
+    var a=document.createElement('a');
+    a.href = currentDataURL;
+    a.download = 'qrcode.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  /* ---------- 美化面板交互 ---------- */
+  var beautyToggle=document.getElementById('beautyToggle');
+  var beautyPanel=document.getElementById('beautyPanel');
+  var beautyArrow=document.getElementById('beautyArrow');
+  beautyToggle.addEventListener('click', function(){
+    var open = beautyPanel.classList.toggle('show');
+    beautyArrow.textContent = open ? '▾' : '▸';
+  });
+  function bindSeg(id, key, after){
+    var seg=document.getElementById(id);
+    seg.addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      seg.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      opts[key]=b.getAttribute('data-v');
+      if (after) after();
+      render();
+    });
+  }
+  bindSeg('eclSeg','ecl');
+  bindSeg('dotSeg','dot');
+  document.getElementById('fgColor').addEventListener('input', function(e){ opts.fg=e.target.value; render(); });
+  document.getElementById('fgColor2').addEventListener('input', function(e){ opts.fg2=e.target.value; render(); });
+  document.getElementById('bgColor').addEventListener('input', function(e){ opts.bg=e.target.value; render(); });
+
+  var logoBtn=document.getElementById('logoBtn');
+  var logoInput=document.getElementById('logoInput');
+  var logoPrev=document.getElementById('logoPrev');
+  logoBtn.addEventListener('click', function(){ logoInput.click(); });
+  logoInput.addEventListener('change', function(e){
+    var f=e.target.files && e.target.files[0]; if(!f) return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
+        logoImg=img;
+        logoPrev.src=img.src; logoPrev.style.display='block';
+        render();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(f);
+  });
+
+  /* ---------- 跳转淘宝（隐式唤起 App） ---------- */
+  function isIOS(){
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  }
+  function isAPK(){ return !!window.NativeBridge || (window.Android && typeof window.Android!=='undefined'); }
+  function isHarmony(){ return /HarmonyOS|OpenHarmony|HuaweiBrowser|zhuoyi/i.test(navigator.userAgent); }
+
+  function extractTaobaoUrl(raw){
+    if (!raw) return null;
+    var m = raw.match(/https?:\/\/[^\s"'<>]*taobao\.com[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/[^\s"'<>]*tmall\.com[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/(m|e)\.tb\.cn\/[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/[^\s"'<>]*/i);
+    return m ? m[0] : null;
+  }
+
+  function fireScheme(url){
+    if (isIOS() || isAPK() || isHarmony()){
+      window.location.href = url;
+    } else {
+      var ifr=document.createElement('iframe');
+      ifr.style.display='none'; ifr.src=url;
+      document.body.appendChild(ifr);
+      setTimeout(function(){ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); }, 3000);
+    }
+  }
+
+  function showIOSMask(onTap){
+    var mask=document.getElementById('iosMask');
+    mask.onclick=function(){ mask.style.display='none'; onTap(); };
+    mask.style.display='flex';
+  }
+
+  taobaoBtn.addEventListener('click', function(){
+    var raw=input.value.trim();
+    if (!raw){ alert('请先在输入框粘贴/输入淘宝链接'); return; }
+    var url=extractTaobaoUrl(raw) || raw;
+    var scheme='tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url='+encodeURIComponent(url);
+    if (isIOS() && !isAPK()){
+      showIOSMask(function(){ fireScheme(scheme); });
+    } else {
+      fireScheme(scheme);
+    }
+  });
+
+  /* ---------- 返回 ---------- */
+  document.getElementById('backBtn').addEventListener('click', function(){
+    if (history.length>1) history.back(); else location.href='index.html';
+  });
+
+})();
+</script>
+</body>
+</html>
