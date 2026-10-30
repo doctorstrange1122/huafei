@@ -2750,6 +2750,18 @@
             return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
         }
 
+        // 显示结果卡片并平滑滚动到可视区。
+        // 用 rAF 延迟：display:none→block 后同帧调用 scrollIntoView 在部分移动端浏览器会因布局未提交而不触发滚动，
+        // 延迟一帧等布局确定后再滚，确保移动端稳定落位（仅滚一次，避免抖动）。
+        function scrollResultIntoView() {
+            const card = document.getElementById('resultCard');
+            if (!card) return;
+            card.style.display = 'block';
+            requestAnimationFrame(function() {
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+
         // 专用区按钮（如"8点秒杀"）：解析id → 替换模板链接 itemId= 参数 → batchId 前8位改为当天日期
         // → 用最终链接生成二维码。不传 btnKey：不计使用次数，二维码直接编码最终真实链接。
         async function generateSpecialQR(label, templateUrl) {
@@ -2760,11 +2772,7 @@
             }
 
             const resultArea = document.getElementById('resultArea');
-            const resultCard = document.getElementById('resultCard');
-            if (resultCard) {
-                resultCard.style.display = 'block';
-                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            scrollResultIntoView();
             resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析并生成，请稍候...</p>';
 
             const parseStart = Date.now();
@@ -2926,13 +2934,7 @@ async function resolveProductId(productLink) {
             }
 
             const resultArea = document.getElementById('resultArea');
-            const resultCard = document.getElementById('resultCard');
-
-            // 与生成流程一致：先显示结果卡片并滚动到可视区，再展示"正在解析"
-            if (resultCard) {
-                resultCard.style.display = 'block';
-                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            scrollResultIntoView();
             resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析，请稍候...</p>';
 
             // 复用统一解析入口（直接id / 淘口令 / 链接提取，支持多id；带缓存）
@@ -2997,14 +2999,7 @@ async function resolveProductId(productLink) {
             }
 
             const resultArea = document.getElementById('resultArea');
-            const resultCard = document.getElementById('resultCard');
-
-            // 关键修复：点击按钮立即显示结果卡片并滚动到可视区，
-            // 否则首用时卡片为 display:none，下面写的“正在解析”提示会被吞掉，用户看不到解析中状态。
-            if (resultCard) {
-                resultCard.style.display = 'block';
-                resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            scrollResultIntoView();
             resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析淘口令并生成，请稍候...</p>';
 
             // 解析商品ID（直接id / 淘口令解析 / 链接提取，支持多id）——抽取为共享函数供自定义链接复用
