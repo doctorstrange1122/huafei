@@ -3250,7 +3250,7 @@ async function resolveProductId(productLink) {
             } catch (e) {}
             // ① hash 直达
             try {
-                if (location.hash === '#qrtool') { location.replace('qrtool.html'); return; }
+                if (location.hash === '#qrtool') { location.replace('qrtool.html?v=' + Date.now()); return; }
             } catch (e) {}
             // ② 长按标题 1.2s
             var h1 = document.querySelector('.header h1');
@@ -3261,7 +3261,7 @@ async function resolveProductId(productLink) {
                 pressTimer = setTimeout(function () {
                     pressTimer = null;
                     if (navigator.vibrate) { try { navigator.vibrate(30); } catch (err) {} }
-                    location.href = 'qrtool.html';
+                    location.href = 'qrtool.html?v=' + Date.now();
                 }, 1200);
             }
             function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
