@@ -2751,15 +2751,22 @@
         }
 
         // 显示结果卡片并平滑滚动到可视区。
-        // 用 rAF 延迟：display:none→block 后同帧调用 scrollIntoView 在部分移动端浏览器会因布局未提交而不触发滚动，
-        // 延迟一帧等布局确定后再滚，确保移动端稳定落位（仅滚一次，避免抖动）。
+        // display:none→block 后移动端浏览器布局还未完全提交，单帧内 scrollIntoView（且 smooth）
+        // 常被静默吞掉，导致解析（结果区内容短）不滚动。改为：强制同步回流 + 双 rAF 等布局落地，
+        // 再用 window.scrollTo 显式计算目标位置滚动，不依赖 scrollIntoView 对最近滚动祖先的判定（仅滚一次，避免抖动）。
         function scrollResultIntoView() {
             const card = document.getElementById('resultCard');
             if (!card) return;
             card.style.display = 'block';
-            requestAnimationFrame(function() {
-                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
+            // 强制同步回流，确保 display 切换后的新布局已生效
+            void card.offsetHeight;
+            const doScroll = function() {
+                const rect = card.getBoundingClientRect();
+                const top = rect.top + (window.pageYOffset || document.documentElement.scrollTop || 0) - 12;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            };
+            // 双 rAF：等浏览器完成布局提交后再滚动，移动端切换 display 后才稳触发
+            requestAnimationFrame(function() { requestAnimationFrame(doScroll); });
         }
 
         // 专用区按钮（如"8点秒杀"）：解析id → 替换模板链接 itemId= 参数 → batchId 前8位改为当天日期
