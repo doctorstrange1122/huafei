@@ -3314,24 +3314,17 @@ async function resolveProductId(productLink) {
 
             if (!savedKey) return false;
 
+            // 本地存有已激活密钥：信任本地状态（服务端校验改为后台非阻塞软校验，
+            // 不再因服务端拒认已激活设备而把已激活用户锁死）。只有从未激活（本地无密钥）的设备才被拦。
+            // 后台仍请求一次 /verify 用于统计/未来可撤销，但不阻塞使用。
             try {
-                const resp = await fetch(KEY_API_BASE + '/verify', {
+                fetch(KEY_API_BASE + '/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: savedKey, deviceId })
-                });
-                const data = await resp.json();
-                return data.valid === true;
-            } catch (e) {
-                console.warn('密钥验证请求失败:', e);
-                // 网络失败时，本地暂存的密钥也作为临时通过（避免断网无法使用）
-                // 但只在7天内有效
-                const lastVerify = parseInt(localStorage.getItem('app_last_verify') || '0');
-                if (Date.now() - lastVerify < 7 * 24 * 3600 * 1000) {
-                    return true;
-                }
-                return false;
-            }
+                }).catch(function() {});
+            } catch (e) {}
+            return true;
         }
 
         // 全局激活函数
