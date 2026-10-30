@@ -2772,6 +2772,7 @@
         // 专用区按钮（如"8点秒杀"）：解析id → 替换模板链接 itemId= 参数 → batchId 前8位改为当天日期
         // → 用最终链接生成二维码。不传 btnKey：不计使用次数，二维码直接编码最终真实链接。
         async function generateSpecialQR(label, templateUrl) {
+            if (!ensureKeyValid()) return;
             const productLink = document.getElementById('productLink').value.trim();
             if (!productLink) {
                 alert('请先输入淘口令或分享文本');
@@ -2934,6 +2935,7 @@ async function resolveProductId(productLink) {
 
         // 仅解析：点击"解析"按钮 → 解析淘口令/分享文本 → 滚动到结果区展示商品ID（不生成二维码、不计次数）
         async function parseOnly() {
+            if (!ensureKeyValid()) return;
             const productLink = document.getElementById('productLink').value.trim();
             if (!productLink) {
                 alert('请先输入淘口令或分享文本');
@@ -2995,6 +2997,7 @@ async function resolveProductId(productLink) {
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount) {
+            if (!ensureKeyValid()) return;
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
             const userCustomText = document.getElementById('customText').value.trim();
@@ -3269,6 +3272,8 @@ async function resolveProductId(productLink) {
         const KEY_API_BASE = 'https://huafei-redirect-pages.pages.dev/api/key';
         const STORAGE_KEY = 'app_activate_key';
         const STORAGE_DEVICE = 'app_device_id';
+        // 密钥当前是否有效（页面加载验证成功 / 激活成功后置 true；点击生成/解析时只读取此标志，零网络开销）
+        window.__keyValid = false;
 
         // 获取或生成设备ID
         function getDeviceId() {
@@ -3293,6 +3298,13 @@ async function resolveProductId(productLink) {
         // 隐藏激活弹窗
         function hideActivateOverlay() {
             document.getElementById('keyActivateOverlay').classList.remove('active');
+        }
+
+        // 函数级密钥闸门：生成二维码/解析前调用，未验证则弹出激活窗并返回 false（不阻挡已验证用户，零网络开销）
+        function ensureKeyValid() {
+            if (window.__keyValid === true) return true;
+            showActivateOverlay();
+            return false;
         }
 
         // 验证已保存的密钥
@@ -3351,6 +3363,7 @@ async function resolveProductId(productLink) {
                 if (data.success && data.activated) {
                     localStorage.setItem(STORAGE_KEY, key);
                     localStorage.setItem('app_last_verify', Date.now());
+                    window.__keyValid = true;
                     hideActivateOverlay();
                 } else {
                     errEl.textContent = data.error || '激活失败';
@@ -3378,6 +3391,7 @@ async function resolveProductId(productLink) {
             const isValid = await verifySavedKey();
             if (isValid) {
                 localStorage.setItem('app_last_verify', Date.now());
+                window.__keyValid = true;
                 hideActivateOverlay();
             } else {
                 showActivateOverlay();
