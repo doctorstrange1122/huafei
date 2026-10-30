@@ -1863,10 +1863,6 @@
         // 服务端解析（方案A主路径）：把"展开淘宝短链+抽id"放到后端，4.2/低端设备不再自己追 e.tb.cn 重定向链，最稳最快
         // 接口：https://huafei-redirect-pages.pages.dev/api/resolve?url=<分享文本或链接>（跨域简单GET，无需预检）
         const RESOLVE_API = 'https://huafei-redirect-pages.pages.dev/api/resolve';
-        // 住宅级中继（可选）：填一个不被淘宝封锁、且回 CORS 头的中继地址即可恢复短链解析。
-        // 部署方式见 relay/resolve_relay.js 顶部注释（家用机 + cloudflared tunnel 免费暴露公网）。
-        // 留空 '' 表示不启用，解析逻辑回退到下面的三路竞速。
-        const RESOLVE_RELAY_URL = '';
         async function resolveViaServer(inputText) {
             try {
                 const controller = new AbortController();
@@ -1907,17 +1903,6 @@
             //    - 本地跟随重定向、CORS 代理作为兜底，任一路成功即返回
             try {
                 const id = await Promise.any([
-                    // 优先路径（可选）：住宅级中继，填了 RESOLVE_RELAY_URL 才启用，短链解析最稳最快
-                    (async () => {
-                        if (!RESOLVE_RELAY_URL) throw new Error('relay disabled');
-                        const rc = new AbortController();
-                        const rt = setTimeout(() => rc.abort(), 8000);
-                        const r = await fetch(`${RESOLVE_RELAY_URL}/resolve?url=${encodeURIComponent(shortUrl)}`, { signal: rc.signal });
-                        clearTimeout(rt);
-                        const d = await r.json();
-                        if (d && d.ok && d.id) return d.id;
-                        throw new Error('relay no id');
-                    })(),
                     // 主路径：服务端解析
                     (async () => {
                         const serverId = await resolveViaServer(text);
