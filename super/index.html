@@ -3236,6 +3236,41 @@ async function resolveProductId(productLink) {
                 resultArea.innerHTML = '<p style="color: var(--error-text);">生成过程中出现错误，请检查控制台。</p>';
             }
         }
+
+        /* ==================== 隐藏入口：二维码工具（qrtool 风格） ==================== */
+        // 进入方式（对外不可见）：
+        //   ① 地址栏访问 index.html#qrtool 直接进入
+        //   ② 长按页面标题"奖励汇总"约 1.2 秒进入
+        (function () {
+            // 注入标题样式：防长按选中文字/弹出系统菜单
+            try {
+                var st = document.createElement('style');
+                st.textContent = '.header h1{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}';
+                document.head.appendChild(st);
+            } catch (e) {}
+            // ① hash 直达
+            try {
+                if (location.hash === '#qrtool') { location.replace('qrtool.html'); return; }
+            } catch (e) {}
+            // ② 长按标题 1.2s
+            var h1 = document.querySelector('.header h1');
+            if (!h1) return;
+            var pressTimer = null;
+            function startPress() {
+                if (pressTimer) clearTimeout(pressTimer);
+                pressTimer = setTimeout(function () {
+                    pressTimer = null;
+                    if (navigator.vibrate) { try { navigator.vibrate(30); } catch (err) {} }
+                    location.href = 'qrtool.html';
+                }, 1200);
+            }
+            function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+            h1.addEventListener('touchstart', startPress, { passive: true });
+            ['touchend', 'touchmove', 'touchcancel', 'mouseup', 'mouseleave'].forEach(function (ev) {
+                h1.addEventListener(ev, cancelPress);
+            });
+            h1.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        })();
     </script>
 
     <!-- ====== 密钥激活系统 ====== -->
