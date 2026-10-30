@@ -1271,11 +1271,42 @@
             return data.counts[btnKey] || 0;
         }
 
+        // 从按钮 onclick 的淘宝链接中抽取 sceneId+deliveryId，作为“同名活动”关联键。
+        // 两个参数任一缺失则返回空串（该按钮不参与跨板块共享计数）。
+        function getBtnSceneDeliveryKey(btn) {
+            const onclick = btn.getAttribute('onclick') || '';
+            const s = (onclick.match(/[?&]sceneId=([^&]+)/) || [])[1] || '';
+            const d = (onclick.match(/[?&]deliveryId=([^&]+)/) || [])[1] || '';
+            if (!s || !d) return '';
+            return s + '|' + d;
+        }
+
+        // 根据 btnKey 找出所有“同活动”（sceneId+deliveryId 相同）的按钮 key，用于跨板块共享次数
+        function getLinkedBtnKeys(btnKey) {
+            const src = document.querySelector('.button-group button[data-btn-key="' + btnKey + '"]');
+            if (!src) return [btnKey];
+            const key = getBtnSceneDeliveryKey(src);
+            if (!key) return [btnKey];
+            const keys = [];
+            document.querySelectorAll('.button-group button[data-btn-key]').forEach(function(b) {
+                if (getBtnSceneDeliveryKey(b) === key) {
+                    keys.push(b.getAttribute('data-btn-key'));
+                }
+            });
+            return keys.length ? keys : [btnKey];
+        }
+
+        // 点击某按钮时，所有同活动（sceneId+deliveryId 相同）按钮次数一起 +1
         function incrementUsageCount(btnKey) {
+            const linked = getLinkedBtnKeys(btnKey);
             const data = getUsageData();
-            data.counts[btnKey] = (data.counts[btnKey] || 0) + 1;
+            linked.forEach(function(k) {
+                data.counts[k] = (data.counts[k] || 0) + 1;
+            });
             saveUsageData(data);
-            updateBadgeDisplay(btnKey, data.counts[btnKey]);
+            linked.forEach(function(k) {
+                updateBadgeDisplay(k, data.counts[k]);
+            });
         }
 
         function resetAllUsageCounts() {
@@ -1318,11 +1349,27 @@
 
         function initAllBadges() {
             const buttons = document.querySelectorAll('.button-group button[data-btn-key]');
+            const data = getUsageData();
+            let changed = false;
+            // 同活动组取最大次数，统一显示并写回，避免切换后新旧数据不一致
+            const groupMax = {};
             buttons.forEach(function(btn) {
-                const key = btn.getAttribute('data-btn-key');
-                const count = getUsageCount(key);
-                updateBadgeDisplay(key, count);
+                const key = getBtnSceneDeliveryKey(btn);
+                if (!key) return;
+                const bk = btn.getAttribute('data-btn-key');
+                const c = data.counts[bk] || 0;
+                if (!(key in groupMax) || c > groupMax[key]) groupMax[key] = c;
             });
+            buttons.forEach(function(btn) {
+                const bk = btn.getAttribute('data-btn-key');
+                const key = getBtnSceneDeliveryKey(btn);
+                if (key && (key in groupMax) && data.counts[bk] !== groupMax[key]) {
+                    data.counts[bk] = groupMax[key];
+                    changed = true;
+                }
+                updateBadgeDisplay(bk, getUsageCount(bk));
+            });
+            if (changed) saveUsageData(data);
         }
 
         // ====== 自动跳转复选框状态记忆（localStorage 持久化，退出后台重新打开软件仍保持上次选择）======
