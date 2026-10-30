@@ -1863,6 +1863,49 @@
         // 服务端解析（方案A主路径）：把"展开淘宝短链+抽id"放到后端，4.2/低端设备不再自己追 e.tb.cn 重定向链，最稳最快
         // 接口：https://huafei-redirect-pages.pages.dev/api/resolve?url=<分享文本或链接>（跨域简单GET，无需预检）
         const RESOLVE_API = 'https://huafei-redirect-pages.pages.dev/api/resolve';
+
+        // 可选：住宅级/自建 CORS 中继（默认空=不启用）。
+        // 背景：实测淘宝已封禁 Cloudflare/数据中心 IP 对 m.tb.cn/e.tb.cn 短链域的抓取
+        // （服务端 /api/resolve、/api/proxy 对该域均超时/中断），且短链落地页为 JS 跳转、
+        // 不带 CORS 头，纯前端 fetch 也无法跨域读取 body，导致短链（淘口令）自动解析失效。
+        // 若你有一台住宅网络可达、会原样返回 m.tb.cn 落地页 HTML 且带
+        // Access-Control-Allow-Origin:* 的中继，把"前缀+待编码url"填到下面，短链解析即自动恢复。
+        const RESOLVE_RELAY_URL = ''; // 例：'https://your-relay.example.com/fetch?url='
+
+        // 通过可选中继解析短链：中继返回落地页原文（含 var url='...'），本地抽 id
+        async function resolveViaRelay(shortUrl) {
+            if (!RESOLVE_RELAY_URL) return null;
+            try {
+                const ctrl = new AbortController();
+                const t = setTimeout(() => ctrl.abort(), 8000);
+                const resp = await fetch(RESOLVE_RELAY_URL + encodeURIComponent(shortUrl), { signal: ctrl.signal });
+                clearTimeout(t);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                const m = text.match(/var\s+url\s*=\s*'([^']+)'/);
+                if (m) { const id = extractItemIdFromUrl(m[1]); if (id) return id; }
+                return extractItemIdFromUrl(text) || null;
+            } catch (e) {
+                console.warn('中继解析异常:', e.message);
+                return null;
+            }
+        }
+
+        // 输入是否含淘宝短链（m.tb.cn / e.tb.cn）—— 这类在当前基础设施下服务端/代理均抓不到
+        function hasShortLink(text) {
+            return /https?:\/\/(?:m|e)\.tb\.cn\/h\./i.test(text || '');
+        }
+
+        // 解析失败提示：短链输入给出明确受限说明与可操作引导，其余给通用原因
+        function resolveFailHtml(hasShort) {
+            let tip;
+            if (hasShort) {
+                tip = '当前输入含淘宝短链（m.tb.cn / e.tb.cn）：淘宝已限制服务器与跨域抓取该短链域，自动解析暂不可用。请改为粘贴<b>商品长链接</b>（含 itemIds= 或 id=）或<b>直接输入商品ID数字</b>。';
+            } else {
+                tip = '可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。';
+            }
+            return '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">' + tip + '</p>';
+        }
         async function resolveViaServer(inputText) {
             try {
                 const controller = new AbortController();
@@ -1894,9 +1937,36 @@
             }
             console.log('解析短链:', shortUrl);
 
-            // 2. 服务端解析（主路径）与本地/代理兜底并行竞速，谁先成功用谁
-            //    - 服务端 /api/resolve 把"展开淘宝短链+抽id"放到后端，4.2等低端设备不再自己追 e.tb.cn 重定向链，最稳最快
-            //    - 本地跟随重定向、CORS 代理作为兜底，任一路成功即返回
+            // 2. 短链专属快速路径（2026-10 优化）
+            //    实测：淘宝已封禁 Cloudflare/数据中心 IP 对 m.tb.cn/e.tb.cn 短链域的抓取
+            //    （服务端 /api/resolve、/api/proxy 对该域均超时/中断），且短链落地页为 JS 跳转、
+            //    不带 CORS 头，纯前端 fetch 也无法跨域读取 body。故对“含短链”的输入：
+            //    - 跳过必败且会卡 ~9s 的服务端主路径；
+            //    - 直接走【浏览器端跟随重定向】+【可选住宅级 CORS 中继】并行竞速，快速返回；
+            //    - 失败即返回 null，由上游给出明确的短链受限引导，不再让用户干等。
+            if (hasShortLink(text)) {
+                try {
+                    return await Promise.any([
+                        (async () => {
+                            const resolvedUrl = await resolveShortUrl(shortUrl);
+                            if (!resolvedUrl) throw new Error('resolve failed');
+                            const id = extractItemIdFromUrl(resolvedUrl);
+                            if (!id) throw new Error('no id in resolved url');
+                            return id;
+                        })(),
+                        (async () => {
+                            const relayId = await resolveViaRelay(shortUrl);
+                            if (!relayId) throw new Error('relay no id');
+                            return relayId;
+                        })(),
+                    ]);
+                } catch (e) {
+                    console.warn('短链解析失败（短链域被淘宝限制，属已知限制）');
+                    return null;
+                }
+            }
+
+            // 3. 非纯短链（含长链/混合）：服务端解析（主路径）+ 浏览器跟随 + CORS 代理 并行竞速
             try {
                 return await Promise.any([
                     // 主路径：服务端解析
@@ -2768,7 +2838,7 @@
                 await new Promise(function(r) { setTimeout(r, 500 - elapsed); });
             }
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
+                resultArea.innerHTML = resolveFailHtml(hasShortLink(productLink));
                 return;
             }
 
@@ -2895,7 +2965,7 @@ async function resolveProductId(productLink) {
 
             const productId = await resolveProductId(productLink);
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p>';
+                resultArea.innerHTML = resolveFailHtml(hasShortLink(productLink));
                 return;
             }
 
@@ -2938,7 +3008,7 @@ async function resolveProductId(productLink) {
             }
 
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
+                resultArea.innerHTML = resolveFailHtml(hasShortLink(productLink));
                 return;
             }
 
@@ -3011,7 +3081,7 @@ async function resolveProductId(productLink) {
             }
 
             if (!productId) {
-                resultArea.innerHTML = '<p style="color: var(--error-text);">解析失败：无法获取商品ID</p><p style="font-size:12px;color:#999;">可能原因：① 网络不稳定，代理请求失败；② 输入的不是有效的淘口令或商品链接；③ 淘宝短链已失效。请检查网络后重试。</p>';
+                resultArea.innerHTML = resolveFailHtml(hasShortLink(productLink));
                 return;
             }
 
