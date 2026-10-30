@@ -2772,7 +2772,6 @@
         // 专用区按钮（如"8点秒杀"）：解析id → 替换模板链接 itemId= 参数 → batchId 前8位改为当天日期
         // → 用最终链接生成二维码。不传 btnKey：不计使用次数，二维码直接编码最终真实链接。
         async function generateSpecialQR(label, templateUrl) {
-            if (!ensureKeyValid()) return;
             const productLink = document.getElementById('productLink').value.trim();
             if (!productLink) {
                 alert('请先输入淘口令或分享文本');
@@ -2935,7 +2934,6 @@ async function resolveProductId(productLink) {
 
         // 仅解析：点击"解析"按钮 → 解析淘口令/分享文本 → 滚动到结果区展示商品ID（不生成二维码、不计次数）
         async function parseOnly() {
-            if (!ensureKeyValid()) return;
             const productLink = document.getElementById('productLink').value.trim();
             if (!productLink) {
                 alert('请先输入淘口令或分享文本');
@@ -2997,7 +2995,6 @@ async function resolveProductId(productLink) {
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount) {
-            if (!ensureKeyValid()) return;
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
             const userCustomText = document.getElementById('customText').value.trim();
