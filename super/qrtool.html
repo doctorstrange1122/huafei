@@ -69,9 +69,11 @@
   .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
   .qr-save-hint{font-size:12px;color:var(--accent);margin-top:4px;text-align:center;font-weight:600;}
 
-  /* 二维码上的圆形“跳”字浮动按钮 */
+  /* 二维码下方的圆形功能按钮 */
+  .fab-row{display:flex;gap:36px;margin-top:16px;justify-content:center;}
+  .fab-item{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .fab-label{font-size:11px;color:var(--sub);font-weight:600;}
   .jump-fab{
-    position:absolute;right:14px;bottom:14px;z-index:5;
     width:52px;height:52px;border-radius:50%;border:none;
     background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;
     font-size:22px;font-weight:700;line-height:1;
@@ -81,7 +83,7 @@
   }
   .jump-fab:active{transform:scale(.9);}
   .jump-fab:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
-  .jump-fab small{font-size:10px;font-weight:600;margin-top:1px;}
+  .jump-fab.save{background:linear-gradient(135deg,#2b6cff,#4d8bff);box-shadow:0 6px 16px rgba(43,108,255,.4);}
 
   /* 美化面板 */
   .beauty-toggle{
@@ -172,10 +174,19 @@
         <div class="qr-img-box" id="qrBox">
           <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
           <img id="qrImg" alt="二维码" style="display:none;">
-          <button class="jump-fab" id="taobaoBtn" disabled title="跳转淘宝">跳</button>
+        </div>
+        <div class="fab-row">
+          <div class="fab-item">
+            <button class="jump-fab save" id="saveBtn" disabled title="保存图片">存</button>
+            <span class="fab-label">保存图片</span>
+          </div>
+          <div class="fab-item">
+            <button class="jump-fab" id="taobaoBtn" disabled title="跳转淘宝">跳</button>
+            <span class="fab-label">跳转淘宝</span>
+          </div>
         </div>
         <div class="qr-tip" id="qrTip"></div>
-        <div class="qr-save-hint" id="saveHint" style="display:none;">长按上方二维码图片即可保存</div>
+        <div class="qr-save-hint" id="saveHint" style="display:none;">长按上方二维码图片也可保存</div>
       </div>
     </div>
 
@@ -323,6 +334,7 @@
   var qrTip = document.getElementById('qrTip');
   var saveHint = document.getElementById('saveHint');
   var taobaoBtn = document.getElementById('taobaoBtn');
+  var saveBtn = document.getElementById('saveBtn');
   var lastText = '';
 
   // 美化选项
@@ -509,6 +521,7 @@
     saveHint.style.display='block';
 
     taobaoBtn.disabled = !extractTaobaoUrl(text);
+    saveBtn.disabled = false;
     qrTip.textContent = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
   }
 
@@ -518,6 +531,7 @@
     qrEmpty.style.display='block';
     saveHint.style.display='none';
     taobaoBtn.disabled = true;
+    saveBtn.disabled = true;
     qrTip.textContent='';
     lastText='';
   }
@@ -550,6 +564,30 @@
   /* ---------- 清空 ---------- */
   document.getElementById('clearBtn').addEventListener('click', function(){
     input.value=''; clearQR(); input.focus();
+  });
+
+  /* ---------- 保存图片（系统分享面板优先，可存相册） ---------- */
+  saveBtn.addEventListener('click', function(){
+    if (saveBtn.disabled) return;
+    var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
+    var ext  = opts.format==='jpg' ? 'jpg' : 'png';
+    off.toBlob(function(b){
+      if (!b) return;
+      var fname = 'qrcode_' + Date.now() + '.' + ext;
+      var file = null;
+      try { file = new File([b], fname, {type:mime}); } catch(e){}
+      // 1) Web Share：弹出系统分享面板，可直接存相册/发微信
+      if (file && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:'二维码'}).catch(function(){});
+        return;
+      }
+      // 2) 降级：blob 链接触发下载
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(b);
+      a.download=fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+    }, mime, 0.92);
   });
 
   /* ---------- 美化面板交互 ---------- */
