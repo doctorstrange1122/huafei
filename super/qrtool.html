@@ -55,24 +55,30 @@
   .btn-clear{background:#eef1f6;color:var(--sub);}
 
   .qr-stage{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px;}
-  .qr-canvas-box{
-    width:260px;height:260px;border-radius:16px;background:#fff;
+  .qr-img-box{
+    width:280px;border-radius:16px;background:#fff;
     display:flex;align-items:center;justify-content:center;
     border:1px solid var(--border);position:relative;overflow:hidden;
+    min-height:120px;
   }
-  .qr-canvas-box canvas{max-width:100%;max-height:100%;display:block;}
-  .qr-empty{color:#c2c9d4;font-size:13px;text-align:center;padding:0 20px;}
+  .qr-img-box img{width:100%;display:block;}
+  .qr-empty{color:#c2c9d4;font-size:13px;text-align:center;padding:40px 20px;}
   .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
+  .qr-save-hint{font-size:12px;color:var(--accent);margin-top:4px;text-align:center;font-weight:600;}
 
-  .qr-actions{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;margin-top:14px;}
-  .qr-actions button{
-    width:100%;border:none;border-radius:12px;padding:13px 0;font-size:15px;font-weight:600;
-    cursor:pointer;transition:transform .08s,opacity .2s;
+  /* 二维码上的圆形“跳”字浮动按钮 */
+  .jump-fab{
+    position:absolute;right:14px;bottom:14px;z-index:5;
+    width:52px;height:52px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;
+    font-size:22px;font-weight:700;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px rgba(255,80,0,.45);
+    cursor:pointer;transition:transform .08s,box-shadow .2s,opacity .2s;
   }
-  .qr-actions button:active{transform:scale(.98);}
-  .btn-taobao{background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;}
-  .btn-download{background:#eef1f6;color:var(--text);}
-  .btn-taobao:disabled,.btn-download:disabled{opacity:.45;cursor:not-allowed;}
+  .jump-fab:active{transform:scale(.9);}
+  .jump-fab:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+  .jump-fab small{font-size:10px;font-weight:600;margin-top:1px;}
 
   /* 美化面板 */
   .beauty-toggle{
@@ -82,11 +88,21 @@
   }
   .beauty-panel{display:none;margin-top:12px;}
   .beauty-panel.show{display:block;}
-  .field-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f3f8;}
+  /* 选项卡 */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:6px;overflow-x:auto;}
+  .tabs button{
+    flex:1;border:none;background:transparent;color:var(--sub);font-size:14px;font-weight:600;
+    padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-page{display:none;}
+  .tab-page.show{display:block;}
+
+  .field-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f3f8;gap:10px;}
   .field-row:last-child{border-bottom:none;}
-  .field-label{font-size:14px;color:var(--text);}
-  .field-label small{display:block;color:var(--sub);font-size:11px;margin-top:2px;}
-  .seg{display:flex;background:#eef1f6;border-radius:10px;padding:3px;gap:3px;}
+  .field-label{font-size:14px;color:var(--text);flex-shrink:0;}
+  .field-label small{display:block;color:var(--sub);font-size:11px;margin-top:2px;font-weight:400;}
+  .seg{display:flex;background:#eef1f6;border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap;justify-content:flex-end;}
   .seg button{
     border:none;background:transparent;color:var(--sub);font-size:13px;padding:6px 12px;
     border-radius:8px;cursor:pointer;transition:.15s;font-weight:600;
@@ -97,6 +113,31 @@
   .logo-box{display:flex;align-items:center;gap:10px;}
   .logo-prev{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:#f7f9fc;object-fit:cover;display:none;}
   .logo-btn{font-size:13px;color:var(--accent);background:#eef3ff;border:none;padding:7px 12px;border-radius:9px;cursor:pointer;font-weight:600;}
+  .num-input{
+    width:92px;border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;
+    font-size:14px;color:var(--text);background:var(--field);outline:none;text-align:right;
+  }
+  .num-input:focus{border-color:var(--accent);}
+  select.pretty{
+    border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px;
+    color:var(--text);background:var(--field);outline:none;
+  }
+  .txt-input{
+    flex:1;min-width:0;border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;
+    font-size:14px;color:var(--text);background:var(--field);outline:none;
+  }
+  .txt-input:focus{border-color:var(--accent);}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider{
+    position:absolute;inset:0;background:#d7dde7;border-radius:26px;transition:.2s;cursor:pointer;
+  }
+  .switch .slider:before{
+    content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;
+    top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .switch input:checked + .slider{background:var(--accent);}
+  .switch input:checked + .slider:before{transform:translateX(20px);}
 
   /* iOS 手势遮罩 */
   #iosMask{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:99999;color:#fff;text-align:center;padding:30px;}
@@ -125,15 +166,13 @@
     <div class="card">
       <div class="card-title"><span class="dot"></span>二维码</div>
       <div class="qr-stage">
-        <div class="qr-canvas-box" id="qrBox">
+        <div class="qr-img-box" id="qrBox">
           <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
-          <canvas id="qrCanvas" style="display:none;"></canvas>
+          <img id="qrImg" alt="二维码" style="display:none;">
+          <button class="jump-fab" id="taobaoBtn" disabled title="跳转淘宝">跳</button>
         </div>
         <div class="qr-tip" id="qrTip"></div>
-        <div class="qr-actions">
-          <button class="btn-taobao" id="taobaoBtn" disabled>🛒 跳转淘宝</button>
-          <button class="btn-download" id="downloadBtn" disabled>⬇ 下载二维码</button>
-        </div>
+        <div class="qr-save-hint" id="saveHint" style="display:none;">长按上方二维码图片即可保存</div>
       </div>
     </div>
 
@@ -141,40 +180,129 @@
     <div class="card">
       <button class="beauty-toggle" id="beautyToggle">🎨 二维码美化 <span id="beautyArrow">▸</span></button>
       <div class="beauty-panel" id="beautyPanel">
-        <div class="field-row">
-          <div class="field-label">容错级别<small>越高越易扫描，推荐 M / 带logo用 H</small></div>
-          <div class="seg" id="eclSeg">
-            <button data-v="L">L</button>
-            <button data-v="M" class="active">M</button>
-            <button data-v="Q">Q</button>
-            <button data-v="H">H</button>
+        <div class="tabs" id="beautyTabs">
+          <button data-tab="basic" class="active">基本</button>
+          <button data-tab="color">颜色</button>
+          <button data-tab="logo">Logo</button>
+          <button data-tab="text">文字</button>
+        </div>
+
+        <!-- 基本 -->
+        <div class="tab-page show" data-page="basic">
+          <div class="field-row">
+            <div class="field-label">二维码尺寸(px)<small>导出图片的宽度</small></div>
+            <input type="number" class="num-input" id="sizeInput" value="500" min="150" max="1500" step="50">
+          </div>
+          <div class="field-row">
+            <div class="field-label">留白边距(px)<small>二维码四周留白</small></div>
+            <input type="number" class="num-input" id="marginInput" value="20" min="0" max="100" step="5">
+          </div>
+          <div class="field-row">
+            <div class="field-label">容错级别<small>越高越易扫描，带logo推荐 H</small></div>
+            <div class="seg" id="eclSeg">
+              <button data-v="L">L 7%</button>
+              <button data-v="M" class="active">M 15%</button>
+              <button data-v="Q">Q 25%</button>
+              <button data-v="H">H 30%</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">码点样式</div>
+            <div class="seg" id="dotSeg">
+              <button data-v="square" class="active">方形</button>
+              <button data-v="rounded">圆角</button>
+              <button data-v="circle">圆点</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">定位角样式</div>
+            <div class="seg" id="eyeSeg">
+              <button data-v="square" class="active">方形</button>
+              <button data-v="rounded">圆角</button>
+              <button data-v="circle">圆形</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">导出格式</div>
+            <select class="pretty" id="formatSel">
+              <option value="png" selected>PNG</option>
+              <option value="jpg">JPG</option>
+            </select>
           </div>
         </div>
-        <div class="field-row">
-          <div class="field-label">码点样式</div>
-          <div class="seg" id="dotSeg">
-            <button data-v="square" class="active">方形</button>
-            <button data-v="rounded">圆角</button>
-            <button data-v="circle">圆点</button>
+
+        <!-- 颜色 -->
+        <div class="tab-page" data-page="color">
+          <div class="field-row">
+            <div class="field-label">前景色<small>第二个颜色=渐变尾色，与首色相同则纯色</small></div>
+            <div class="color-switch">
+              <input type="color" id="fgColor" value="#1f2733">
+              <input type="color" id="fgColor2" value="#1f2733" title="渐变第二色">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">渐变方向</div>
+            <div class="seg" id="gradSeg">
+              <button data-v="none" class="active">关闭</button>
+              <button data-v="h">横向</button>
+              <button data-v="v">纵向</button>
+              <button data-v="d">对角</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">背景色</div>
+            <input type="color" id="bgColor" value="#ffffff">
+          </div>
+          <div class="field-row">
+            <div class="field-label">背景渐变<small>与背景色形成渐变</small></div>
+            <div class="color-switch">
+              <input type="color" id="bgColor2" value="#ffffff">
+            </div>
           </div>
         </div>
-        <div class="field-row">
-          <div class="field-label">前景色<small>可开渐变，第二个颜色留空则纯色</small></div>
-          <div class="color-switch">
-            <input type="color" id="fgColor" value="#1f2733">
-            <input type="color" id="fgColor2" value="#2b6cff" title="渐变第二色（留空=纯色）">
+
+        <!-- Logo -->
+        <div class="tab-page" data-page="logo">
+          <div class="field-row">
+            <div class="field-label">中心logo<small>建议方形图片，自动留白描边</small></div>
+            <div class="logo-box">
+              <img class="logo-prev" id="logoPrev" alt="logo">
+              <button class="logo-btn" id="logoBtn">选择图片</button>
+              <button class="logo-btn" id="logoClearBtn" style="background:#fdeeee;color:#d64545;display:none;">移除</button>
+              <input type="file" id="logoInput" accept="image/*" style="display:none;">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Logo大小</div>
+            <input type="range" id="logoSize" min="10" max="30" value="22" style="width:130px;">
+          </div>
+          <div class="field-row">
+            <div class="field-label">Logo圆角</div>
+            <input type="range" id="logoRadius" min="0" max="50" value="10" style="width:130px;">
           </div>
         </div>
-        <div class="field-row">
-          <div class="field-label">背景色</div>
-          <input type="color" id="bgColor" value="#ffffff">
-        </div>
-        <div class="field-row">
-          <div class="field-label">中心logo<small>建议方形图片，自动留白描边</small></div>
-          <div class="logo-box">
-            <img class="logo-prev" id="logoPrev" alt="logo">
-            <button class="logo-btn" id="logoBtn">选择图片</button>
-            <input type="file" id="logoInput" accept="image/*" style="display:none;">
+
+        <!-- 文字 -->
+        <div class="tab-page" data-page="text">
+          <div class="field-row">
+            <div class="field-label">添加文字<small>显示在二维码下方（图片内）</small></div>
+            <label class="switch"><input type="checkbox" id="textOn"><span class="slider"></span></label>
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字内容</div>
+            <input type="text" class="txt-input" id="textContent" placeholder="如：扫码领红包" maxlength="40">
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字大小</div>
+            <input type="number" class="num-input" id="textSize" value="36" min="12" max="120" step="2">
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字颜色</div>
+            <input type="color" id="textColor" value="#1f2733">
+          </div>
+          <div class="field-row">
+            <div class="field-label">加粗</div>
+            <label class="switch"><input type="checkbox" id="textBold" checked><span class="slider"></span></label>
           </div>
         </div>
       </div>
@@ -187,21 +315,28 @@
 (function(){
   "use strict";
   var input = document.getElementById('qrInput');
-  var canvas = document.getElementById('qrCanvas');
+  var qrImg = document.getElementById('qrImg');
   var qrEmpty = document.getElementById('qrEmpty');
   var qrTip = document.getElementById('qrTip');
+  var saveHint = document.getElementById('saveHint');
   var taobaoBtn = document.getElementById('taobaoBtn');
-  var downloadBtn = document.getElementById('downloadBtn');
-  var currentDataURL = null;     // 当前二维码 dataURL（用于下载）
   var lastText = '';
 
   // 美化选项
-  var opts = { ecl:'M', dot:'square', fg:'#1f2733', fg2:'', bg:'#ffffff', logo:null };
+  var opts = {
+    size:500, margin:20, ecl:'M', dot:'square', eye:'square', format:'png',
+    fg:'#1f2733', fg2:'#1f2733', grad:'none', bg:'#ffffff', bg2:'#ffffff',
+    logo:null, logoSize:22, logoRadius:10,
+    textOn:false, textContent:'', textSize:36, textColor:'#1f2733', textBold:true
+  };
   var logoImg = null;
+  var off = document.createElement('canvas'); // 离屏画布
+  var octx = off.getContext('2d');
 
   /* ---------- 圆角矩形辅助 ---------- */
   function roundRect(ctx,x,y,w,h,r){
     if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+    if (r<0) r=0;
     ctx.beginPath();
     ctx.moveTo(x+r,y);
     ctx.arcTo(x+w,y,x+w,y+h,r);
@@ -211,11 +346,12 @@
     ctx.closePath();
   }
 
-  /* ---------- 绘制二维码（含美化） ---------- */
+  /* ---------- 绘制二维码（含美化 + 文字） ---------- */
   function render(){
     var text = input.value.trim();
     if (!text){ clearQR(); return; }
     lastText = text;
+
     var qr;
     try {
       qr = QRCode.create(text, { errorCorrectionLevel: (logoImg ? 'H' : opts.ecl) });
@@ -225,89 +361,161 @@
       return;
     }
     var count = qr.modules.size;
-    var margin = 4;                 // 安静区（模块数）
-    var ppm = 12;                   // 每模块像素
-    var dim = (count + margin*2) * ppm;
-    canvas.width = dim; canvas.height = dim;
-    var ctx = canvas.getContext('2d');
 
-    // 背景
-    ctx.fillStyle = opts.bg;
-    ctx.fillRect(0,0,dim,dim);
+    var size = Math.min(1500, Math.max(150, opts.size|0));
+    var margin = Math.min(100, Math.max(0, opts.margin|0));
+
+    // 文字区高度
+    var textH = 0;
+    var hasText = opts.textOn && opts.textContent.trim();
+    var fs = Math.min(120, Math.max(12, opts.textSize|0));
+    if (hasText) textH = Math.round(fs*1.5) + Math.round(size*0.02);
+
+    off.width = size;
+    off.height = size + textH;
+    var ctx = octx;
+
+    // 背景（支持渐变）
+    if (opts.bg2 && opts.bg2 !== opts.bg){
+      var bgGrad = ctx.createLinearGradient(0,0,0,off.height);
+      bgGrad.addColorStop(0, opts.bg); bgGrad.addColorStop(1, opts.bg2);
+      ctx.fillStyle = bgGrad;
+    } else {
+      ctx.fillStyle = opts.bg;
+    }
+    ctx.fillRect(0,0,off.width,off.height);
 
     // 前景（纯色或渐变）
     var fill = opts.fg;
-    if (opts.fg2){
-      var g = ctx.createLinearGradient(0,0,dim,dim);
+    if (opts.grad !== 'none' && opts.fg2 && opts.fg2 !== opts.fg){
+      var g;
+      if (opts.grad==='h') g = ctx.createLinearGradient(margin,0,size-margin,0);
+      else if (opts.grad==='v') g = ctx.createLinearGradient(0,margin,0,size-margin);
+      else g = ctx.createLinearGradient(0,0,size,size);
       g.addColorStop(0, opts.fg); g.addColorStop(1, opts.fg2);
       fill = g;
     }
-    ctx.fillStyle = fill;
 
-    // 判定定位角（三个“眼睛”），眼睛保持方形
+    // 有效绘制区域
+    var drawSize = size - margin*2;
+    var ppm = drawSize / count;   // 每模块像素
+    if (ppm < 1){ qrTip.textContent='尺寸或留白过小，请调整'; return; }
+
+    // 判定定位角
     function inFinder(r,c){
       var f=7;
-      var a = r<f && c<f;
-      var b = r<f && c>=count-f;
-      var c2= r>=count-f && c<f;
-      return a||b||c2;
+      return (r<f && c<f) || (r<f && c>=count-f) || (r>=count-f && c<f);
     }
+
+    ctx.fillStyle = fill;
 
     // 数据模块
     for (var r=0;r<count;r++){
       for (var c=0;c<count;c++){
         if (!qr.modules.get(r,c)) continue;
         if (inFinder(r,c)) continue;
-        var x=(c+margin)*ppm, y=(r+margin)*ppm;
+        var x=margin+c*ppm, y=margin+r*ppm;
         if (opts.dot==='circle'){
           ctx.beginPath();
-          ctx.arc(x+ppm/2,y+ppm/2,ppm*0.5*0.92,0,Math.PI*2);
+          ctx.arc(x+ppm/2,y+ppm/2,ppm*0.46,0,Math.PI*2);
           ctx.fill();
         } else if (opts.dot==='rounded'){
-          roundRect(ctx,x,y,ppm,ppm,ppm*0.3); ctx.fill();
+          roundRect(ctx,x+ppm*0.04,y+ppm*0.04,ppm*0.92,ppm*0.92,ppm*0.3); ctx.fill();
         } else {
-          ctx.fillRect(x,y,ppm,ppm);
+          ctx.fillRect(x,y,ppm+0.5,ppm+0.5);
         }
       }
     }
 
-    // 三个定位角（外黑、白环、内黑）
-    function drawFinder(r0,c0){
-      var x0=(c0+margin)*ppm, y0=(r0+margin)*ppm;
+    // 三个定位角
+    function drawEye(r0,c0){
+      var x0=margin+c0*ppm, y0=margin+r0*ppm;
+      var E=ppm*7;
       ctx.fillStyle = fill;
-      ctx.fillRect(x0,y0,ppm*7,ppm*7);
-      ctx.fillStyle = opts.bg;
-      ctx.fillRect(x0+ppm,y0+ppm,ppm*5,ppm*5);
-      ctx.fillStyle = fill;
-      ctx.fillRect(x0+ppm*2,y0+ppm*2,ppm*3,ppm*3);
+      if (opts.eye==='circle'){
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E/2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = opts.bg;
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E*0.36,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = fill;
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E*0.21,0,Math.PI*2); ctx.fill();
+      } else if (opts.eye==='rounded'){
+        var rr=E*0.28;
+        roundRect(ctx,x0,y0,E,E,rr); ctx.fill();
+        ctx.fillStyle = opts.bg;
+        roundRect(ctx,x0+ppm,y0+ppm,E-2*ppm,E-2*ppm,rr*0.7); ctx.fill();
+        ctx.fillStyle = fill;
+        roundRect(ctx,x0+ppm*2,y0+ppm*2,E-4*ppm,E-4*ppm,rr*0.45); ctx.fill();
+      } else {
+        ctx.fillRect(x0,y0,E,E);
+        ctx.fillStyle = opts.bg;
+        ctx.fillRect(x0+ppm,y0+ppm,ppm*5,ppm*5);
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0+ppm*2,y0+ppm*2,ppm*3,ppm*3);
+      }
     }
-    drawFinder(0,0); drawFinder(0,count-7); drawFinder(count-7,0);
+    drawEye(0,0); drawEye(0,count-7); drawEye(count-7,0);
 
     // 中心 logo
     if (logoImg){
-      var lw = dim*0.22;
-      var lx = (dim-lw)/2, ly=(dim-lw)/2;
-      ctx.fillStyle = '#fff';
-      roundRect(ctx, lx-5, ly-5, lw+10, lw+10, 10); ctx.fill();
-      ctx.drawImage(logoImg, lx, ly, lw, lw);
+      var lw = size * (opts.logoSize/100);
+      var lx=(size-lw)/2, ly=(size-lw)/2;
+      var lr = lw * (opts.logoRadius/50);
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, lx-4, ly-4, lw+8, lw+8, lr+4); ctx.fill();
+      ctx.beginPath();
+      roundRect(ctx, lx, ly, lw, lw, lr);
+      ctx.clip();
+      // cover 方式绘制
+      var iw=logoImg.width, ih=logoImg.height;
+      var sc=Math.max(lw/iw, lw/ih);
+      var dw=iw*sc, dh=ih*sc;
+      ctx.drawImage(logoImg, lx+(lw-dw)/2, ly+(lw-dh)/2, dw, dh);
+      ctx.restore();
     }
 
-    canvas.style.display='block';
-    qrEmpty.style.display='none';
-    canvas.toBlob(function(b){ currentDataURL = b ? URL.createObjectURL(b) : canvas.toDataURL('image/png'); }, 'image/png');
+    // 底部文字
+    if (hasText){
+      var tctx = ctx;
+      var fnt = (opts.textBold?'bold ':'') + fs + 'px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      tctx.font = fnt;
+      tctx.fillStyle = opts.textColor;
+      tctx.textAlign = 'center';
+      tctx.textBaseline = 'middle';
+      var ty = size + textH/2;
+      var t = opts.textContent.trim();
+      // 过长自动缩小
+      var maxW = size - margin*2;
+      var realFs = fs;
+      while (tctx.measureText(t).width > maxW && realFs > 10){
+        realFs -= 2;
+        tctx.font = (opts.textBold?'bold ':'') + realFs + 'px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      }
+      tctx.fillText(t, size/2, ty);
+    }
 
-    taobaoBtn.disabled = false;
-    downloadBtn.disabled = false;
-    qrTip.textContent = '已生成 · 容错 '+((logoImg?'H':opts.ecl))+' · 尺寸 '+count+'×'+count;
+    // 导出
+    var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
+    try {
+      qrImg.src = off.toDataURL(mime, 0.92);
+    } catch(e){
+      qrImg.src = off.toDataURL('image/png');
+    }
+    qrImg.style.display='block';
+    qrEmpty.style.display='none';
+    saveHint.style.display='block';
+
+    taobaoBtn.disabled = !extractTaobaoUrl(text);
+    qrTip.textContent = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
   }
 
   function clearQR(){
-    canvas.style.display='none';
+    qrImg.style.display='none';
+    qrImg.removeAttribute('src');
     qrEmpty.style.display='block';
+    saveHint.style.display='none';
     taobaoBtn.disabled = true;
-    downloadBtn.disabled = true;
     qrTip.textContent='';
-    currentDataURL=null;
     lastText='';
   }
 
@@ -315,7 +523,7 @@
   var timer=null;
   function scheduleRender(){
     if (timer) clearTimeout(timer);
-    timer = setTimeout(render, 280);
+    timer = setTimeout(render, 100);
   }
   input.addEventListener('input', scheduleRender);
 
@@ -341,15 +549,6 @@
     input.value=''; clearQR(); input.focus();
   });
 
-  /* ---------- 下载 ---------- */
-  downloadBtn.addEventListener('click', function(){
-    if (!currentDataURL){ return; }
-    var a=document.createElement('a');
-    a.href = currentDataURL;
-    a.download = 'qrcode.png';
-    document.body.appendChild(a); a.click(); a.remove();
-  });
-
   /* ---------- 美化面板交互 ---------- */
   var beautyToggle=document.getElementById('beautyToggle');
   var beautyPanel=document.getElementById('beautyPanel');
@@ -358,24 +557,53 @@
     var open = beautyPanel.classList.toggle('show');
     beautyArrow.textContent = open ? '▾' : '▸';
   });
-  function bindSeg(id, key, after){
+
+  // 选项卡切换
+  var tabs=document.getElementById('beautyTabs');
+  tabs.addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    tabs.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    var name=b.getAttribute('data-tab');
+    beautyPanel.querySelectorAll('.tab-page').forEach(function(p){
+      p.classList.toggle('show', p.getAttribute('data-page')===name);
+    });
+  });
+
+  function bindSeg(id, key){
     var seg=document.getElementById(id);
     seg.addEventListener('click', function(e){
       var b=e.target.closest('button'); if(!b) return;
       seg.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
       b.classList.add('active');
       opts[key]=b.getAttribute('data-v');
-      if (after) after();
       render();
     });
   }
   bindSeg('eclSeg','ecl');
   bindSeg('dotSeg','dot');
+  bindSeg('eyeSeg','eye');
+  bindSeg('gradSeg','grad');
+
   document.getElementById('fgColor').addEventListener('input', function(e){ opts.fg=e.target.value; render(); });
   document.getElementById('fgColor2').addEventListener('input', function(e){ opts.fg2=e.target.value; render(); });
   document.getElementById('bgColor').addEventListener('input', function(e){ opts.bg=e.target.value; render(); });
+  document.getElementById('bgColor2').addEventListener('input', function(e){ opts.bg2=e.target.value; render(); });
 
+  document.getElementById('sizeInput').addEventListener('input', function(e){ opts.size=+e.target.value||500; scheduleRender(); });
+  document.getElementById('marginInput').addEventListener('input', function(e){ opts.margin=+e.target.value||0; scheduleRender(); });
+  document.getElementById('formatSel').addEventListener('change', function(e){ opts.format=e.target.value; render(); });
+
+  // 文字
+  document.getElementById('textOn').addEventListener('change', function(e){ opts.textOn=e.target.checked; render(); });
+  document.getElementById('textContent').addEventListener('input', function(e){ opts.textContent=e.target.value; scheduleRender(); });
+  document.getElementById('textSize').addEventListener('input', function(e){ opts.textSize=+e.target.value||36; scheduleRender(); });
+  document.getElementById('textColor').addEventListener('input', function(e){ opts.textColor=e.target.value; render(); });
+  document.getElementById('textBold').addEventListener('change', function(e){ opts.textBold=e.target.checked; render(); });
+
+  // Logo
   var logoBtn=document.getElementById('logoBtn');
+  var logoClearBtn=document.getElementById('logoClearBtn');
   var logoInput=document.getElementById('logoInput');
   var logoPrev=document.getElementById('logoPrev');
   logoBtn.addEventListener('click', function(){ logoInput.click(); });
@@ -387,12 +615,20 @@
       img.onload=function(){
         logoImg=img;
         logoPrev.src=img.src; logoPrev.style.display='block';
+        logoClearBtn.style.display='inline-block';
         render();
       };
       img.src=ev.target.result;
     };
     reader.readAsDataURL(f);
   });
+  logoClearBtn.addEventListener('click', function(){
+    logoImg=null; logoInput.value='';
+    logoPrev.style.display='none'; logoClearBtn.style.display='none';
+    render();
+  });
+  document.getElementById('logoSize').addEventListener('input', function(e){ opts.logoSize=+e.target.value; scheduleRender(); });
+  document.getElementById('logoRadius').addEventListener('input', function(e){ opts.logoRadius=+e.target.value; scheduleRender(); });
 
   /* ---------- 跳转淘宝（隐式唤起 App） ---------- */
   function isIOS(){
