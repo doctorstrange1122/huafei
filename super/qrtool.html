@@ -41,7 +41,7 @@
   .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
 
   textarea#qrInput{
-    width:100%;min-height:92px;resize:vertical;font-size:15px;line-height:1.5;
+    width:100%;min-height:205px;resize:vertical;font-size:15px;line-height:1.5;
     padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;
     background:var(--field);color:var(--text);outline:none;font-family:inherit;
     transition:border-color .2s;
@@ -69,9 +69,9 @@
   .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
   .qr-save-hint{font-size:12px;color:var(--accent);margin-top:4px;text-align:center;font-weight:600;}
 
-  /* 二维码下方的圆形功能按钮 */
-  .fab-row{display:flex;gap:36px;margin-top:16px;justify-content:center;}
-  .fab-item{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  /* 二维码与功能按钮左右排列（按钮右侧垂直居中） */
+  .qr-flex{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;}
+  .fab-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
   .fab-label{font-size:11px;color:var(--sub);font-weight:600;}
   .jump-fab{
     width:52px;height:52px;border-radius:50%;border:none;
@@ -83,7 +83,6 @@
   }
   .jump-fab:active{transform:scale(.9);}
   .jump-fab:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
-  .jump-fab.save{background:linear-gradient(135deg,#2b6cff,#4d8bff);box-shadow:0 6px 16px rgba(43,108,255,.4);}
 
   /* 美化面板 */
   .beauty-toggle{
@@ -177,22 +176,18 @@
     <div class="card">
       <div class="card-title"><span class="dot"></span>二维码</div>
       <div class="qr-stage">
-        <div class="qr-img-box" id="qrBox">
-          <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
-          <img id="qrImg" alt="二维码" style="display:none;">
-        </div>
-        <div class="fab-row">
-          <div class="fab-item">
-            <button class="jump-fab save" id="saveBtn" disabled title="保存图片">存</button>
-            <span class="fab-label">保存图片</span>
+        <div class="qr-flex">
+          <div class="qr-img-box" id="qrBox">
+            <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
+            <img id="qrImg" alt="二维码" style="display:none;">
           </div>
-          <div class="fab-item">
+          <div class="fab-col">
             <button class="jump-fab" id="taobaoBtn" disabled title="跳转淘宝">跳</button>
             <span class="fab-label">跳转淘宝</span>
           </div>
         </div>
         <div class="qr-tip" id="qrTip"></div>
-        <div class="qr-save-hint" id="saveHint" style="display:none;">点击「存」按钮，或长按二维码图片即可保存</div>
+        <div class="qr-save-hint" id="saveHint" style="display:none;">长按二维码图片即可保存</div>
       </div>
     </div>
 
@@ -339,7 +334,6 @@
   var qrTip = document.getElementById('qrTip');
   var saveHint = document.getElementById('saveHint');
   var taobaoBtn = document.getElementById('taobaoBtn');
-  var saveBtn = document.getElementById('saveBtn');
   var lastText = '';
   var currentDataURL = '';   // 最新生成的二维码 dataURL（供保存/长按使用）
 
@@ -528,7 +522,6 @@
     saveHint.style.display='block';
 
     taobaoBtn.disabled = !extractTaobaoUrl(text);
-    saveBtn.disabled = false;
     qrTip.textContent = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
   }
 
@@ -538,7 +531,6 @@
     qrEmpty.style.display='block';
     saveHint.style.display='none';
     taobaoBtn.disabled = true;
-    saveBtn.disabled = true;
     qrTip.textContent='';
     lastText='';
     currentDataURL='';
@@ -574,37 +566,8 @@
     input.value=''; clearQR(); input.focus();
   });
 
-  /* ---------- 保存图片：App 内走原生存图库，否则分享/下载 ---------- */
-  // 与主界面结果区同源：App 注入的 NativeBridge.saveImage 可直达系统图库
+  /* ---------- 保存：长按二维码即可（App 内走原生 NativeBridge.saveImage 存图库） ---------- */
   function hasNativeSave(){ return (typeof NativeBridge !== 'undefined') && !!NativeBridge.saveImage; }
-  function doSave(){
-    if (saveBtn.disabled || !currentDataURL) return;
-    // 1) App 原生接口：直接存入系统图库
-    if (hasNativeSave()){
-      NativeBridge.saveImage(currentDataURL);
-      return;
-    }
-    // 2) Web Share：弹出系统分享面板，可直接存相册/发微信
-    var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
-    var ext  = opts.format==='jpg' ? 'jpg' : 'png';
-    off.toBlob(function(b){
-      if (!b) return;
-      var fname = 'qrcode_' + Date.now() + '.' + ext;
-      var file = null;
-      try { file = new File([b], fname, {type:mime}); } catch(e){}
-      if (file && navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:'二维码'}).catch(function(){});
-        return;
-      }
-      // 3) 降级：blob 链接触发下载
-      var a=document.createElement('a');
-      a.href=URL.createObjectURL(b);
-      a.download=fname;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
-    }, mime, 0.92);
-  }
-  saveBtn.addEventListener('click', doSave);
 
   /* ---------- 长按二维码：App 内直接保存图片到图库（与主界面一致） ---------- */
   qrImg.style.webkitTouchCallout = hasNativeSave() ? 'none' : '';
