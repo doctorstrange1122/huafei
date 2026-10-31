@@ -522,7 +522,11 @@
     saveHint.style.display='block';
 
     taobaoBtn.disabled = !extractTaobaoUrl(text);
-    qrTip.textContent = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
+    var baseTip = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
+    // 淘口令（非链接）无法被普通扫码工具打开，只有淘宝 App 扫一扫能识别，明确提示避免误用
+    qrTip.textContent = isTaoKouLing(text)
+      ? '检测到淘口令 · 请用「淘宝 App 扫一扫」识别打开（微信/浏览器扫码无效）'
+      : baseTip;
   }
 
   function clearQR(){
@@ -702,6 +706,16 @@
   }
   function isAPK(){ return !!window.NativeBridge || (window.Android && typeof window.Android!=='undefined'); }
   function isHarmony(){ return /HarmonyOS|OpenHarmony|HuaweiBrowser|zhuoyi/i.test(navigator.userAgent); }
+
+  // 淘口令特征：CZxxxx/ 、￥xxxx￥ 、₤xxxx₤ 、₳xxxx₳ 、(xxxx) 等，且不含 http 链接
+  function isTaoKouLing(raw){
+    if (!raw) return false;
+    if (/https?:\/\//i.test(raw)) return false;
+    return /\bCZ[0-9A-Za-z]{2,}\s*[0-9A-Za-z]{6,}\s*\//.test(raw) ||
+           /[￥¥]\s*[0-9A-Za-z]{8,}\s*[￥¥]/.test(raw) ||
+           /[₤₳₴]\s*[0-9A-Za-z]{8,}\s*[₤₳₴]/.test(raw) ||
+           /\(\s*[0-9A-Za-z]{10,}\s*\)/.test(raw);
+  }
 
   function extractTaobaoUrl(raw){
     if (!raw) return null;
