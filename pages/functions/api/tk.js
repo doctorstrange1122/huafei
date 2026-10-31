@@ -36,6 +36,59 @@ function extractTkl(input) {
   return String(s).trim();
 }
 
+// —— 淘口令规范化 ——
+// 实测：折淘客解析接口收到「含 http(s) 链接的长文本」会失败（Stream was cancelled），
+// 必须先从商品分享文案中抠出纯口令码。这里按命中概率从高到低产出候选，依次重试。
+const NOISE_WORDS = [
+  '点击链接直接打开', '或者', '淘宝搜索直接打开', '拷贝链接', '复制链接', '复制本条信息',
+  '复制这条信息', '打开淘宝', '打开👉淘宝', '到淘宝', '长按复制', '打开手机淘宝',
+  '【', '】', '「', '」', '『', '』', '￥', '¥', '$',
+];
+
+function normalizeCandidates(input) {
+  const s = String(input || '').replace(/&amp;/g, '&').trim();
+  const out = [];
+  const push = (v) => {
+    v = String(v == null ? '' : v).trim();
+    if (v && v.length <= 300 && !out.includes(v)) out.push(v);
+  };
+
+  // 1) 链接里的口令参数：?tk= / &tk= / code= / pwd= / tkl=
+  for (const m of s.matchAll(/[?&](?:tk|code|pwd|tkl|tpwd|password|password_content)=([A-Za-z0-9_-]{6,})/g)) push(m[1]);
+
+  // 2) 币符/括号包裹的口令正文
+  for (const m of s.matchAll(/[￥¥]([^￥¥\s]{6,})[￥¥]/g)) push(m[1]);
+  for (const m of s.matchAll(/[(（]([A-Za-z0-9]{8,})[)）]/g)) push(m[1]);
+
+  // 3) 剥掉所有 URL 后的剩余文本
+  const noUrl = s.replace(/https?:\/\/[^\s，,、)]+/gi, ' ').replace(/\s+/g, ' ').trim();
+  push(noUrl);
+
+  // 4) 去掉中文与话术后剩下的字母数字片段（如 "CZ5073 1g2ITzuYm9G"）
+  let cleaned = noUrl;
+  for (const w of NOISE_WORDS) cleaned = cleaned.split(w).join(' ');
+  cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, ' ').replace(/\s+/g, ' ').trim();
+  push(cleaned);
+  for (const m of cleaned.matchAll(/[A-Za-z0-9_-]{8,}/g)) push(m[0]);
+
+  // 5) 原文兜底
+  push(s);
+  return out.slice(0, 6);
+}
+
+// 已经是「带商品 id 的淘宝/天猫长链」时无需解析；短链(tb.cn/e.tb.cn)仍优先解析成直连长链
+function directTaobaoUrl(s) {
+  if (!/^https?:\/\//i.test(s)) return '';
+  const u = s.trim();
+  if (/[?&]id=\d{6,}/.test(u) && /(^|\.)(taobao|tmall)\./i.test(u)) return u;
+  return '';
+}
+
+function pickItemId(u) {
+  const m = String(u || '').match(/[?&]id=(\d{6,})/);
+  return m ? m[1] : '';
+}
+
 // —— 折淘客：TCP+TLS 直连非标准端口 ——
 async function ztkGet(host, port, pathQuery, ms) {
   const socket = connect({ hostname: host, port }, { secureTransport: 'on', allowHalfOpen: false });
@@ -76,20 +129,28 @@ async function viaZhetaoke(tkl, env) {
   const c = encodeURIComponent(tkl);
   let lastErr = '';
 
+  // 接口已明确返回（含错误码）时不换域名，直接判定该候选失败，交给下一个候选；
+  // 只有 TCP/TLS 连接本身失败才换备用域名重连。
+  const max = Number(env.ZTK_TIMEOUT_MS || 9000);
   for (const { host, port } of ZTK_HOSTS) {
+    let r = null;
     try {
-      // 1) 解析淘口令 -> 返回推广 url（生成二维码最需要；商品/活动类口令均支持）
-      let r = await ztkGet(host, port, `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${c}${jb}${pid}`);
-      if (r && r.url) return { url: r.url, title: r.content || r.title || '', raw: r };
-      lastErr = (r && r.content) || 'no url';
-
-      // 2) 退：解析商品编号 -> 返回 itemId（淘客商品口令）
-      r = await ztkGet(host, port, `/api/open_shangpin_id.ashx?appkey=${appkey}&sid=${sid}&content=${c}&type=1${jb}${pid}`);
-      const id = r && (r.item_id || r.num_iid);
-      if (id) return { id: String(id), url: 'https://item.taobao.com/item.htm?id=' + id, title: r.title || '', raw: r };
+      // 1) 解析淘口令 -> 返回推广 url（商品/活动类口令均支持）
+      r = await ztkGet(host, port, `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${c}${jb}${pid}`, max);
     } catch (e) {
-      lastErr = String(e && e.message || e);
+      lastErr = String((e && e.message) || e);
+      continue; // 连接问题 -> 换域名重试
     }
+    if (r && r.url) return { url: r.url, title: r.content || r.title || '', raw: r };
+
+    try {
+      // 2) 退：解析商品编号 -> 返回 itemId（淘客商品口令）
+      const r2 = await ztkGet(host, port, `/api/open_shangpin_id.ashx?appkey=${appkey}&sid=${sid}&content=${c}&type=1${jb}${pid}`, max);
+      const id = r2 && (r2.item_id || r2.num_iid);
+      if (id) return { id: String(id), url: 'https://item.taobao.com/item.htm?id=' + id, title: r2.title || '', raw: r2 };
+    } catch (_) { /* ignore */ }
+
+    return { err: 'zhetaoke: ' + ((r && r.content) || 'no url'), raw: r };
   }
   return { err: 'zhetaoke parse failed: ' + lastErr };
 }
@@ -130,11 +191,24 @@ export async function onRequest(context) {
   const tkl = extractTkl(raw);
   if (!tkl) return json({ ok: false, error: 'missing tkl' }, 400);
 
-  // 折淘客优先（免费），未配置则退 taokouling
-  let out = { err: 'no provider configured' };
-  if (env.ZTK_APPKEY && env.ZTK_SID) out = await viaZhetaoke(tkl, env);
-  else if (env.TK_APIKEY) out = await viaTaokouling(tkl, env);
+  // 0) 输入本身就是淘宝/天猫短链或商品链接 —— 直接可用，无需解析
+  const direct = directTaobaoUrl(tkl);
+  if (direct) {
+    return json({ ok: true, url: direct, id: pickItemId(direct), title: '', pic: '', via: 'direct' });
+  }
 
-  if (out.err) return json({ ok: false, error: out.err, raw: out.raw || null });
-  return json({ ok: true, url: out.url || '', id: out.id || '', title: out.title || '', pic: out.pic || '' });
+  // 折淘客优先（免费），未配置则退 taokouling；按规范化候选依次重试
+  const cands = normalizeCandidates(tkl);
+  let out = { err: 'no provider configured' };
+  for (const c of cands) {
+    if (env.ZTK_APPKEY && env.ZTK_SID) out = await viaZhetaoke(c, env);
+    else if (env.TK_APIKEY) out = await viaTaokouling(c, env);
+    if (!out.err) {
+      return json({
+        ok: true, url: out.url || '', id: out.id || pickItemId(out.url),
+        title: out.title || '', pic: out.pic || '', via: 'api', matched: c,
+      });
+    }
+  }
+  return json({ ok: false, error: out.err, tried: cands, raw: out.raw || null });
 }
