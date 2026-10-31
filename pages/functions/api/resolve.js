@@ -9,6 +9,14 @@
 //   2) 短链 → 同时尝试 e.tb.cn 与等价 m.tb.cn 变体，多 UA 并行抓取 + 重定向跟随 + 正则抽 id
 //   3) 首轮失败（上游抖动）后短暂重试一次；body 含 item/tmall 链接则二次跟随
 // 兼容 CORS（前端跨域简单 GET 调用，无需预检）。
+//
+// 2026-10-31 新增【淘口令解析路径】：
+//   文案里能抠出口令码（?tk= 参数 / ￥码￥ / CZ 格式 / 纯口令文本）时，
+//   走折淘客解析（实测约 2.4s）与"追短链重定向"【并行竞速】，谁先拿到商品 id 用谁。
+//   收益：① 商品分享文案不再被 e.tb.cn 偶发卡死拖到 9s 超时；② 纯淘口令（无链接）首次可解析。
+//   注意：折淘客收到【含 http 的长文本】必失败，必须先剥出纯口令码（见 tklCandidates）。
+
+import { connect } from 'cloudflare:sockets';
 
 const UA_POOL = [
   'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
@@ -121,7 +129,104 @@ async function resolveShortLink(target) {
   return best;
 }
 
-async function resolve(input) {
+/* ============ 淘口令解析路径（折淘客，非标端口需 TCP+TLS 直连） ============ */
+const ZTK_HOSTS = [
+  { host: 'api.zhetaoke.com', port: 10001 },
+  { host: 'api.zhetaoke.cn', port: 10000 },
+];
+
+async function ztkGet(host, port, pathQuery, ms) {
+  const socket = connect({ hostname: host, port }, { secureTransport: 'on', allowHalfOpen: false });
+  const timer = setTimeout(() => { try { socket.close(); } catch (_) {} }, ms || 6000);
+  try {
+    const w = socket.writable.getWriter();
+    await w.write(new TextEncoder().encode(
+      `GET ${pathQuery} HTTP/1.1\r\nHost: ${host}\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n`
+    ));
+    w.releaseLock();
+    const reader = socket.readable.getReader();
+    const parts = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      if (parts.reduce((n, p) => n + p.length, 0) > 512 * 1024) break;
+    }
+    reader.releaseLock();
+    const raw = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let off = 0;
+    for (const p of parts) { raw.set(p, off); off += p.length; }
+    const text = new TextDecoder().decode(raw);
+    const idx = text.indexOf('\r\n\r\n');
+    if (idx < 0) throw new Error('bad http response');
+    return JSON.parse(text.slice(idx + 4).trim());
+  } finally {
+    clearTimeout(timer);
+    try { socket.close(); } catch (_) {}
+  }
+}
+
+// 判断这份输入值不值得跑折淘客（避免纯链接白跑一次）
+function shouldTryTkl(s) {
+  const t = String(s || '').trim();
+  if (/[?&]tk=[A-Za-z0-9_-]{6,}/.test(t)) return true;      // 分享短链上的口令参数
+  if (/[￥¥][^￥¥\s]{6,}[￥¥]/.test(t)) return true;          // ￥口令码￥
+  if (/\bCZ[0-9A-Za-z]{2,}\s*[0-9A-Za-z]{6,}\s*\//.test(t)) return true; // CZ3457 xxx/
+  if (/[₤₳₴]\s*[0-9A-Za-z]{8,}\s*[₤₳₴]/.test(t)) return true;
+  return !/^https?:\/\//i.test(t);                           // 非链接开头：纯口令文案
+}
+
+// 剥出候选口令码（按命中概率排序；折淘客见 http 长文本必失败）
+function tklCandidates(text) {
+  const s = String(text || '').replace(/&amp;/g, '&').trim();
+  const out = [];
+  const push = (v) => { v = String(v == null ? '' : v).trim(); if (v && v.length <= 300 && !out.includes(v)) out.push(v); };
+  for (const m of s.matchAll(/[?&](?:tk|code|pwd|tkl|tpwd|password)=([A-Za-z0-9_-]{6,})/g)) push(m[1]);
+  for (const m of s.matchAll(/[￥¥]([^￥¥\s]{6,})[￥¥]/g)) push(m[1]);
+  const noUrl = s.replace(/https?:\/\/[^\s，,、)]+/gi, ' ').replace(/\s+/g, ' ').trim();
+  push(noUrl);
+  let c = noUrl;
+  for (const w of ['点击链接直接打开', '或者', '淘宝搜索直接打开', '拷贝链接', '复制这条信息', '复制本条信息', '打开淘宝', '【', '】', '「', '」', '￥', '¥']) c = c.split(w).join(' ');
+  c = c.replace(/[\u4e00-\u9fa5]/g, ' ').replace(/\s+/g, ' ').trim();
+  push(c);
+  for (const m of c.matchAll(/[A-Za-z0-9_-]{8,}/g)) push(m[0]);
+  return out.slice(0, 3);
+}
+
+// 折淘客解析：成功且能抽出商品 id 才作数（活动类口令没有商品 id，交给短链路径）
+async function resolveByTkl(tkl, env) {
+  const appkey = env.ZTK_APPKEY, sid = env.ZTK_SID;
+  if (!appkey || !sid) return null;
+  const pid = env.ZTK_PID ? '&pid=' + encodeURIComponent(env.ZTK_PID) : '';
+  for (const { host, port } of ZTK_HOSTS) {
+    try {
+      const r = await ztkGet(host, port,
+        `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${encodeURIComponent(tkl)}${pid}`, 6000);
+      if (r && r.url) {
+        const ids = extractIds(r.url);
+        if (ids.length) return { ids, url: r.url, via: 'ztk', tkl };
+      }
+      break; // 接口已明确返回，不再换域名折腾
+    } catch (_) { /* 连接问题 → 换备用域名 */ }
+  }
+  return null;
+}
+
+// 多路并行竞速：谁先拿到 id 用谁（而非等最慢的一路）
+function raceIds(tasks) {
+  return new Promise((resolve) => {
+    let pending = tasks.length, settled = false;
+    const finish = (r) => { if (!settled && r && r.ids && r.ids.length) { settled = true; resolve(r); } };
+    for (const fn of tasks) {
+      fn().then((r) => {
+        finish(r);
+        if (--pending === 0 && !settled) resolve(null);
+      }).catch(() => { if (--pending === 0 && !settled) resolve(null); });
+    }
+  });
+}
+
+async function resolve(input, env) {
   // 0. 纯数字 id 直接返回（零网络，毫秒）
   //    仅当输入“整体就是一个/多个 id”时才走此路径：允许 id=/itemIds=/topIds= 前缀，
   //    逗号/分号/顿号/空白/各类括号分隔，以及 ¥￥₳₴ 等货币符号。
@@ -145,22 +250,39 @@ async function resolve(input) {
     const direct = extractIds(u);
     if (direct.length) return { ids: direct, url: u, status: 0, body: '' };
   }
-  // 2. 短链 → 服务端展开抽 id（最多两轮：首轮失败的上游抖动后短暂重试一次）
-  const candidates = urls.length ? urls : [input];
-  let last = { ids: [], url: '', status: 0, body: '' };
-  for (let attempt = 0; attempt < 2; attempt++) {
-    for (const c of candidates) {
-      const r = await resolveShortLink(c);
-      if (r.ids && r.ids.length) return { ids: r.ids, url: r.url, status: r.status, body: r.body };
-      if (r.url || r.body) last = r;
+  // 2. 抽 id：淘口令解析 与 短链跟随【并行竞速】，谁先命中用谁
+  const shortTask = async () => {
+    const candidates = urls.length ? urls : [input];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      for (const c of candidates) {
+        const r = await resolveShortLink(c);
+        if (r.ids && r.ids.length) return { ids: r.ids, url: r.url, status: r.status, body: r.body, via: 'follow' };
+      }
+      if (attempt === 0) await new Promise(res => setTimeout(res, 400)); // 上游抖动后短暂重试
     }
-    if (attempt === 0) await new Promise(res => setTimeout(res, 400));
+    return null;
+  };
+
+  const cands = shouldTryTkl(input) ? tklCandidates(input) : [];
+  if (cands.length) {
+    const tklTask = async () => {
+      for (const c of cands) {
+        const r = await resolveByTkl(c, env);
+        if (r) return r;
+      }
+      return null;
+    };
+    const win = await raceIds([tklTask, shortTask]);
+    if (win) return win;
+    return { ids: [], url: '', status: 0, body: '', via: 'none' };
   }
-  return last;
+
+  const r = await shortTask();
+  return r || { ids: [], url: '', status: 0, body: '' };
 }
 
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
 
   // 预检
@@ -181,7 +303,7 @@ export async function onRequest(context) {
 
   // 总超时 9s：e.tb.cn 偶发卡死时，到点即返回失败，不让前端无限等待
   const winner = await Promise.race([
-    resolve(target).then(r => ({ ...r, timedout: false })),
+    resolve(target, env).then(r => ({ ...r, timedout: false })),
     new Promise(res => setTimeout(() => res({ ids: [], url: '', status: 0, body: '', timedout: true }), 9000))
   ]);
 
@@ -189,5 +311,5 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({ ok: false, error: winner.timedout ? 'timeout' : 'not found', tk }), { status: 200, headers: CORS });
   }
 
-  return new Response(JSON.stringify({ ok: true, ids: winner.ids, url: winner.url, tk }), { headers: CORS });
+  return new Response(JSON.stringify({ ok: true, ids: winner.ids, url: winner.url, tk, via: winner.via || 'follow' }), { headers: CORS });
 }
