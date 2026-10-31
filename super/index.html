@@ -1972,11 +1972,21 @@
             // 2. 服务端解析（主路径）与本地/代理兜底并行竞速，谁先成功用谁
             //    - 服务端 /api/resolve 把"展开淘宝短链+抽id"放到后端，4.2等低端设备不再自己追 e.tb.cn 重定向链，最稳最快
             //    - 本地跟随重定向、CORS 代理作为兜底，任一路成功即返回
+            // 竞速总预算：不再死等最慢的一路（原实现 Promise.any 要等三路全失败，固定耗掉 15s）
+            const L1_BUDGET = 12000;
+            const L2_TIMEOUT = 15000;   // 兜底单路超时（服务端与代理【并行】同时跑）
+            let budgetTimer = null;
+            const budgetExceeded = new Promise(function(_, reject){
+                budgetTimer = setTimeout(function(){
+                    reject(new Error('L1 竞速预算 ' + L1_BUDGET + 'ms 用尽'));
+                }, L1_BUDGET + 500);
+            });
+            function clearBudget(){ if (budgetTimer) { clearTimeout(budgetTimer); budgetTimer = null; } }
             try {
-                const id = await Promise.any([
+                const id = await Promise.race([ Promise.any([
                     // 主路径：服务端解析
                     (async () => {
-                        const serverId = await resolveViaServer(text);
+                        const serverId = await resolveViaServer(text, L1_BUDGET);
                         if (!serverId) throw new Error('server no id');
                         return serverId;
                     })(),
@@ -1991,7 +2001,7 @@
                     })(),
                     // 慢路径：CORS 代理解析（代理已内置自动UA轮换+重定向跟随+服务端抽id）
                     (async () => {
-                        const res = await fetchWithProxy(shortUrl);
+                        const res = await fetchWithProxy(shortUrl, L1_BUDGET);
                         if (!res) throw new Error('proxy failed');
                         console.log('代理返回: finalUrl=', res.url, '| ids=', res.ids, '| body长度=', res.body ? res.body.length : 0);
                         // 1) 优先用代理服务端已抽好的商品id（最稳，不依赖 body 正则）
@@ -2012,22 +2022,37 @@
                         if (m) return m[1];
                         throw new Error('no id in proxy body');
                     })(),
-                ]);
+                ]), budgetExceeded ]);
+                clearBudget();
                 if (id) _parseCache.set(_cacheKey, id);
                 return id;
             } catch (e) {
-                // 竞速全失败时，再串行给服务端/代理一次更长的机会（真实淘口令服务端展开+抽id常需 10s+，
-                // 提速版把主路径超时压短导致慢响应被提前 abort，这里用更长的兜底把成功率补回来）
-                console.warn('竞速解析未命中，尝试服务端兜底:', e && e.message);
+                clearBudget();
+                // 竞速预算内未命中：服务端与代理改为【并行】各跑 L2_TIMEOUT，谁先成功用谁
+                // （原实现为串行 22s + 22s = 44s，最坏总耗时 59s；并行后最坏降到约 27s）
+                console.warn('竞速解析未命中（' + (e && e.message) + '），进入并行兜底');
                 try {
-                    const serverId = await resolveViaServer(text, 22000);
-                    if (serverId) { _parseCache.set(_cacheKey, serverId); return serverId; }
-                    const res = await fetchWithProxy(shortUrl, 22000);
-                    if (res) {
-                        if (res.ids && res.ids.length) { _parseCache.set(_cacheKey, res.ids[0]); return res.ids[0]; }
-                        if (res.url) { const id = extractItemIdFromUrl(res.url); if (id) { _parseCache.set(_cacheKey, id); return id; } }
-                    }
-                } catch (e2) { console.error('服务端兜底也失败:', e2 && e2.message); }
+                    const id = await Promise.any([
+                        (async () => {
+                            const serverId = await resolveViaServer(text, L2_TIMEOUT);
+                            if (!serverId) throw new Error('server no id');
+                            return serverId;
+                        })(),
+                        (async () => {
+                            const res = await fetchWithProxy(shortUrl, L2_TIMEOUT);
+                            if (!res) throw new Error('proxy failed');
+                            if (res.ids && res.ids.length) return res.ids[0];
+                            if (res.url) { const id = extractItemIdFromUrl(res.url); if (id) return id; }
+                            const body = res.body || '';
+                            const urlMatch = body.match(/var\s+url\s*=\s*'([^']+)'/);
+                            if (urlMatch) { const id = extractItemIdFromUrl(urlMatch[1]); if (id) return id; }
+                            const m = body.match(/topIds=(\d+)/) || body.match(/itemIds=(\d+)/) || body.match(/[?&]id=(\d{7,})/);
+                            if (m) return m[1];
+                            throw new Error('no id in proxy body');
+                        })(),
+                    ]);
+                    if (id) { _parseCache.set(_cacheKey, id); return id; }
+                } catch (e2) { console.error('并行兜底也失败:', e2 && e2.message); }
                 console.error('所有解析路径均失败');
                 return null;
             }
