@@ -65,8 +65,7 @@ export async function onRequest(context) {
     try { const b = await request.json(); content = b.tkl || b.content || b.url || ''; } catch (_) { content = await request.text(); }
   }
   content = String(content || '').trim();
-  const probe = u.searchParams.get('probe');
-  if (!content && probe !== 'guess') return json({ ok: false, error: 'missing tkl/content' }, 400);
+  if (!content) return json({ ok: false, error: 'missing tkl/content' }, 400);
 
   // sid 允许用查询参数覆盖，便于区分「导购/发单/代理」授权类型（转链接口对 sid 类型敏感）
   const appkey = env.ZTK_APPKEY;
@@ -106,27 +105,6 @@ export async function onRequest(context) {
       results.shorturl = r;
       break;
     } catch (e) { results.err2 = String((e && e.message) || e); }
-  }
-
-  // 探针：用「猜你喜欢」取在售真实商品ID，再走一次转链，用于确认转链接口本身是否可用
-  if (u.searchParams.get('probe') === 'guess') {
-    try {
-      const g = await ztkGet(HOSTS[0].host, HOSTS[0].port,
-        `/api/open_item_guess_like2.ashx?appkey=${appkey}&sid=${sid}&page=1&page_size=3`, 9000);
-      results.guess = g;
-      const list = (g && g.tbk_dg_optimus_material_response && g.tbk_dg_optimus_material_response.result_list
-        && g.tbk_dg_optimus_material_response.result_list.map_data) || [];
-      const ids = list.map((it) => it.item_id || it.num_iid || it.itemId).filter(Boolean).slice(0, 3);
-      results.guess_ids = ids;
-      for (const id of ids) {
-        try {
-          const r = await ztkGet(HOSTS[0].host, HOSTS[0].port,
-            `/api/open_gaoyongzhuanlian.ashx?appkey=${appkey}&sid=${sid}${pidQ}&num_iid=${id}`, 9000);
-          (results.guess_zhuanlian ||= {})[String(id)] = r;
-        } catch (e) { (results.guess_err ||= {})[String(id)] = String((e && e.message) || e); }
-      }
-    } catch (e) { results.guess_err = String((e && e.message) || e); }
-    return json({ ok: true, probe: true, raw: results });
   }
 
   const z = Object.assign({}, results.zhuanlian_id || {}, results.zhuanlian || {});
