@@ -640,11 +640,13 @@
         .button-group button .status-badge.available { background: #6a9a7a; }
         .button-group button .status-badge.testing { background: #c49a5e; }
 
-        .button-group button:has(.status-badge.testing) {
+        /* 待测按钮灰色背景：不用 :has()（老设备 WebView 不支持，会导致待测/可用都显示蓝灰），
+           改用显式 class，由 JS 在初始化及 DOM 变化时自动给含 .status-badge.testing 的按钮加上 */
+        .button-group button.testing {
             background: linear-gradient(135deg, #c2c7cc, #aeb3b8);
             box-shadow: 0 4px 14px rgba(150,155,160,0.18);
         }
-        .button-group button:has(.status-badge.testing):active {
+        .button-group button.testing:active {
             transform: scale(0.97);
             box-shadow: 0 2px 8px rgba(150,155,160,0.18);
         }
@@ -1349,7 +1351,16 @@
             }
         }
 
+        // 给含"待测"标签的按钮加/去 testing class（灰色背景），替代老设备不支持的 :has() 选择器
+        function markTestingButtons() {
+            document.querySelectorAll('.button-group button').forEach(function(btn) {
+                if (btn.querySelector('.status-badge.testing')) btn.classList.add('testing');
+                else btn.classList.remove('testing');
+            });
+        }
+
         function initAllBadges() {
+            markTestingButtons();
             const buttons = document.querySelectorAll('.button-group button[data-btn-key]');
             const data = getUsageData();
             let changed = false;
@@ -1373,6 +1384,17 @@
             });
             if (changed) saveUsageData(data);
         }
+
+        // DOM 变化兜底（自设按钮等动态渲染路径）：自动维护 testing class
+        (function(){
+            var mo = new MutationObserver(function(){ markTestingButtons(); });
+            function start(){
+                if (document.body) mo.observe(document.body, { childList: true, subtree: true });
+                else document.addEventListener('DOMContentLoaded', function(){ mo.observe(document.body, { childList: true, subtree: true }); markTestingButtons(); });
+            }
+            start();
+            markTestingButtons();
+        })();
 
         // ====== 自动跳转复选框状态记忆（localStorage 持久化，退出后台重新打开软件仍保持上次选择）======
         const AUTOJUMP_KEY = 'autojump_check_states';
