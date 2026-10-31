@@ -73,11 +73,24 @@ export async function onRequest(context) {
   const results = {};
   const c = encodeURIComponent(content);
   const pidQ = pid ? '&pid=' + encodeURIComponent(pid) : '';
+  const numIid = u.searchParams.get('num_iid') || (String(content).match(/^\d{6,}$/) ? content : '');
+
+  // 商品ID高佣转链（推荐：解析出口令/链接拿到 num_iid 后一步生成带PID推广短链）
+  if (numIid) {
+    for (const { host, port } of HOSTS) {
+      try {
+        const r = await ztkGet(host, port,
+          `/api/open_gaoyongzhuanlian.ashx?appkey=${appkey}&sid=${sid}${pidQ}&num_iid=${encodeURIComponent(numIid)}`, 9000);
+        results.zhuanlian_id = r;
+        break;
+      } catch (e) { results.err0 = String((e && e.message) || e); }
+    }
+  }
 
   for (const { host, port } of HOSTS) {
     try {
       const r = await ztkGet(host, port,
-        `/api/open_gaoyongzhuanlian_tkl.ashx?appkey=${appkey}&sid=${sid}${pidQ}&tkl=${c}&signurl=1`, 9000);
+        `/api/open_gaoyongzhuanlian_tkl.ashx?appkey=${appkey}&sid=${sid}${pidQ}&tkl=${c}`, 9000);
       results.zhuanlian = r;
       break;
     } catch (e) { results.err1 = String((e && e.message) || e); }
@@ -91,7 +104,7 @@ export async function onRequest(context) {
     } catch (e) { results.err2 = String((e && e.message) || e); }
   }
 
-  const z = results.zhuanlian || {};
+  const z = Object.assign({}, results.zhuanlian_id || {}, results.zhuanlian || {});
   const short = z.shorturl || z.coupon_shorturl || z.tbk_short_url || (results.shorturl && results.shorturl.shorturl) || '';
   const long = z.longurl || z.coupon_longurl || z.tbk_url || z.url || '';
   return json({
