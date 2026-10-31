@@ -67,6 +67,14 @@
   .qr-img-box img{width:100%;display:block;}
   .qr-empty{color:#c2c9d4;font-size:13px;text-align:center;padding:40px 20px;}
   .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
+  /* 淘口令转链接按钮 */
+  .tkl-btn{
+    display:block;margin:10px auto 0;padding:9px 22px;border:none;border-radius:999px;
+    background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;
+    font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(255,80,0,.35);
+  }
+  .tkl-btn:active{transform:scale(.96);opacity:.9;}
+  .tkl-btn:disabled{opacity:.55;}
   .qr-save-hint{font-size:12px;color:var(--accent);margin-top:4px;text-align:center;font-weight:600;}
 
   /* 二维码与功能按钮左右排列（按钮右侧垂直居中） */
@@ -187,6 +195,7 @@
           </div>
         </div>
         <div class="qr-tip" id="qrTip"></div>
+        <button class="tkl-btn" id="tklBtn" style="display:none;">🔗 口令转链接</button>
         <div class="qr-save-hint" id="saveHint" style="display:none;">长按二维码图片即可保存</div>
       </div>
     </div>
@@ -524,10 +533,15 @@
     taobaoBtn.disabled = !extractTaobaoUrl(text);
     var baseTip = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
     // 淘口令实测：淘宝扫一扫已不识别纯文本口令码（提示"暂不支持此类型"），任何扫码工具都打不开。
-    // 引导用户改用活动页 https 链接生成二维码（分享→复制链接），或复制口令后打开淘宝自动弹出。
-    qrTip.textContent = isTaoKouLing(text)
-      ? '检测到淘口令 · 口令无法做成可扫码打开的二维码，建议改用该页面的链接生成（淘宝内分享→复制链接）'
-      : baseTip;
+    // 点「口令转链接」调服务端解析（折淘客），还原成 https 链接后即可生成通用可扫的二维码。
+    if (isTaoKouLing(text)){
+      qrTip.textContent = '检测到淘口令 · 点下方按钮还原成链接，即可生成可扫码打开的二维码';
+      tklBtn.style.display = 'block';
+      updateTklBtn();
+    } else {
+      qrTip.textContent = baseTip;
+      tklBtn.style.display = 'none';
+    }
   }
 
   function clearQR(){
@@ -548,6 +562,41 @@
     timer = setTimeout(render, 100);
   }
   input.addEventListener('input', scheduleRender);
+
+  /* ---------- 淘口令转链接（服务端 /api/tk，折淘客解析） ---------- */
+  var tklBtn = document.getElementById('tklBtn');
+  var tklBusy = false;
+  var TK_API = 'https://huafei-redirect-pages.pages.dev/api/tk';
+  function updateTklBtn(){
+    if (tklBusy) return;
+    tklBtn.disabled = false;
+    tklBtn.textContent = '🔗 口令转链接';
+  }
+  tklBtn.addEventListener('click', function(){
+    if (tklBusy) return;
+    var text = (input.value || '').trim();
+    if (!isTaoKouLing(text)) return;
+    tklBusy = true;
+    tklBtn.disabled = true;
+    tklBtn.textContent = '解析中…';
+    var done = function(msg, ok){
+      tklBtn.textContent = msg;
+      setTimeout(function(){ tklBusy = false; updateTklBtn(); }, ok ? 900 : 2200);
+    };
+    fetch(TK_API + '?tkl=' + encodeURIComponent(text))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.ok && d.url){
+          input.value = d.url;                 // 用还原出的链接替换口令
+          input.dispatchEvent(new Event('input'));  // 触发防抖重渲染
+          done('✅ 已转为链接', true);
+          qrTip.textContent = '口令已还原为链接，二维码已更新 · 任何扫码工具都能打开';
+        } else {
+          done('❌ 解析失败' + (d && d.error ? '：' + String(d.error).slice(0,40) : ''), false);
+        }
+      })
+      .catch(function(){ done('❌ 网络异常，请重试', false); });
+  });
 
   /* ---------- 粘贴 ---------- */
   document.getElementById('pasteBtn').addEventListener('click', async function(){
