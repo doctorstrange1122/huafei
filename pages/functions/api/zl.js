@@ -67,7 +67,10 @@ export async function onRequest(context) {
   content = String(content || '').trim();
   if (!content) return json({ ok: false, error: 'missing tkl/content' }, 400);
 
-  const appkey = env.ZTK_APPKEY, sid = env.ZTK_SID, pid = env.ZTK_PID;
+  // sid 允许用查询参数覆盖，便于区分「导购/发单/代理」授权类型（转链接口对 sid 类型敏感）
+  const appkey = env.ZTK_APPKEY;
+  const sid = (u.searchParams.get('sid') || env.ZTK_SID || '').trim();
+  const pid = (u.searchParams.get('pid') || env.ZTK_PID || '').trim();
   if (!appkey || !sid) return json({ ok: false, error: 'missing ZTK_APPKEY/ZTK_SID' }, 500);
 
   const results = {};
