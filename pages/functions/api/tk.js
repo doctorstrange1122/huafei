@@ -211,17 +211,26 @@ export async function onRequest(context) {
 
   // 折淘客优先（免费），未配置则退 taokouling；按规范化候选依次重试
   const cands = normalizeCandidates(tkl);
-  let out = { err: 'no provider configured' };
-  for (const c of cands) {
-    if (env.ZTK_APPKEY && env.ZTK_SID) out = await viaZhetaoke(c, env);
-    else if (env.TK_APIKEY) out = await viaTaokouling(c, env);
-    if (!out.err) {
-      return json({
-        ok: true, url: out.url || '', clean: cleanUrl(out.url),
-        id: out.id || pickItemId(out.url),
-        title: out.title || '', pic: out.pic || '', via: 'api', matched: c,
-      });
+  const call = (c) => (env.ZTK_APPKEY && env.ZTK_SID)
+    ? viaZhetaoke(c, env)
+    : (env.TK_APIKEY ? viaTaokouling(c, env) : Promise.resolve({ err: 'no provider configured' }));
+  const done = (out, c) => json({
+    ok: true, url: out.url || '', clean: cleanUrl(out.url),
+    id: out.id || pickItemId(out.url),
+    title: out.title || '', pic: out.pic || '', via: 'api', matched: c,
+  });
+
+  let last = { err: 'no provider configured' };
+  for (let i = 0; i < cands.length; i++) {
+    const c = cands[i];
+    let out = await call(c);
+    if (!out.err) return done(out, c);
+    // 折淘客偶发返回「很抱歉！解析失败！」（实测重试即成功）：最可能的那个候选多试一次
+    if (i === 0) {
+      out = await call(c);
+      if (!out.err) return done(out, c);
     }
+    last = out;
   }
-  return json({ ok: false, error: out.err, tried: cands, raw: out.raw || null });
+  return json({ ok: false, error: last.err, tried: cands, raw: last.raw || null });
 }
