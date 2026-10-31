@@ -89,6 +89,18 @@ function pickItemId(u) {
   return m ? m[1] : '';
 }
 
+// 解析结果常带 ut_sk/wxsign/sp_tk 等一大串追踪参数，二维码会非常密。
+// 这里给出一份只保留商品 id 的精简链接，供生成二维码使用（打开更稳、码更稀疏）。
+function cleanUrl(u) {
+  const s = String(u || '');
+  const id = pickItemId(s);
+  if (!id) return '';
+  const host = (s.match(/^https?:\/\/([^/]+)/i) || [])[1] || '';
+  if (/^item\.taobao\.com$/i.test(host)) return 'https://item.taobao.com/item.htm?id=' + id;
+  if (/^(detail|item)\.(tmall|tmall\.hk)\.com$/i.test(host)) return 'https://' + host + '/item.htm?id=' + id;
+  return '';
+}
+
 // —— 折淘客：TCP+TLS 直连非标准端口 ——
 async function ztkGet(host, port, pathQuery, ms) {
   const socket = connect({ hostname: host, port }, { secureTransport: 'on', allowHalfOpen: false });
@@ -194,7 +206,7 @@ export async function onRequest(context) {
   // 0) 输入本身就是淘宝/天猫短链或商品链接 —— 直接可用，无需解析
   const direct = directTaobaoUrl(tkl);
   if (direct) {
-    return json({ ok: true, url: direct, id: pickItemId(direct), title: '', pic: '', via: 'direct' });
+    return json({ ok: true, url: direct, clean: cleanUrl(direct), id: pickItemId(direct), title: '', pic: '', via: 'direct' });
   }
 
   // 折淘客优先（免费），未配置则退 taokouling；按规范化候选依次重试
@@ -205,7 +217,8 @@ export async function onRequest(context) {
     else if (env.TK_APIKEY) out = await viaTaokouling(c, env);
     if (!out.err) {
       return json({
-        ok: true, url: out.url || '', id: out.id || pickItemId(out.url),
+        ok: true, url: out.url || '', clean: cleanUrl(out.url),
+        id: out.id || pickItemId(out.url),
         title: out.title || '', pic: out.pic || '', via: 'api', matched: c,
       });
     }
