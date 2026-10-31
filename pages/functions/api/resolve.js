@@ -266,9 +266,11 @@ async function resolve(input, env) {
   const cands = shouldTryTkl(input) ? tklCandidates(input) : [];
   if (cands.length) {
     const tklTask = async () => {
-      for (const c of cands) {
-        const r = await resolveByTkl(c, env);
+      for (let i = 0; i < cands.length; i++) {
+        let r = await resolveByTkl(cands[i], env);
         if (r) return r;
+        // 折淘客偶发「很抱歉！解析失败」（实测重试即成功）：最可能的候选多试一次
+        if (i === 0) { r = await resolveByTkl(cands[i], env); if (r) return r; }
       }
       return null;
     };
