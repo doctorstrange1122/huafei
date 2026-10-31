@@ -1982,6 +1982,18 @@
                 }, L1_BUDGET + 500);
             });
             function clearBudget(){ if (budgetTimer) { clearTimeout(budgetTimer); budgetTimer = null; } }
+            // 纯淘口令（文本里没有链接）→ 只走服务端淘口令解析，不再拼假短链。
+            // 原逻辑会把口令码拼成 https://m.tb.cn/h.<token> 去追重定向，可能撞上真实短链而抽出无关商品 id；
+            // 服务端 /api/resolve 已内置折淘客淘口令解析，这条路径更快也更准。
+            if (!/https?:\/\//i.test(text) && (
+                    /[￥¥][^￥¥\s]{6,}[￥¥]/.test(text) ||
+                    /\bCZ[0-9A-Za-z]{2,}\s*[0-9A-Za-z]{6,}\s*\//.test(text) ||
+                    /[₤₳₴]\s*[0-9A-Za-z]{8,}\s*[₤₳₴]/.test(text))) {
+                try {
+                    const tklId = await resolveViaServer(text, L1_BUDGET);
+                    if (tklId) { clearBudget(); _parseCache.set(_cacheKey, tklId); return tklId; }
+                } catch (e) { /* 解析失败则继续走下面的三路竞速 */ }
+            }
             try {
                 const id = await Promise.race([ Promise.any([
                     // 主路径：服务端解析
