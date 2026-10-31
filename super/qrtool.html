@@ -587,7 +587,7 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (d && d.ok && d.url){
-          input.value = d.url;                 // 用还原出的链接替换口令
+          input.value = d.clean || d.url;      // 优先用精简链接（码更稀疏、打开更稳）
           input.dispatchEvent(new Event('input'));  // 触发防抖重渲染
           done('✅ 已转为链接', true);
           qrTip.textContent = '口令已还原为链接，二维码已更新 · 任何扫码工具都能打开';
@@ -760,6 +760,10 @@
   // 淘口令特征：CZxxxx/ 、￥xxxx￥ 、₤xxxx₤ 、₳xxxx₳ 、(xxxx) 等，且不含 http 链接
   function isTaoKouLing(raw){
     if (!raw) return false;
+    // tb.cn / e.tb.cn / m.tb.cn 短链：可解析成 item.taobao 直连长链（扫码更稳）
+    if (/https?:\/\/[^\s"']*tb\.cn\/[^\s"']*/i.test(raw)) return true;
+    // 带 ?tk= 口令参数的分享链接（常见于商品分享文案）
+    if (/[?&]tk=[0-9A-Za-z_-]{6,}/i.test(raw)) return true;
     if (/https?:\/\//i.test(raw)) return false;
     return /\bCZ[0-9A-Za-z]{2,}\s*[0-9A-Za-z]{6,}\s*\//.test(raw) ||
            /[￥¥]\s*[0-9A-Za-z]{8,}\s*[￥¥]/.test(raw) ||
