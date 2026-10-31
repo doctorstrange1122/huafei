@@ -65,7 +65,8 @@ export async function onRequest(context) {
     try { const b = await request.json(); content = b.tkl || b.content || b.url || ''; } catch (_) { content = await request.text(); }
   }
   content = String(content || '').trim();
-  if (!content) return json({ ok: false, error: 'missing tkl/content' }, 400);
+  const probe = u.searchParams.get('probe');
+  if (!content && probe !== 'guess') return json({ ok: false, error: 'missing tkl/content' }, 400);
 
   // sid 允许用查询参数覆盖，便于区分「导购/发单/代理」授权类型（转链接口对 sid 类型敏感）
   const appkey = env.ZTK_APPKEY;
