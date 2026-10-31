@@ -523,9 +523,10 @@
 
     taobaoBtn.disabled = !extractTaobaoUrl(text);
     var baseTip = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
-    // 淘口令（非链接）无法被普通扫码工具打开，只有淘宝 App 扫一扫能识别，明确提示避免误用
+    // 淘口令实测：淘宝扫一扫已不识别纯文本口令码（提示"暂不支持此类型"），任何扫码工具都打不开。
+    // 引导用户改用活动页 https 链接生成二维码（分享→复制链接），或复制口令后打开淘宝自动弹出。
     qrTip.textContent = isTaoKouLing(text)
-      ? '检测到淘口令 · 请用「淘宝 App 扫一扫」识别打开（微信/浏览器扫码无效）'
+      ? '检测到淘口令 · 口令无法做成可扫码打开的二维码，建议改用该页面的链接生成（淘宝内分享→复制链接）'
       : baseTip;
   }
 
