@@ -107,6 +107,27 @@ export async function onRequest(context) {
     } catch (e) { results.err2 = String((e && e.message) || e); }
   }
 
+  // 探针：用「猜你喜欢」取在售真实商品ID，再走一次转链，用于确认转链接口本身是否可用
+  if (u.searchParams.get('probe') === 'guess') {
+    try {
+      const g = await ztkGet(HOSTS[0].host, HOSTS[0].port,
+        `/api/open_item_guess_like2.ashx?appkey=${appkey}&sid=${sid}&page=1&page_size=3`, 9000);
+      results.guess = g;
+      const list = (g && g.tbk_dg_optimus_material_response && g.tbk_dg_optimus_material_response.result_list
+        && g.tbk_dg_optimus_material_response.result_list.map_data) || [];
+      const ids = list.map((it) => it.item_id || it.num_iid || it.itemId).filter(Boolean).slice(0, 3);
+      results.guess_ids = ids;
+      for (const id of ids) {
+        try {
+          const r = await ztkGet(HOSTS[0].host, HOSTS[0].port,
+            `/api/open_gaoyongzhuanlian.ashx?appkey=${appkey}&sid=${sid}${pidQ}&num_iid=${id}`, 9000);
+          (results.guess_zhuanlian ||= {})[String(id)] = r;
+        } catch (e) { (results.guess_err ||= {})[String(id)] = String((e && e.message) || e); }
+      }
+    } catch (e) { results.guess_err = String((e && e.message) || e); }
+    return json({ ok: true, probe: true, raw: results });
+  }
+
   const z = Object.assign({}, results.zhuanlian_id || {}, results.zhuanlian || {});
   const short = z.shorturl || z.coupon_shorturl || z.tbk_short_url || (results.shorturl && results.shorturl.shorturl) || '';
   const long = z.longurl || z.coupon_longurl || z.tbk_url || z.url || '';
