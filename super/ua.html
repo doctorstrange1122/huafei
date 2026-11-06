@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>浏览器环境检测</title>
+<style>
+body{font-family:-apple-system,system-ui,sans-serif;background:#f5f6f8;margin:0;padding:16px;color:#222}
+.card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+h2{font-size:15px;margin:0 0 8px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all;white-space:pre-wrap;background:#f0f2f5;padding:10px;border-radius:8px}
+button{width:100%;padding:12px;border:0;border-radius:10px;background:#3b6ef0;color:#fff;font-size:15px;margin-top:6px}
+.tip{font-size:12px;color:#888;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="card"><h2>User-Agent</h2><div class="mono" id="ua"></div></div>
+<div class="card"><h2>其它环境信息</h2><div class="mono" id="info"></div></div>
+<button onclick="copyAll()">复制全部</button>
+<div class="tip">请把上方内容发给我，用于确认鸿蒙/卓易通环境的精确识别规则。</div>
+<script>
+var ua=navigator.userAgent;
+document.getElementById('ua').textContent=ua;
+var info={
+ platform:navigator.platform,
+ vendor:navigator.vendor,
+ language:navigator.language,
+ appVersion:navigator.appVersion,
+ userAgentData:navigator.userAgentData?JSON.stringify(navigator.userAgentData):'(不支持)'
+};
+document.getElementById('info').textContent=JSON.stringify(info,null,2);
+function copyAll(){
+ var t='UA: '+ua+'\n\n'+JSON.stringify(info,null,2);
+ navigator.clipboard.writeText(t).then(function(){alert('已复制到剪贴板');},function(){alert('复制失败，请手动长按选择');});
+}
+</script>
+</body>
+</html>

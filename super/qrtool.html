@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2b6cff">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>二维码工具</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<style>
+  :root{
+    --accent:#2b6cff; --accent-2:#4d8bff; --bg:#f4f6fa; --card:#ffffff;
+    --text:#1f2733; --sub:#7a8699; --border:#e6eaf0; --field:#f7f9fc;
+    /* 供 Toast 风格编辑/删除弹窗复用（与主界面自设区一致） */
+    --card-bg:#ffffff; --text-title:#1f2733; --text-main:#1f2733;
+    --input-border:#e6eaf0; --input-bg:#f7f9fc; --input-focus:#2b6cff;
+    --weak-bg:#eef1f6; --text-sub:#7a8699; --weak-border:#e6eaf0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .topbar{
+    width:100%;max-width:560px;display:flex;align-items:center;gap:10px;
+    padding:14px 16px 6px;
+  }
+  .back-btn{
+    border:none;background:var(--card);color:var(--sub);font-size:13px;
+    padding:6px 12px;border-radius:20px;border:1px solid var(--border);cursor:pointer;
+  }
+  .topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.5px;}
+  .wrap{width:100%;max-width:560px;padding:10px 16px 40px;}
+
+  .card{
+    background:var(--card);border-radius:18px;padding:18px;
+    box-shadow:0 6px 24px rgba(43,108,255,.06);margin-bottom:16px;
+  }
+  .card-title{font-size:15px;font-weight:700;margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  .card-title .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);}
+
+  textarea#qrInput{
+    width:100%;min-height:205px;resize:vertical;font-size:15px;line-height:1.5;
+    padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;
+    background:var(--field);color:var(--text);outline:none;font-family:inherit;
+    transition:border-color .2s;
+  }
+  textarea#qrInput:focus{border-color:var(--accent);}
+
+  .input-actions{display:flex;gap:10px;margin-top:12px;}
+  .input-actions button{
+    flex:1;border:none;border-radius:12px;padding:11px 0;font-size:14px;font-weight:600;
+    cursor:pointer;transition:transform .08s,opacity .2s;
+  }
+  .input-actions button:active{transform:scale(.97);}
+  .btn-paste{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+  .btn-clear{background:#eef1f6;color:var(--sub);}
+  .btn-copy{background:#eef1f6;color:var(--sub);}
+
+  /* Toast 提示（样式与实现对齐主界面 super_index.html） */
+  .toast{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:8px;
+    font-size:14px;z-index:9999;opacity:0;transition:opacity .3s;
+    pointer-events:none;max-width:80%;text-align:center;word-break:break-all;
+  }
+  .toast.show{opacity:1;}
+
+  /* 淘口令检测提示行（位于粘贴/清空按钮下方） */
+  .tkl-row{display:none;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;}
+  .tkl-row.show{display:flex;}
+  .tkl-hint{font-size:13px;color:#ff5000;font-weight:600;}
+
+  .qr-stage{display:flex;flex-direction:column;align-items:center;padding:6px 0 4px;}
+  .qr-img-box{
+    width:280px;border-radius:16px;background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);position:relative;overflow:hidden;
+    min-height:120px;
+  }
+  .qr-img-box img{width:100%;display:block;}
+  .qr-empty{color:#c2c9d4;font-size:13px;text-align:center;padding:40px 20px;}
+  .qr-tip{font-size:12px;color:var(--sub);margin-top:10px;text-align:center;}
+  /* 淘口令转链接按钮（行内小按钮） */
+  .tkl-btn{
+    display:inline-block;margin:0;padding:7px 16px;border:none;border-radius:999px;
+    background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;
+    font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(255,80,0,.3);
+    white-space:nowrap;flex-shrink:0;
+  }
+  .tkl-btn:active{transform:scale(.96);opacity:.9;}
+  .tkl-btn:disabled{opacity:.55;}
+  .qr-save-hint{font-size:12px;color:var(--accent);margin-top:4px;text-align:center;font-weight:600;}
+
+  /* 二维码与功能按钮左右排列（按钮右侧垂直居中） */
+  .qr-flex{display:flex;align-items:center;justify-content:center;gap:18px;width:100%;}
+  .fab-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;}
+  .fab-label{font-size:11px;color:var(--sub);font-weight:600;}
+  .jump-fab{
+    width:52px;height:52px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,#ff7a00,#ff5000);color:#fff;
+    font-size:22px;font-weight:700;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 16px rgba(255,80,0,.45);
+    cursor:pointer;transition:transform .08s,box-shadow .2s,opacity .2s;
+  }
+  .jump-fab:active{transform:scale(.9);}
+  .jump-fab:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+
+  /* 美化面板 */
+  .beauty-toggle{
+    width:100%;border:1px dashed var(--border);background:#fafbfd;color:var(--sub);
+    border-radius:12px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:4px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .beauty-panel{display:none;margin-top:12px;}
+  .beauty-panel.show{display:block;}
+  /* 选项卡 */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:6px;overflow-x:auto;}
+  .tabs button{
+    flex:1;border:none;background:transparent;color:var(--sub);font-size:14px;font-weight:600;
+    padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;
+  }
+  .tabs button.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-page{display:none;}
+  .tab-page.show{display:block;}
+
+  .field-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f3f8;gap:10px;}
+  .field-row:last-child{border-bottom:none;}
+  .field-label{font-size:14px;color:var(--text);flex-shrink:0;}
+  .field-label small{display:block;color:var(--sub);font-size:11px;margin-top:2px;font-weight:400;}
+  .seg{display:flex;background:#eef1f6;border-radius:10px;padding:3px;gap:3px;flex-wrap:wrap;justify-content:flex-end;}
+  .seg button{
+    border:none;background:transparent;color:var(--sub);font-size:13px;padding:6px 12px;
+    border-radius:8px;cursor:pointer;transition:.15s;font-weight:600;
+  }
+  .seg button.active{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  input[type=color]{width:40px;height:32px;border:1px solid var(--border);border-radius:8px;background:#fff;padding:2px;cursor:pointer;}
+  .color-switch{display:flex;align-items:center;gap:10px;}
+  .logo-box{display:flex;align-items:center;gap:10px;}
+  .logo-prev{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:#f7f9fc;object-fit:cover;display:none;}
+  .logo-btn{font-size:13px;color:var(--accent);background:#eef3ff;border:none;padding:7px 12px;border-radius:9px;cursor:pointer;font-weight:600;font-family:inherit;}
+  /* file input 直接作为按钮：真实可见 + 真实用户手势，才能触发 App WebView 原生文件选择器 */
+  input.logo-btn{margin:0;padding:0;color:var(--accent);}
+  input.logo-btn::file-selector-button{
+    font:inherit;font-weight:600;color:var(--accent);background:transparent;
+    border:none;padding:7px 12px;border-radius:9px;cursor:pointer;
+  }
+  .num-input{
+    width:92px;border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;
+    font-size:14px;color:var(--text);background:var(--field);outline:none;text-align:right;
+  }
+  .num-input:focus{border-color:var(--accent);}
+  select.pretty{
+    border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px;
+    color:var(--text);background:var(--field);outline:none;
+  }
+  .txt-input{
+    flex:1;min-width:0;border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;
+    font-size:14px;color:var(--text);background:var(--field);outline:none;
+  }
+  .txt-input:focus{border-color:var(--accent);}
+  .switch{position:relative;width:46px;height:26px;flex-shrink:0;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider{
+    position:absolute;inset:0;background:#d7dde7;border-radius:26px;transition:.2s;cursor:pointer;
+  }
+  .switch .slider:before{
+    content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;
+    top:2px;left:2px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+  }
+  .switch input:checked + .slider{background:var(--accent);}
+  .switch input:checked + .slider:before{transform:translateX(20px);}
+
+  /* iOS 手势遮罩 */
+  #iosMask{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:99999;color:#fff;text-align:center;padding:30px;}
+  #iosMask .big{font-size:20px;font-weight:700;margin-bottom:8px;}
+  #iosMask .sub{font-size:14px;opacity:.85;}
+
+  /* 快捷跳转 */
+  .qj-row{display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;}
+  .qj-btn{
+    flex:1;min-width:120px;height:30px;padding:0 8px;border:none;border-radius:10px;
+    font-size:14px;font-weight:700;cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+    box-shadow:0 4px 14px rgba(43,108,255,.25);transition:transform .08s;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;
+  }
+  .qj-btn:active{transform:scale(.97);}
+  .qj-btn.blank{background:#eef1f6;color:var(--sub);box-shadow:none;}
+  .qj-name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .qj-hint{font-size:12px;color:var(--sub);margin:8px 0 0;line-height:1.5;}
+
+  /* 长按操作菜单（插入/编辑/删除，与主界面自设区一致） */
+  .self-menu{position:fixed;z-index:1300;min-width:124px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.22);padding:6px;display:none;}
+  .self-menu.show{display:block;}
+  .self-menu .self-menu-item{display:block;width:100%;padding:10px 14px;font-size:14px;font-weight:600;text-align:left;border:none;background:none;border-radius:8px;color:#333;cursor:pointer;font-family:inherit;}
+  .self-menu .self-menu-item:active{background:#eef1f5;}
+  .self-menu .self-menu-item.danger{color:#c0392b;}
+
+  /* Toast 风格编辑/删除弹窗（与主界面自设区一致） */
+  .custom-text-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:10000;align-items:center;justify-content:center;}
+  .custom-text-modal.active{display:flex;}
+  .custom-text-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);}
+  .custom-text-card{position:relative;width:88%;max-width:360px;background:var(--card-bg);border-radius:16px;padding:22px;box-shadow:0 12px 40px rgba(0,0,0,0.25);z-index:1;}
+  .custom-text-title{font-size:16px;font-weight:700;color:var(--text-title);margin-bottom:16px;text-align:center;}
+  .custom-text-card input{width:100%;height:34px;padding:0 12px;border:2px solid var(--input-border);border-radius:10px;background:var(--input-bg);color:var(--text-main);font-size:15px;margin-bottom:18px;font-family:inherit;box-sizing:border-box;}
+  .custom-text-card input:focus{outline:none;border-color:var(--input-focus);}
+  .custom-text-actions{display:flex;gap:10px;}
+  .custom-text-actions button{flex:1;height:44px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .custom-text-actions .btn-cancel{background:var(--weak-bg);color:var(--text-sub);}
+  .custom-text-actions .btn-confirm{background:linear-gradient(135deg,#7a93ac,#6b82a0);color:#fff;}
+  .custom-text-actions .btn-cancel:active{background:var(--weak-border);}
+  .custom-text-actions .btn-confirm:active{background:#5f7590;}
+
+  /* 确认 / 参数弹层（toast 风格居中卡片） */
+  .qj-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:9998;padding:24px;}
+  .qj-overlay.show{display:flex;}
+  .qj-confirm-box,.qj-panel-box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+  .qj-confirm-msg{font-size:15px;font-weight:600;text-align:center;margin-bottom:16px;line-height:1.5;}
+  .qj-confirm-btns{display:flex;gap:10px;}
+  .qj-confirm-btns button{flex:1;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;}
+  #qjModifyBtn{background:#fff;color:var(--accent);border:1.5px solid var(--accent);}
+  #qjDirectBtn{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+  .qj-panel-title{font-size:16px;font-weight:700;margin-bottom:14px;text-align:center;}
+  .qj-field{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;}
+  .qj-field label{font-size:14px;color:var(--text);font-weight:600;flex-shrink:0;}
+  .qj-input-wrap{position:relative;flex:1;min-width:0;border:1.5px solid var(--border);border-radius:10px;background:var(--field);}
+  .qj-input-wrap:focus-within{border-color:var(--accent);}
+  .qj-field input{width:100%;border:none;background:transparent;padding:9px 10px;font-size:14px;outline:none;text-align:right;position:relative;z-index:2;}
+  /* 当前参数值显示为灰色背景，打字即覆盖，留空即沿用 */
+  .qj-ghost{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#aeb6c4;font-size:14px;pointer-events:none;z-index:1;max-width:calc(100% - 20px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:right;}
+  .qj-panel-tip{font-size:12px;color:var(--sub);text-align:center;margin-bottom:14px;line-height:1.5;}
+  .qj-panel-btns{display:flex;gap:10px;margin-top:6px;}
+  .qj-panel-btns button{flex:1;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;}
+  #qjParamCancel{background:#eef1f6;color:var(--sub);}
+  #qjParamGo{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <button class="back-btn" id="backBtn">← 返回</button>
+    <h1>二维码工具</h1>
+  </div>
+
+  <div class="wrap">
+    <!-- 输入区 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>内容输入</div>
+      <textarea id="qrInput" placeholder="输入文字或链接，自动生成二维码（支持网址 / 文本 / 淘口令）"></textarea>
+      <div class="input-actions">
+        <button class="btn-copy" id="copyBtn">📄 复制</button>
+        <button class="btn-paste" id="pasteBtn">📋 粘贴</button>
+        <button class="btn-clear" id="clearBtn">🗑 清空</button>
+      </div>
+      <div class="tkl-row" id="tklRow">
+        <span class="tkl-hint" id="tklHint">检测到口令，是否转链接？</span>
+        <button class="tkl-btn" id="tklBtn" style="display:none;">🔗 转链接</button>
+      </div>
+    </div>
+
+    <!-- 二维码预览 -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>二维码</div>
+      <div class="qr-stage">
+        <div class="qr-flex">
+          <div class="qr-img-box" id="qrBox">
+            <div class="qr-empty" id="qrEmpty">输入内容后将自动生成二维码</div>
+            <img id="qrImg" alt="二维码" style="display:none;">
+          </div>
+          <div class="fab-col">
+            <button class="jump-fab" id="taobaoBtn" disabled title="跳转淘宝">跳</button>
+            <span class="fab-label">跳转淘宝</span>
+          </div>
+        </div>
+        <div class="qr-tip" id="qrTip"></div>
+        <div class="qr-save-hint" id="saveHint" style="display:none;">长按二维码图片即可保存</div>
+      </div>
+    </div>
+
+    <!-- 快捷跳转（按钮可自由设置跳转链接，长按插入/编辑/删除） -->
+    <div class="card" id="quickJumpCard">
+      <div class="card-title"><span class="dot"></span>快捷跳转</div>
+      <div class="qj-row" id="qjRow"></div>
+      <div class="qj-hint">长按按钮可插入 / 编辑 / 删除；点击按钮后选择「直接跳转」用默认链接，或「修改参数」临时替换 prismTrace / sceneId / deliveryId / itemIds 再跳。</div>
+    </div>
+
+    <!-- 美化面板 -->
+    <div class="card">
+      <button class="beauty-toggle" id="beautyToggle">🎨 二维码美化 <span id="beautyArrow">▸</span></button>
+      <div class="beauty-panel" id="beautyPanel">
+        <div class="tabs" id="beautyTabs">
+          <button data-tab="basic" class="active">基本</button>
+          <button data-tab="color">颜色</button>
+          <button data-tab="logo">Logo</button>
+          <button data-tab="text">文字</button>
+        </div>
+
+        <!-- 基本 -->
+        <div class="tab-page show" data-page="basic">
+          <div class="field-row">
+            <div class="field-label">二维码尺寸(px)<small>导出图片的宽度</small></div>
+            <input type="number" class="num-input" id="sizeInput" value="500" min="150" max="1500" step="50">
+          </div>
+          <div class="field-row">
+            <div class="field-label">留白边距(px)<small>二维码四周留白</small></div>
+            <input type="number" class="num-input" id="marginInput" value="20" min="0" max="100" step="5">
+          </div>
+          <div class="field-row">
+            <div class="field-label">容错级别<small>越高越易扫描，带logo推荐 H</small></div>
+            <div class="seg" id="eclSeg">
+              <button data-v="L">L 7%</button>
+              <button data-v="M" class="active">M 15%</button>
+              <button data-v="Q">Q 25%</button>
+              <button data-v="H">H 30%</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">码点样式</div>
+            <div class="seg" id="dotSeg">
+              <button data-v="square" class="active">方形</button>
+              <button data-v="rounded">圆角</button>
+              <button data-v="circle">圆点</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">定位角样式</div>
+            <div class="seg" id="eyeSeg">
+              <button data-v="square" class="active">方形</button>
+              <button data-v="rounded">圆角</button>
+              <button data-v="circle">圆形</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">导出格式</div>
+            <select class="pretty" id="formatSel">
+              <option value="png" selected>PNG</option>
+              <option value="jpg">JPG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 颜色 -->
+        <div class="tab-page" data-page="color">
+          <div class="field-row">
+            <div class="field-label">前景色<small>第二个颜色=渐变尾色，与首色相同则纯色</small></div>
+            <div class="color-switch">
+              <input type="color" id="fgColor" value="#1f2733">
+              <input type="color" id="fgColor2" value="#1f2733" title="渐变第二色">
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">渐变方向</div>
+            <div class="seg" id="gradSeg">
+              <button data-v="none" class="active">关闭</button>
+              <button data-v="h">横向</button>
+              <button data-v="v">纵向</button>
+              <button data-v="d">对角</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">背景色</div>
+            <input type="color" id="bgColor" value="#ffffff">
+          </div>
+          <div class="field-row">
+            <div class="field-label">背景渐变<small>与背景色形成渐变</small></div>
+            <div class="color-switch">
+              <input type="color" id="bgColor2" value="#ffffff">
+            </div>
+          </div>
+        </div>
+
+        <!-- Logo -->
+        <div class="tab-page" data-page="logo">
+          <div class="field-row">
+            <div class="field-label">中心logo<small>建议方形图片，自动留白描边；也可复制图片后粘贴</small></div>
+            <div class="logo-box">
+              <img class="logo-prev" id="logoPrev" alt="logo">
+              <input type="file" id="logoInput" accept="image/*" class="logo-btn">
+              <button class="logo-btn" id="logoClearBtn" style="background:#fdeeee;color:#d64545;display:none;">移除</button>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-label">Logo大小</div>
+            <input type="range" id="logoSize" min="10" max="30" value="22" style="width:130px;">
+          </div>
+          <div class="field-row">
+            <div class="field-label">Logo圆角</div>
+            <input type="range" id="logoRadius" min="0" max="50" value="10" style="width:130px;">
+          </div>
+        </div>
+
+        <!-- 文字 -->
+        <div class="tab-page" data-page="text">
+          <div class="field-row">
+            <div class="field-label">添加文字<small>显示在二维码下方（图片内）</small></div>
+            <label class="switch"><input type="checkbox" id="textOn"><span class="slider"></span></label>
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字内容</div>
+            <input type="text" class="txt-input" id="textContent" placeholder="如：扫码领红包" maxlength="40">
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字大小</div>
+            <input type="number" class="num-input" id="textSize" value="36" min="12" max="120" step="2">
+          </div>
+          <div class="field-row">
+            <div class="field-label">文字颜色</div>
+            <input type="color" id="textColor" value="#1f2733">
+          </div>
+          <div class="field-row">
+            <div class="field-label">加粗</div>
+            <label class="switch"><input type="checkbox" id="textBold" checked><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="iosMask"><div class="big">点击打开淘宝 App</div><div class="sub">如已安装将自动跳转</div></div>
+
+  <!-- 快捷跳转：确认层 + 参数修改层 -->
+  <div class="qj-overlay" id="qjOverlay">
+    <!-- 确认是否修改参数 -->
+    <div class="qj-confirm-box" id="qjConfirmBox">
+      <div class="qj-confirm-msg">是否修改链接中的参数？</div>
+      <div class="qj-confirm-btns">
+        <button id="qjModifyBtn">修改参数</button>
+        <button id="qjDirectBtn">直接跳转</button>
+      </div>
+    </div>
+    <!-- 参数修改面板（含 prismTrace / sceneId / deliveryId / itemIds） -->
+    <div class="qj-panel-box" id="qjPanelBox" style="display:none;">
+      <div class="qj-panel-title">修改跳转参数</div>
+      <div class="qj-panel-tip">当前值显示为灰色背景，留空即沿用，直接输入即覆盖</div>
+      <div class="qj-field"><label>prismTrace</label><div class="qj-input-wrap"><span class="qj-ghost" id="qjGhostPrism"></span><input id="qjParamPrism" placeholder=""></div></div>
+      <div class="qj-field"><label>sceneId</label><div class="qj-input-wrap"><span class="qj-ghost" id="qjGhostScene"></span><input id="qjParamScene" placeholder=""></div></div>
+      <div class="qj-field"><label>deliveryId</label><div class="qj-input-wrap"><span class="qj-ghost" id="qjGhostDelivery"></span><input id="qjParamDelivery" placeholder=""></div></div>
+      <div class="qj-field"><label>itemIds</label><div class="qj-input-wrap"><span class="qj-ghost" id="qjGhostItem"></span><input id="qjParamItem" placeholder=""></div></div>
+      <div class="qj-panel-btns">
+        <button id="qjParamCancel">取消</button>
+        <button id="qjParamGo">替换并跳转</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快捷跳转：长按操作菜单（插入/编辑/删除，与主界面自设区一致） -->
+  <div class="self-menu" id="qjMenu">
+    <button type="button" class="self-menu-item" id="qjMenuInsert">插入</button>
+    <button type="button" class="self-menu-item" id="qjMenuEdit">编辑</button>
+    <button type="button" class="self-menu-item danger" id="qjMenuDelete">删除</button>
+  </div>
+
+  <!-- 快捷跳转：编辑弹窗（Toast 风格，名称 + 链接） -->
+  <div class="custom-text-modal" id="qjEditModal" style="display:none;">
+    <div class="custom-text-overlay" id="qjEditOverlay"></div>
+    <div class="custom-text-card">
+      <div class="custom-text-title">编辑快捷跳转</div>
+      <input type="text" id="qjEditName" placeholder="按钮名称（如：秒杀5万）" maxlength="12">
+      <input type="text" id="qjEditUrl" placeholder="默认跳转链接（含 prismTrace / sceneId / deliveryId / itemIds）" maxlength="2000">
+      <div class="custom-text-actions">
+        <button type="button" class="btn-cancel" id="qjEditCancel">取消</button>
+        <button type="button" class="btn-confirm" id="qjEditSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 快捷跳转：删除二次确认 -->
+  <div class="custom-text-modal" id="qjDeleteModal" style="display:none;">
+    <div class="custom-text-overlay" id="qjDeleteOverlay"></div>
+    <div class="custom-text-card">
+      <div class="custom-text-title" id="qjDeleteTitle">确定删除该按钮？</div>
+      <div class="custom-text-actions">
+        <button type="button" class="btn-cancel" id="qjDeleteCancel">取消</button>
+        <button type="button" class="btn-confirm" id="qjDeleteConfirm">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 容器（复制等操作的提示） -->
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var input = document.getElementById('qrInput');
+  var qrImg = document.getElementById('qrImg');
+  var qrEmpty = document.getElementById('qrEmpty');
+  var qrTip = document.getElementById('qrTip');
+  var saveHint = document.getElementById('saveHint');
+  var tklRow = document.getElementById('tklRow');
+  var taobaoBtn = document.getElementById('taobaoBtn');
+  var lastText = '';
+  var currentDataURL = '';   // 最新生成的二维码 dataURL（供保存/长按使用）
+
+  // 美化选项
+  var opts = {
+    size:500, margin:20, ecl:'M', dot:'square', eye:'square', format:'png',
+    fg:'#1f2733', fg2:'#1f2733', grad:'none', bg:'#ffffff', bg2:'#ffffff',
+    logo:null, logoSize:22, logoRadius:10,
+    textOn:false, textContent:'', textSize:36, textColor:'#1f2733', textBold:true
+  };
+  var logoImg = null;
+  var off = document.createElement('canvas'); // 离屏画布
+  var octx = off.getContext('2d');
+
+  /* ---------- 圆角矩形辅助 ---------- */
+  function roundRect(ctx,x,y,w,h,r){
+    if (w<2*r) r=w/2; if (h<2*r) r=h/2;
+    if (r<0) r=0;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  /* ---------- 绘制二维码（含美化 + 文字） ---------- */
+  function render(){
+    var text = input.value.trim();
+    if (!text){ clearQR(); return; }
+    lastText = text;
+
+    var qr;
+    try {
+      qr = QRCode.create(text, { errorCorrectionLevel: (logoImg ? 'H' : opts.ecl) });
+    } catch(e){
+      clearQR();
+      qrTip.textContent = '内容过长，无法生成，请缩短后重试';
+      return;
+    }
+    var count = qr.modules.size;
+
+    var size = Math.min(1500, Math.max(150, opts.size|0));
+    var margin = Math.min(100, Math.max(0, opts.margin|0));
+
+    // 文字区高度
+    var textH = 0;
+    var hasText = opts.textOn && opts.textContent.trim();
+    var fs = Math.min(120, Math.max(12, opts.textSize|0));
+    if (hasText) textH = Math.round(fs*1.5) + Math.round(size*0.02);
+
+    off.width = size;
+    off.height = size + textH;
+    var ctx = octx;
+
+    // 背景（支持渐变）
+    if (opts.bg2 && opts.bg2 !== opts.bg){
+      var bgGrad = ctx.createLinearGradient(0,0,0,off.height);
+      bgGrad.addColorStop(0, opts.bg); bgGrad.addColorStop(1, opts.bg2);
+      ctx.fillStyle = bgGrad;
+    } else {
+      ctx.fillStyle = opts.bg;
+    }
+    ctx.fillRect(0,0,off.width,off.height);
+
+    // 前景（纯色或渐变）
+    var fill = opts.fg;
+    if (opts.grad !== 'none' && opts.fg2 && opts.fg2 !== opts.fg){
+      var g;
+      if (opts.grad==='h') g = ctx.createLinearGradient(margin,0,size-margin,0);
+      else if (opts.grad==='v') g = ctx.createLinearGradient(0,margin,0,size-margin);
+      else g = ctx.createLinearGradient(0,0,size,size);
+      g.addColorStop(0, opts.fg); g.addColorStop(1, opts.fg2);
+      fill = g;
+    }
+
+    // 有效绘制区域
+    var drawSize = size - margin*2;
+    var ppm = drawSize / count;   // 每模块像素
+    if (ppm < 1){ qrTip.textContent='尺寸或留白过小，请调整'; return; }
+
+    // 判定定位角
+    function inFinder(r,c){
+      var f=7;
+      return (r<f && c<f) || (r<f && c>=count-f) || (r>=count-f && c<f);
+    }
+
+    ctx.fillStyle = fill;
+
+    // 数据模块
+    for (var r=0;r<count;r++){
+      for (var c=0;c<count;c++){
+        if (!qr.modules.get(r,c)) continue;
+        if (inFinder(r,c)) continue;
+        var x=margin+c*ppm, y=margin+r*ppm;
+        if (opts.dot==='circle'){
+          ctx.beginPath();
+          ctx.arc(x+ppm/2,y+ppm/2,ppm*0.46,0,Math.PI*2);
+          ctx.fill();
+        } else if (opts.dot==='rounded'){
+          roundRect(ctx,x+ppm*0.04,y+ppm*0.04,ppm*0.92,ppm*0.92,ppm*0.3); ctx.fill();
+        } else {
+          ctx.fillRect(x,y,ppm+0.5,ppm+0.5);
+        }
+      }
+    }
+
+    // 三个定位角
+    function drawEye(r0,c0){
+      var x0=margin+c0*ppm, y0=margin+r0*ppm;
+      var E=ppm*7;
+      ctx.fillStyle = fill;
+      if (opts.eye==='circle'){
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E/2,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = opts.bg;
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E*0.36,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = fill;
+        ctx.beginPath(); ctx.arc(x0+E/2,y0+E/2,E*0.21,0,Math.PI*2); ctx.fill();
+      } else if (opts.eye==='rounded'){
+        var rr=E*0.28;
+        roundRect(ctx,x0,y0,E,E,rr); ctx.fill();
+        ctx.fillStyle = opts.bg;
+        roundRect(ctx,x0+ppm,y0+ppm,E-2*ppm,E-2*ppm,rr*0.7); ctx.fill();
+        ctx.fillStyle = fill;
+        roundRect(ctx,x0+ppm*2,y0+ppm*2,E-4*ppm,E-4*ppm,rr*0.45); ctx.fill();
+      } else {
+        ctx.fillRect(x0,y0,E,E);
+        ctx.fillStyle = opts.bg;
+        ctx.fillRect(x0+ppm,y0+ppm,ppm*5,ppm*5);
+        ctx.fillStyle = fill;
+        ctx.fillRect(x0+ppm*2,y0+ppm*2,ppm*3,ppm*3);
+      }
+    }
+    drawEye(0,0); drawEye(0,count-7); drawEye(count-7,0);
+
+    // 中心 logo
+    if (logoImg){
+      var lw = size * (opts.logoSize/100);
+      var lx=(size-lw)/2, ly=(size-lw)/2;
+      var lr = lw * (opts.logoRadius/50);
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      roundRect(ctx, lx-4, ly-4, lw+8, lw+8, lr+4); ctx.fill();
+      ctx.beginPath();
+      roundRect(ctx, lx, ly, lw, lw, lr);
+      ctx.clip();
+      // cover 方式绘制
+      var iw=logoImg.width, ih=logoImg.height;
+      var sc=Math.max(lw/iw, lw/ih);
+      var dw=iw*sc, dh=ih*sc;
+      ctx.drawImage(logoImg, lx+(lw-dw)/2, ly+(lw-dh)/2, dw, dh);
+      ctx.restore();
+    }
+
+    // 底部文字
+    if (hasText){
+      var tctx = ctx;
+      var fnt = (opts.textBold?'bold ':'') + fs + 'px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      tctx.font = fnt;
+      tctx.fillStyle = opts.textColor;
+      tctx.textAlign = 'center';
+      tctx.textBaseline = 'middle';
+      var ty = size + textH/2;
+      var t = opts.textContent.trim();
+      // 过长自动缩小
+      var maxW = size - margin*2;
+      var realFs = fs;
+      while (tctx.measureText(t).width > maxW && realFs > 10){
+        realFs -= 2;
+        tctx.font = (opts.textBold?'bold ':'') + realFs + 'px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      }
+      tctx.fillText(t, size/2, ty);
+    }
+
+    // 导出
+    var mime = opts.format==='jpg' ? 'image/jpeg' : 'image/png';
+    try {
+      currentDataURL = off.toDataURL(mime, 0.92);
+    } catch(e){
+      currentDataURL = off.toDataURL('image/png');
+    }
+    qrImg.src = currentDataURL;
+    qrImg.style.display='block';
+    qrEmpty.style.display='none';
+    saveHint.style.display='block';
+
+    taobaoBtn.disabled = !extractTaobaoUrl(text);
+    var baseTip = '已生成 · 容错 '+(logoImg?'H':opts.ecl)+' · '+count+'×'+count+' 模块 · '+size+'px '+(opts.format==='jpg'?'JPG':'PNG');
+    // 淘口令实测：淘宝扫一扫已不识别纯文本口令码（提示"暂不支持此类型"），任何扫码工具都打不开。
+    // 点「口令转链接」调服务端解析（折淘客），还原成 https 链接后即可生成通用可扫的二维码。
+    if (isTaoKouLing(text)){
+      qrTip.textContent = baseTip;
+      tklRow.classList.add('show');
+      tklBtn.style.display = 'inline-block';
+      updateTklBtn();
+    } else {
+      qrTip.textContent = baseTip;
+      tklRow.classList.remove('show');
+      tklBtn.style.display = 'none';
+    }
+  }
+
+  function clearQR(){
+    qrImg.style.display='none';
+    qrImg.removeAttribute('src');
+    qrEmpty.style.display='block';
+    saveHint.style.display='none';
+    taobaoBtn.disabled = true;
+    qrTip.textContent='';
+    tklRow.classList.remove('show');
+    lastText='';
+    currentDataURL='';
+  }
+
+  /* ---------- 防抖自动生成 ---------- */
+  var timer=null;
+  function scheduleRender(){
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(render, 100);
+  }
+  input.addEventListener('input', scheduleRender);
+
+  /* ---------- 淘口令转链接（服务端 /api/tk，折淘客解析） ---------- */
+  var tklBtn = document.getElementById('tklBtn');
+  var tklBusy = false;
+  var TK_API = 'https://huafei-redirect-pages.pages.dev/api/tk';
+  function updateTklBtn(){
+    if (tklBusy) return;
+    tklBtn.disabled = false;
+    tklBtn.textContent = '🔗 转链接';
+  }
+  tklBtn.addEventListener('click', function(){
+    if (tklBusy) return;
+    var text = (input.value || '').trim();
+    if (!isTaoKouLing(text)) return;
+    tklBusy = true;
+    tklBtn.disabled = true;
+    tklBtn.textContent = '解析中…';
+    var done = function(msg, ok){
+      tklBtn.textContent = msg;
+      setTimeout(function(){ tklBusy = false; updateTklBtn(); }, ok ? 900 : 2200);
+    };
+    fetch(TK_API + '?tkl=' + encodeURIComponent(text))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.ok && d.url){
+          input.value = d.clean || d.url;      // 优先用精简链接（码更稀疏、打开更稳）
+          input.dispatchEvent(new Event('input'));  // 触发防抖重渲染
+          done('✅ 已转为链接', true);
+          qrTip.textContent = '口令已还原为链接，二维码已更新 · 任何扫码工具都能打开';
+        } else {
+          done('❌ 解析失败' + (d && d.error ? '：' + String(d.error).slice(0,40) : ''), false);
+        }
+      })
+      .catch(function(){ done('❌ 网络异常，请重试', false); });
+  });
+
+  /* ---------- 复制：把输入框内容写入剪贴板 ---------- */
+  // 三级兜底：App 原生 → Clipboard API → 隐藏 textarea + Range 选区（兼容 iOS/Android WebView）
+  // 来源：与主界面 super_index.html 的 copyToClipboard 一致，该方案在 App WebView 实测可用
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var val = input.value;
+    if (!val){ showToast('输入框为空'); return; }
+    try { if (copyToClipboard(val)) { showToast('已复制'); return; } } catch(e){}
+    showToast('复制失败，请长按输入框手动复制');
+  });
+
+  /* ---------- Toast 提示（与主界面一致） ---------- */
+  function showToast(msg, duration){
+    var toast = document.getElementById('toast');
+    if (!toast){
+      toast = document.createElement('div');
+      toast.id = 'toast';
+      document.body.appendChild(toast);
+    }
+    toast.className = 'toast';          // 必须带 class，样式才会生效
+    toast.textContent = msg;
+    // 强制重排，确保连续调用时动画重新播放
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    if (toast._timer) clearTimeout(toast._timer);
+    toast._timer = setTimeout(function(){ toast.classList.remove('show'); }, duration || 1800);
+  }
+
+  function copyToClipboard(text){
+    // 1) APK/App 环境：原生剪贴板（绕过 WebView 权限限制）
+    if (isAPK() && window.NativeBridge && window.NativeBridge.copyToClipboard){
+      window.NativeBridge.copyToClipboard(text);
+      return true;
+    }
+    // 2) Clipboard API（需 HTTPS + 用户手势）
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){}, function(){ _copyFallback(text); });
+      return true;   // 异步分支：失败会静默走兜底，先给成功反馈
+    }
+    // 3) 隐藏 textarea + Range 选区 + execCommand
+    _copyFallback(text);
+    return true;
+  }
+
+  function _copyFallback(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '0'; ta.style.left = '0';
+    ta.style.width = '1px'; ta.style.height = '1px';
+    ta.style.opacity = '0';
+    ta.setAttribute('readonly', '');
+    document.body.appendChild(ta);
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(ta);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      ta.setSelectionRange(0, text.length);
+      document.execCommand('copy');
+      sel.removeAllRanges();
+    } catch(e){ /* ignore */ }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- 粘贴 ---------- */
+  document.getElementById('pasteBtn').addEventListener('click', async function(){
+    try{
+      if (navigator.clipboard && navigator.clipboard.readText){
+        var t = await navigator.clipboard.readText();
+        input.value = (input.value ? input.value + '\n' : '') + t;
+      } else {
+        input.focus();
+        document.execCommand && document.execCommand('paste');
+      }
+    } catch(e){
+      input.focus();
+      alert('无法自动读取剪贴板，请长按输入框手动粘贴');
+    }
+    scheduleRender();
+  });
+
+  /* ---------- 清空 ---------- */
+  document.getElementById('clearBtn').addEventListener('click', function(){
+    input.value=''; clearQR(); input.focus();
+  });
+
+  /* ---------- 保存：长按二维码即可（App 内走原生 NativeBridge.saveImage 存图库） ---------- */
+  function hasNativeSave(){ return (typeof NativeBridge !== 'undefined') && !!NativeBridge.saveImage; }
+
+  /* ---------- 长按二维码：App 内直接保存图片到图库（与主界面一致） ---------- */
+  qrImg.style.webkitTouchCallout = hasNativeSave() ? 'none' : '';
+  qrImg.addEventListener('contextmenu', function(e){
+    if (hasNativeSave()) e.preventDefault();
+  });
+  var lpTimer=null;
+  qrImg.addEventListener('touchstart', function(){
+    if (!hasNativeSave()) return;            // 浏览器环境交给系统长按菜单
+    if (lpTimer) clearTimeout(lpTimer);
+    lpTimer = setTimeout(function(){
+      if (hasNativeSave() && currentDataURL){
+        if (confirm('是否保存二维码到图库？')) NativeBridge.saveImage(currentDataURL);
+      }
+    }, 600);
+  }, {passive:true});
+  qrImg.addEventListener('touchend', function(){ if(lpTimer){clearTimeout(lpTimer);lpTimer=null;} });
+  qrImg.addEventListener('touchmove', function(){ if(lpTimer){clearTimeout(lpTimer);lpTimer=null;} });
+
+  /* ---------- 美化面板交互 ---------- */
+  var beautyToggle=document.getElementById('beautyToggle');
+  var beautyPanel=document.getElementById('beautyPanel');
+  var beautyArrow=document.getElementById('beautyArrow');
+  beautyToggle.addEventListener('click', function(){
+    var open = beautyPanel.classList.toggle('show');
+    beautyArrow.textContent = open ? '▾' : '▸';
+  });
+
+  // 选项卡切换
+  var tabs=document.getElementById('beautyTabs');
+  tabs.addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    tabs.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+    b.classList.add('active');
+    var name=b.getAttribute('data-tab');
+    beautyPanel.querySelectorAll('.tab-page').forEach(function(p){
+      p.classList.toggle('show', p.getAttribute('data-page')===name);
+    });
+  });
+
+  function bindSeg(id, key){
+    var seg=document.getElementById(id);
+    seg.addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      seg.querySelectorAll('button').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      opts[key]=b.getAttribute('data-v');
+      render();
+    });
+  }
+  bindSeg('eclSeg','ecl');
+  bindSeg('dotSeg','dot');
+  bindSeg('eyeSeg','eye');
+  bindSeg('gradSeg','grad');
+
+  document.getElementById('fgColor').addEventListener('input', function(e){ opts.fg=e.target.value; render(); });
+  document.getElementById('fgColor2').addEventListener('input', function(e){ opts.fg2=e.target.value; render(); });
+  document.getElementById('bgColor').addEventListener('input', function(e){ opts.bg=e.target.value; render(); });
+  document.getElementById('bgColor2').addEventListener('input', function(e){ opts.bg2=e.target.value; render(); });
+
+  document.getElementById('sizeInput').addEventListener('input', function(e){ opts.size=+e.target.value||500; scheduleRender(); });
+  document.getElementById('marginInput').addEventListener('input', function(e){ opts.margin=+e.target.value||0; scheduleRender(); });
+  document.getElementById('formatSel').addEventListener('change', function(e){ opts.format=e.target.value; render(); });
+
+  // 文字
+  document.getElementById('textOn').addEventListener('change', function(e){ opts.textOn=e.target.checked; render(); });
+  document.getElementById('textContent').addEventListener('input', function(e){ opts.textContent=e.target.value; scheduleRender(); });
+  document.getElementById('textSize').addEventListener('input', function(e){ opts.textSize=+e.target.value||36; scheduleRender(); });
+  document.getElementById('textColor').addEventListener('input', function(e){ opts.textColor=e.target.value; render(); });
+  document.getElementById('textBold').addEventListener('change', function(e){ opts.textBold=e.target.checked; render(); });
+
+  // Logo
+  var logoInput=document.getElementById('logoInput');
+  var logoClearBtn=document.getElementById('logoClearBtn');
+  var logoPrev=document.getElementById('logoPrev');
+  var logoFired=false;
+
+  function loadLogoBlob(blob){
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var img=new Image();
+      img.onload=function(){
+        logoImg=img;
+        logoPrev.src=img.src; logoPrev.style.display='block';
+        logoClearBtn.style.display='inline-block';
+        render();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(blob);
+  }
+
+  // 直接点击可见的 file input 即真实用户手势，最易触发 App WebView 原生文件选择器
+  logoInput.addEventListener('click', function(){
+    logoFired=false;
+    setTimeout(function(){
+      if (!logoFired && document.hasFocus()){
+        alert('当前 App 内置浏览器没有弹出文件选择器（其 WebView 未实现文件选择）。可改用系统浏览器打开本页选图，或复制一张图片后在输入框长按「粘贴」作为 Logo。');
+      }
+    }, 1500);
+  });
+  logoInput.addEventListener('change', function(e){
+    logoFired=true;
+    var f=e.target.files && e.target.files[0]; if(!f) return;
+    loadLogoBlob(f);
+  });
+  // 兜底：粘贴图片作为 Logo（App 内复制图片后粘贴即可，无需文件选择器）
+  document.addEventListener('paste', function(e){
+    var cd=(e.clipboardData||window.clipboardData);
+    if (!cd || !cd.items) return;
+    for (var i=0;i<cd.items.length;i++){
+      var it=cd.items[i];
+      if (it.type && it.type.indexOf('image')===0){
+        var b=it.getAsFile();
+        if (b){ loadLogoBlob(b); e.preventDefault(); }
+        break;
+      }
+    }
+  });
+  logoClearBtn.addEventListener('click', function(){
+    logoImg=null; logoInput.value='';
+    logoPrev.style.display='none'; logoClearBtn.style.display='none';
+    render();
+  });
+  document.getElementById('logoSize').addEventListener('input', function(e){ opts.logoSize=+e.target.value; scheduleRender(); });
+  document.getElementById('logoRadius').addEventListener('input', function(e){ opts.logoRadius=+e.target.value; scheduleRender(); });
+
+  /* ---------- 跳转淘宝（隐式唤起 App） ---------- */
+  function isIOS(){
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  }
+  function isAPK(){ return !!window.NativeBridge || (window.Android && typeof window.Android!=='undefined'); }
+  function isHarmony(){ return /HarmonyOS|OpenHarmony|HuaweiBrowser|zhuoyi/i.test(navigator.userAgent); }
+
+  // 淘口令特征：CZxxxx/ 、￥xxxx￥ 、₤xxxx₤ 、₳xxxx₳ 、(xxxx) 等，且不含 http 链接
+  function isTaoKouLing(raw){
+    if (!raw) return false;
+    // tb.cn / e.tb.cn / m.tb.cn 短链：可解析成 item.taobao 直连长链（扫码更稳）
+    if (/https?:\/\/[^\s"']*tb\.cn\/[^\s"']*/i.test(raw)) return true;
+    // 带 ?tk= 口令参数的分享链接（常见于商品分享文案）
+    if (/[?&]tk=[0-9A-Za-z_-]{6,}/i.test(raw)) return true;
+    if (/https?:\/\//i.test(raw)) return false;
+    return /\bCZ[0-9A-Za-z]{2,}\s*[0-9A-Za-z]{6,}\s*\//.test(raw) ||
+           /[￥¥]\s*[0-9A-Za-z]{8,}\s*[￥¥]/.test(raw) ||
+           /[₤₳₴]\s*[0-9A-Za-z]{8,}\s*[₤₳₴]/.test(raw) ||
+           /\(\s*[0-9A-Za-z]{10,}\s*\)/.test(raw) ||
+           // $…$ 包裹的口令码（如 2$geyq6bCd0W1$ 或 $geyq6bCd0W1$:// CZ3148）
+           /\$[0-9A-Za-z]{6,}\$/.test(raw);
+  }
+
+  function extractTaobaoUrl(raw){
+    if (!raw) return null;
+    var m = raw.match(/https?:\/\/[^\s"'<>]*taobao\.com[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/[^\s"'<>]*tmall\.com[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/(m|e)\.tb\.cn\/[^\s"'<>]*/i) ||
+            raw.match(/https?:\/\/[^\s"'<>]*/i);
+    return m ? m[0] : null;
+  }
+
+  function fireScheme(url){
+    if (isIOS() || isAPK() || isHarmony()){
+      window.location.href = url;
+    } else {
+      var ifr=document.createElement('iframe');
+      ifr.style.display='none'; ifr.src=url;
+      document.body.appendChild(ifr);
+      setTimeout(function(){ if(ifr.parentNode) ifr.parentNode.removeChild(ifr); }, 3000);
+    }
+  }
+
+  function showIOSMask(onTap){
+    var mask=document.getElementById('iosMask');
+    mask.onclick=function(){ mask.style.display='none'; onTap(); };
+    mask.style.display='flex';
+  }
+
+  taobaoBtn.addEventListener('click', function(){
+    var raw=input.value.trim();
+    if (!raw){ alert('请先在输入框粘贴/输入淘宝链接'); return; }
+    var url=extractTaobaoUrl(raw) || raw;
+    var scheme='tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url='+encodeURIComponent(url);
+    if (isIOS() && !isAPK()){
+      showIOSMask(function(){ fireScheme(scheme); });
+    } else {
+      fireScheme(scheme);
+    }
+  });
+
+  /* ---------- 返回 ---------- */
+  document.getElementById('backBtn').addEventListener('click', function(){
+    if (history.length>1) history.back(); else location.href='index.html';
+  });
+
+  /* ---------- 快捷跳转：两个可自由设置链接的按钮 ---------- */
+  // ① 点 ⚙ 设置 填写名称 + 默认跳转链接（存 localStorage，刷新不丢）
+  // ② 每次点按钮 → 弹确认层：直接跳转（用默认链接）/ 修改参数（临时替换 prismTrace、sceneId、deliveryId、itemIds 再跳）
+  (function(){
+    var LS_KEY = 'qj_links_v1';
+    var DEFAULT = [{name:'链接1',url:''},{name:'链接2',url:''}];
+    var links;
+    try { links = JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){ links = null; }
+    if (!Array.isArray(links) || links.length < 1) links = DEFAULT.slice();
+
+    var qjRow = document.getElementById('qjRow');
+
+    function qjSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify(links)); } catch(e){} }
+
+    /* ---- 渲染按钮（动态列表） ---- */
+    function qjRender(){
+      qjRow.innerHTML = '';
+      links.forEach(function(item, i){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'qj-btn' + (item.url ? '' : ' blank');
+        btn.setAttribute('data-qj-idx', i);
+        var span = document.createElement('span');
+        span.className = 'qj-name';
+        span.textContent = item.name || (item.url ? '未命名' : '空白');
+        btn.appendChild(span);
+        qjBindButton(btn, i);
+        qjRow.appendChild(btn);
+      });
+    }
+
+    /* ---- 按钮交互：长按菜单 / 单击跳转 ---- */
+    function qjBindButton(btn, idx){
+      var pressTimer = null, longFired = false;
+      function clearPress(){ if (pressTimer){ clearTimeout(pressTimer); pressTimer = null; } }
+      btn.addEventListener('pointerdown', function(e){
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        longFired = false; clearPress();
+        pressTimer = setTimeout(function(){
+          longFired = true;
+          if (navigator.vibrate){ try { navigator.vibrate(12); } catch(err){} }
+          qjOpenMenu(btn, idx);
+        }, 500);
+      });
+      ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ btn.addEventListener(ev, clearPress); });
+      btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+      btn.addEventListener('click', function(){
+        if (longFired){ longFired = false; return; }   // 长按已处理，抑制本次 click
+        var item = links[idx];
+        if (!item || !item.url){ showToast('长按按钮可编辑 / 插入 / 删除'); return; }
+        qjShowConfirm(idx);   // 保持原有「确认层 → 修改参数/直接跳转」逻辑不变
+      });
+    }
+
+    /* ---- 长按菜单（插入 / 编辑 / 删除，与主界面自设区一致） ---- */
+    var qjMenuTargetIdx = null;
+    function qjOpenMenu(btn, idx){
+      var menu = document.getElementById('qjMenu');
+      if (!menu) return;
+      qjMenuTargetIdx = idx;
+      menu.classList.add('show');
+      var rect = btn.getBoundingClientRect();
+      var mh = menu.offsetHeight, mw = menu.offsetWidth;
+      var top = rect.top - mh - 6;
+      if (top < 8) top = rect.bottom + 6;
+      var left = rect.left + rect.width/2 - mw/2;
+      left = Math.max(8, Math.min(left, window.innerWidth - mw - 8));
+      menu.style.top = top + 'px';
+      menu.style.left = left + 'px';
+    }
+    function qjCloseMenu(){
+      var menu = document.getElementById('qjMenu');
+      if (menu) menu.classList.remove('show');
+      qjMenuTargetIdx = null;
+    }
+    // 点菜单以外的区域关闭
+    document.addEventListener('pointerdown', function(e){
+      var menu = document.getElementById('qjMenu');
+      if (!menu || !menu.classList.contains('show')) return;
+      if (menu.contains(e.target)) return;
+      qjCloseMenu();
+    }, true);
+
+    document.getElementById('qjMenuInsert').addEventListener('click', function(){
+      var idx = qjMenuTargetIdx; qjCloseMenu();
+      if (idx == null) return;
+      links.splice(idx, 0, {name:'',url:''});
+      qjSave(); qjRender(); showToast('已插入空白按钮');
+    });
+    document.getElementById('qjMenuEdit').addEventListener('click', function(){
+      var idx = qjMenuTargetIdx; qjCloseMenu();
+      if (idx == null) return;
+      qjOpenEditModal(idx);
+    });
+    document.getElementById('qjMenuDelete').addEventListener('click', function(){
+      var idx = qjMenuTargetIdx; qjCloseMenu();
+      if (idx == null) return;
+      qjOpenDeleteModal(idx);
+    });
+
+    /* ---- 编辑弹窗（Toast 风格，名称 + 链接） ---- */
+    var qjEditingIdx = null;
+    function qjOpenEditModal(idx){
+      var item = links[idx];
+      if (!item) return;
+      qjEditingIdx = idx;
+      document.getElementById('qjEditName').value = item.name || '';
+      document.getElementById('qjEditUrl').value = item.url || '';
+      var modal = document.getElementById('qjEditModal');
+      modal.style.display = 'flex'; modal.classList.add('active');
+    }
+    function closeQjEditModal(){
+      document.getElementById('qjEditModal').style.display = 'none';
+      qjEditingIdx = null;
+    }
+    function confirmQjEditModal(){
+      if (qjEditingIdx == null) return;
+      var name = document.getElementById('qjEditName').value.trim();
+      var url = document.getElementById('qjEditUrl').value.trim();
+      if (!url){ showToast('请输入跳转链接'); return; }
+      if (!name) name = '未命名';
+      var item = links[qjEditingIdx];
+      if (item){ item.name = name; item.url = url; }
+      qjSave(); closeQjEditModal(); qjRender();
+      showToast('已保存');
+    }
+    document.getElementById('qjEditOverlay').addEventListener('click', closeQjEditModal);
+    document.getElementById('qjEditCancel').addEventListener('click', closeQjEditModal);
+    document.getElementById('qjEditSave').addEventListener('click', confirmQjEditModal);
+
+    /* ---- 删除二次确认 ---- */
+    var qjDeletingIdx = null;
+    function qjOpenDeleteModal(idx){
+      var item = links[idx];
+      if (!item) return;
+      qjDeletingIdx = idx;
+      document.getElementById('qjDeleteTitle').textContent = item.url
+        ? ('确定删除按钮「' + (item.name || '未命名') + '」？')
+        : '确定删除该空白按钮？';
+      var modal = document.getElementById('qjDeleteModal');
+      modal.style.display = 'flex'; modal.classList.add('active');
+    }
+    function closeQjDeleteModal(){
+      document.getElementById('qjDeleteModal').style.display = 'none';
+      qjDeletingIdx = null;
+    }
+    function confirmQjDeleteModal(){
+      if (qjDeletingIdx == null) return;
+      links.splice(qjDeletingIdx, 1);
+      if (!links.length) links.push({name:'链接1',url:''});
+      qjSave(); closeQjDeleteModal(); qjRender();
+      showToast('已删除');
+    }
+    document.getElementById('qjDeleteOverlay').addEventListener('click', closeQjDeleteModal);
+    document.getElementById('qjDeleteCancel').addEventListener('click', closeQjDeleteModal);
+    document.getElementById('qjDeleteConfirm').addEventListener('click', confirmQjDeleteModal);
+
+    /* ---- 点击跳转：保持原有「确认层 → 修改参数 / 直接跳转」逻辑不变 ---- */
+    function getParam(url, key){
+      var m = url.match(new RegExp('[?&]' + key + '=([^&#]*)', 'i'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    function setParam(url, key, val){
+      var re = new RegExp('([?&]' + key + '=)[^&#]*', 'i');
+      if (re.test(url)) return url.replace(re, '$1' + encodeURIComponent(val));
+      var sep = url.indexOf('?') >= 0 ? '&' : '?';
+      return url + sep + key + '=' + encodeURIComponent(val);
+    }
+    var qjOverlay = document.getElementById('qjOverlay');
+    var qjConfirmBox = document.getElementById('qjConfirmBox');
+    var qjPanelBox = document.getElementById('qjPanelBox');
+    var qjPending = -1;
+    function qjShowConfirm(idx){
+      qjPending = idx;
+      qjConfirmBox.style.display = 'block';
+      qjPanelBox.style.display = 'none';
+      qjOverlay.classList.add('show');
+    }
+    function qjClose(){
+      qjOverlay.classList.remove('show');
+      qjPending = -1;
+    }
+    // 复用页面原有的 tbopen:// 唤起逻辑，避免在软件内 webview 直接打开网页
+    function qjJump(url){
+      qjClose();
+      if (!url) return;
+      var target = extractTaobaoUrl(url) || url;
+      var scheme = 'tbopen://m.taobao.com/tbopen/index.html?action=ali.open.nav&h5Url=' + encodeURIComponent(target);
+      if (isIOS() && !isAPK()){
+        showIOSMask(function(){ fireScheme(scheme); });
+      } else {
+        fireScheme(scheme);
+      }
+    }
+
+    // 直接跳转（用默认链接）
+    document.getElementById('qjDirectBtn').addEventListener('click', function(){
+      if (qjPending < 0) return;
+      qjJump(links[qjPending].url);
+    });
+    // 参数定义（顺序即显示顺序）
+    var QJ_PARAMS = [
+      {key:'prismTrace',  ghost:'qjGhostPrism',    input:'qjParamPrism'},
+      {key:'sceneId',     ghost:'qjGhostScene',    input:'qjParamScene'},
+      {key:'deliveryId',  ghost:'qjGhostDelivery', input:'qjParamDelivery'},
+      {key:'itemIds',     ghost:'qjGhostItem',     input:'qjParamItem'}
+    ];
+    var qjOriginals = {};   // key -> 原链接中的当前值
+
+    // 修改参数 → 进入参数面板（当前值显示为输入框灰色背景，无需删除即可直接改）
+    document.getElementById('qjModifyBtn').addEventListener('click', function(){
+      if (qjPending < 0) return;
+      var url = links[qjPending].url;
+      QJ_PARAMS.forEach(function(p){
+        var v = getParam(url, p.key);
+        qjOriginals[p.key] = v;
+        var ghost = document.getElementById(p.ghost);
+        ghost.textContent = v;
+        ghost.style.display = v ? 'block' : 'none';
+        var inp = document.getElementById(p.input);
+        inp.value = '';   // 清空输入框，原值留在背景上
+      });
+      qjConfirmBox.style.display = 'none';
+      qjPanelBox.style.display = 'block';
+    });
+    // 输入时切换背景显隐：有内容则隐藏背景，留空则显示
+    QJ_PARAMS.forEach(function(p){
+      var inp = document.getElementById(p.input);
+      var ghost = document.getElementById(p.ghost);
+      inp.addEventListener('input', function(){
+        ghost.style.display = inp.value.trim() ? 'none' : 'block';
+      });
+    });
+    document.getElementById('qjParamCancel').addEventListener('click', qjClose);
+    // 替换参数并跳转（输入框为空则沿用背景原值）
+    document.getElementById('qjParamGo').addEventListener('click', function(){
+      if (qjPending < 0) return;
+      var url = links[qjPending].url;
+      QJ_PARAMS.forEach(function(p){
+        var inp = document.getElementById(p.input);
+        var v = inp.value.trim() !== '' ? inp.value.trim() : (qjOriginals[p.key] || '');
+        url = setParam(url, p.key, v);
+      });
+      qjJump(url);
+    });
+    // 点遮罩空白处关闭
+    qjOverlay.addEventListener('click', function(e){
+      if (e.target === qjOverlay) qjClose();
+    });
+
+    qjRender();
+  })();
+
+})();
+</script>
+</body>
+</html>
