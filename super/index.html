@@ -3516,17 +3516,40 @@
             return shortUrl;
         }
 
+        // 三个二级大区下拉互斥：同一时刻最多展开一个（秒杀区/百补区/入口区）
+        var FOLD_EXCLUSIVE = { foldSecMiaosha: 1, foldSecBaibu: 1, foldSecRukou: 1 };
+
+        // 统一设置某个折叠面板的展开状态（含标题箭头），避免各处重复操作 class
+        function setFoldState(id, isOpen) {
+            var el = document.getElementById(id);
+            if (el) {
+                if (isOpen) el.classList.add('show'); else el.classList.remove('show');
+            }
+            var btn = document.querySelector('button[onclick*="' + id + '"]');
+            if (btn) {
+                var arrow = btn.querySelector('.fold-arrow');
+                if (arrow) {
+                    if (isOpen) arrow.classList.add('open'); else arrow.classList.remove('open');
+                }
+            }
+        }
+
         function toggleFold(id) {
             var el = document.getElementById(id);
             if (!el) return;
             var willShow = !el.classList.contains('show');
-            el.classList.toggle('show');
-            // 联动箭头（fold-arrow）：调用按钮上的箭头随展开/收起旋转
-            var btn = document.querySelector('button[onclick*="' + id + '"]');
-            if (btn) {
-                var arrow = btn.querySelector('.fold-arrow');
-                if (arrow) arrow.classList.toggle('open', willShow);
+
+            // 展开某个二级大区时，自动收起互斥组内的其他两个
+            if (willShow && FOLD_EXCLUSIVE[id]) {
+                for (var other in FOLD_EXCLUSIVE) {
+                    if (other === id) continue;
+                    var oEl = document.getElementById(other);
+                    if (oEl && oEl.classList.contains('show')) setFoldState(other, false);
+                }
             }
+
+            setFoldState(id, willShow);
+
             // 展开后按钮才有真实宽度，需重新适配字号
             if (willShow && typeof scheduleFitButtonFonts === 'function') {
                 scheduleFitButtonFonts();
