@@ -63,23 +63,18 @@ export async function onRequestGet(context) {
   }
 
   const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote, feedbackRows, feedbackNote);
-  // 版本标记 v3-cachebust：用于确认部署生效
-  const marked = html.replace("</title>", '</title><!-- v3-cachebust -->');
-  return new Response(marked, {
+  return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
 }
 
 async function fetchText(rawUrl, jsdelivrUrl) {
-  // 加时间戳绕过边缘缓存：jsdelivr @main 头是 s-maxage=43200(12h)，raw 也有 300s 边缘缓存，
-  // 不带参数的子请求会长时间命中旧副本，导致 CSV/HTML 更新后表格页迟迟不刷新
-  const bust = "?t=" + Date.now();
   try {
-    const r = await fetch(rawUrl + bust, { cache: "no-store" });
+    const r = await fetch(rawUrl, { cache: "no-store" });
     if (r.ok) return await r.text();
   } catch (e) {}
   try {
-    const r = await fetch(jsdelivrUrl + bust, { cache: "no-store" });
+    const r = await fetch(jsdelivrUrl, { cache: "no-store" });
     if (r.ok) return await r.text();
   } catch (e) {}
   return "";
