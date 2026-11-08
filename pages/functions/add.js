@@ -84,8 +84,8 @@ const HTML = `<!DOCTYPE html>
         <input id="daily" placeholder="如：1">
       </div>
       <div>
-        <label>是否使用</label>
-        <select id="used"><option value="是">是</option><option value="否">否</option></select>
+        <label>是否使用<span class="hint">手动记录固定为否</span></label>
+        <select id="used"><option value="否">否</option><option value="是">是</option></select>
       </div>
       <div>
         <label>状态</label>
@@ -105,7 +105,7 @@ const HTML = `<!DOCTYPE html>
       相同参数自动合并 / 删除
     </label>
     <div class="hint" style="margin-top:4px;line-height:1.6;">
-      勾选后：提交「手动记录」的纯参数行（链接、原链接均为空）时，按 sceneId + deliveryId 判重——已有相同参数的行会被删除、以本次录入为准，全表同参数重复行也只保留一条。带链接的记录不参与判重。每次提交后手动记录行自动按 sceneId → deliveryId 排序。
+      勾选后：所有「手动记录」行（含带链接的旧按钮存档）按 sceneId + deliveryId 判重——已有相同参数的行会被删除、以本次录入为准，全表同参数只保留一条。另外，手动记录行统一写入「是否使用=否、状态=空白」，因为它们是删除按钮后留下的参数存档、线上已无对应按钮。每次提交后手动记录行自动按 sceneId → deliveryId 排序。
     </div>
     <button id="submit">提交写入</button>
     <div id="log" class="log"></div>

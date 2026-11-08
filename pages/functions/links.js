@@ -306,8 +306,8 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
   th,td { padding:9px 12px; text-align:center; border-bottom:1px solid #eee; white-space:nowrap; }
   th { background:#f0f2f5; font-weight:600; position:sticky; top:0; }
   tbody tr:hover { background:#fafbfc; }
-  tbody tr.unused { background:#e9eef3; }
-  tbody tr.unused:hover { background:#e1e8ee; }
+  /* 同一分类区域内所有行背景完全一致：不再按「是否使用」改行背景，
+     未使用仅由 .no 红色文字区分，避免出现两种颜色 */
   /* 一级标题整行背景：低饱和度、低亮度（暗淡莫兰迪色） */
   tbody tr.cat-manual { background:hsl(210,8%,38%);  color:#ececec; }
   tbody tr.cat-ms     { background:hsl(2,32%,42%);   color:#f3f3f3; }
@@ -343,8 +343,6 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
     th{background:#262a2f;}
     th,td{border-bottom-color:#2c2f34;}
     tbody tr:hover{background:#23272c;}
-    tbody tr.unused{background:#222831;}
-    tbody tr.unused:hover{background:#262c36;}
     .cat-ms{color:#ff6b6b;}
     .cat-bb{color:#f6b93b;}
     .cat-rukou{color:#74b9ff;}

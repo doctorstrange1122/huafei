@@ -20,9 +20,10 @@ function numKey(s) {
   const n = parseInt(unquote(s), 10);
   return isNaN(n) ? Number.MAX_SAFE_INTEGER : n;
 }
-// 「手动记录的参数行」= 一级标题为手动记录、且链接与原链接都为空的纯参数行
-function isParamRow(c) {
-  return c.length === 10 && unquote(c[0]) === "手动记录" && unquote(c[8]) === "" && unquote(c[9]) === "";
+// 参与判重的行：所有「手动记录」行（含带链接的旧按钮存档），且至少有一个参数
+// 按钮已从线上文件删除，留下的都是参数存档，带不带链接都应参与同参数合并
+function isDedupRow(c) {
+  return isManual(c) && !!(unquote(c[3]) || unquote(c[4]));
 }
 function paramKey(c) {
   return unquote(c[3]) + "/" + unquote(c[4]); // sceneId / deliveryId
@@ -41,12 +42,16 @@ function rebuild(content, newLine, doDedupe) {
   let kept = rows.slice();
   let merged = 0;
 
+  // 手动记录行一律是「参数存档」：是否使用=否、状态=空白（线上已无对应按钮）
+  for (const c of kept) if (isManual(c)) { c[6] = "否"; c[7] = ""; }
+  if (isManual(newCells)) { newCells[6] = "否"; newCells[7] = ""; }
+
   if (doDedupe) {
-    // 1) 全表：纯参数行按 (sceneId, deliveryId) 只保留第一条，其余删除
+    // 1) 全表：手动记录行按 (sceneId, deliveryId) 只保留第一条，其余删除
     const seen = new Set();
     const stage = [];
     for (const c of kept) {
-      if (isParamRow(c)) {
+      if (isDedupRow(c)) {
         const k = paramKey(c);
         if (seen.has(k)) { merged++; continue; }
         seen.add(k);
@@ -54,11 +59,11 @@ function rebuild(content, newLine, doDedupe) {
       stage.push(c);
     }
     kept = stage;
-    // 2) 本次录入若与已有参数行同 key，删除旧行，以本次录入为准
-    if (isParamRow(newCells)) {
+    // 2) 本次录入若与已有手动记录同 key，删除旧行，以本次录入为准
+    if (isDedupRow(newCells)) {
       const nk = paramKey(newCells);
       const before = kept.length;
-      kept = kept.filter(c => !(isParamRow(c) && paramKey(c) === nk));
+      kept = kept.filter(c => !(isDedupRow(c) && paramKey(c) === nk));
       merged += before - kept.length;
     }
   }
