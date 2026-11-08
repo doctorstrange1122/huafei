@@ -791,7 +791,9 @@
         .qj-panel-btns{display:flex;gap:10px;margin-top:6px;}
         .qj-panel-btns button{flex:1;border:none;border-radius:12px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;}
         #selfParamCancel{background:#eef1f6;color:#7a8699;}
+        #selfParamCopy{background:#dce8f4;color:#55718f;}
         #selfParamGo{background:linear-gradient(135deg,#7a93ac,#6b82a0);color:#fff;}
+        .qj-panel-btns.three button{font-size:13px;padding:12px 2px;white-space:nowrap;}
         /* 反馈输入框（复用弹窗卡片） */
         #feedbackInput {
             width: 100%; box-sizing: border-box; margin-top: 12px;
@@ -1462,8 +1464,9 @@
         <div class="qj-field"><label>sceneId</label><div class="qj-input-wrap"><span class="qj-ghost" id="selfGhostScene"></span><input id="selfParamScene" placeholder=""></div></div>
         <div class="qj-field"><label>deliveryId</label><div class="qj-input-wrap"><span class="qj-ghost" id="selfGhostDelivery"></span><input id="selfParamDelivery" placeholder=""></div></div>
         <div class="qj-field"><label>itemIds</label><div class="qj-input-wrap"><span class="qj-ghost" id="selfGhostItem"></span><input id="selfParamItem" placeholder=""></div></div>
-        <div class="qj-panel-btns">
+        <div class="qj-panel-btns three">
           <button id="selfParamCancel">取消</button>
+          <button id="selfParamCopy">替换并复制</button>
           <button id="selfParamGo">替换并跳转</button>
         </div>
       </div>
@@ -3035,15 +3038,27 @@
                 ghost.style.display = inp.value.trim() ? 'none' : 'block';
             });
         });
-        document.getElementById('selfParamCancel').addEventListener('click', selfCloseJumpOverlay);
-        document.getElementById('selfParamGo').addEventListener('click', function () {
-            if (!selfJumpTarget) return;
+        // 依据弹窗输入构造「替换参数后的完整链接」，供「替换并跳转」与「替换并复制」共用
+        function selfBuildReplacedUrl() {
+            if (!selfJumpTarget) return '';
             var url = selfJumpTarget.url;
             SELF_PARAMS.forEach(function (p) {
                 var inp = document.getElementById(p.input);
                 var v = inp.value.trim() !== '' ? inp.value.trim() : (selfOriginals[p.key] || '');
                 url = selfSetParam(url, p.key, v);
             });
+            return url;
+        }
+        document.getElementById('selfParamCancel').addEventListener('click', selfCloseJumpOverlay);
+        document.getElementById('selfParamCopy').addEventListener('click', function () {
+            var url = selfBuildReplacedUrl();
+            if (!url) return;
+            copyToClipboard(url);   // 复制替换后的完整链接，不跳转
+            selfCloseJumpOverlay();
+        });
+        document.getElementById('selfParamGo').addEventListener('click', function () {
+            var url = selfBuildReplacedUrl();
+            if (!url) return;
             selfJumpParam(url);
         });
         document.getElementById('selfJumpOverlay').addEventListener('click', function (e) {
