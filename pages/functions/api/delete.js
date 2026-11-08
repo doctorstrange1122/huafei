@@ -4,8 +4,8 @@
 const REPO = "doctorstrange1122/huafei";
 const PATH = "data/links.csv";
 const BRANCH = "main";
-// 列顺序必须与 add.js / links.js 保持一致（10 列）
-const FIELDS = ["level1", "subtitle", "name", "daily", "did", "sid", "used", "status", "link", "orig"];
+// 列顺序与 add.js / links.js 保持一致（10 列）：一级标题,二级标题,奖励名,sceneId,deliveryId,每日次数,是否使用,状态,链接,原链接
+const FIELDS = ["level1", "subtitle", "name", "sid", "did", "daily", "used", "status", "link", "orig"];
 // 仅这两类行允许通过网页删除；秒杀区/百补区/入口区为 HTML 按钮自动行，删了也会被 reconcile 恢复
 const DELETABLE = new Set(["手动记录", "自定义"]);
 

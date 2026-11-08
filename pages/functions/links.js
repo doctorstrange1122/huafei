@@ -29,7 +29,7 @@ export async function onRequestGet(context) {
         const did = (url.match(/deliveryId=(\d+)/) || [])[1] || "";
         const sid = (url.match(/sceneId=(\d+)/) || [])[1] || "";
         // 不去重：每一条都保留，直接并入“自定义”区
-        huafeiRows.push(["自定义", "", key, "", did, sid, "是", "", url, ""]);
+        huafeiRows.push(["自定义", "", key, sid, did, "", "是", "", url, ""]);
       }
       huafeiNote = `huafei ${items.length} 条`;
     }
@@ -177,7 +177,8 @@ function parseHtmlButtons(html) {
   return rows;
 }
 
-// 列顺序（10 列）：一级标题,二级标题,奖励名,每日次数,deliveryId,sceneId,是否使用,状态,链接,原链接
+// 列顺序（10 列）：一级标题,二级标题,奖励名,sceneId,deliveryId,每日次数,是否使用,状态,链接,原链接
+// 注意：deliveryId 仍在索引 4，csvByDid / row[4] 无需改动；链接(8)、原链接(9) 位置不变
 function reconcile(htmlText, csvText) {
   const autoRows = parseHtmlButtons(htmlText);
   const autoDids = new Set(autoRows.map(r => r.did).filter(Boolean));
@@ -205,7 +206,7 @@ function reconcile(htmlText, csvText) {
       if (!pick) pick = cands.find(r => r[9]);
       if (pick) orig = pick[9];
     }
-    return [a.level1, a.subtitle, a.name, a.daily, a.did, a.sid, "是", a.status, a.link, orig];
+    return [a.level1, a.subtitle, a.name, a.sid, a.did, a.daily, "是", a.status, a.link, orig];
   });
   // 手动候选与自动行按 (一级标题|奖励名)+path 合并（回填原链接，去重）；无法匹配则保留为独立手动记录行
   const manualRows = [];
@@ -242,7 +243,7 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
   if (Array.isArray(extraRows) && extraRows.length) finalRows = finalRows.concat(extraRows);
 
   // 每列去重值，用于表头筛选下拉
-  const COLS = ["一级标题","二级标题","奖励名","每日次数","deliveryId","sceneId","是否使用","状态","链接","原链接"];
+  const COLS = ["一级标题","二级标题","奖励名","sceneId","deliveryId","每日次数","是否使用","状态","链接","原链接"];
   const LONG_COLS = new Set([8, 9]); // 链接/原链接：选项文本截断，value 仍用完整值
   const colValues = COLS.map((_, c) => {
     const set = new Set();
@@ -258,7 +259,7 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
   const bodyRows = finalRows.map(r => {
-    const [level1, subtitle, name, daily, did, sid, used, status, link, orig] = r;
+    const [level1, subtitle, name, sid, did, daily, used, status, link, orig] = r;
     const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
     const rowCls = used === "否" ? "unused" : "";
@@ -270,9 +271,9 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
       <td class="${catCls}">${esc(level1)}</td>
       <td>${esc(subtitle)}</td>
       <td>${esc(name)}</td>
-      <td>${esc(daily)}</td>
-      <td>${esc(did)}</td>
       <td>${esc(sid)}</td>
+      <td>${esc(did)}</td>
+      <td>${esc(daily)}</td>
       <td class="${usedCls}">${esc(used)}</td>
       <td class="status ${statusCls}">${esc(status)}</td>
       <td class="link">${linkHtml}</td>

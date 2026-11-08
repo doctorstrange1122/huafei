@@ -72,16 +72,16 @@ const HTML = `<!DOCTYPE html>
         <input id="name" placeholder="如：超值元宝">
       </div>
       <div>
-        <label>每日次数</label>
-        <input id="daily" placeholder="如：1">
+        <label>sceneId<span class="hint">第4列</span></label>
+        <input id="sid" placeholder="留空表示无">
       </div>
       <div>
-        <label>deliveryId</label>
+        <label>deliveryId<span class="hint">第5列</span></label>
         <input id="did" placeholder="留空表示无 / 手动记录">
       </div>
       <div>
-        <label>sceneId</label>
-        <input id="sid" placeholder="留空表示无">
+        <label>每日次数<span class="hint">第6列</span></label>
+        <input id="daily" placeholder="如：1">
       </div>
       <div>
         <label>是否使用</label>
@@ -99,6 +99,13 @@ const HTML = `<!DOCTYPE html>
         <label>原链接<span class="hint">第10列，手动维护</span></label>
         <input id="orig" placeholder="https://... 留空可">
       </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-weight:600;">
+      <input type="checkbox" id="dedupe" checked style="width:auto;margin:0;">
+      相同参数自动合并 / 删除
+    </label>
+    <div class="hint" style="margin-top:4px;line-height:1.6;">
+      勾选后：提交「手动记录」的纯参数行（链接、原链接均为空）时，按 sceneId + deliveryId 判重——已有相同参数的行会被删除、以本次录入为准，全表同参数重复行也只保留一条。带链接的记录不参与判重。每次提交后手动记录行自动按 sceneId → deliveryId 排序。
     </div>
     <button id="submit">提交写入</button>
     <div id="log" class="log"></div>
@@ -118,7 +125,8 @@ const HTML = `<!DOCTYPE html>
       1. 若填了 deliveryId 且该值已存在于 HTML 功能区，系统会把它认领为「自动行」——此时本行只贡献第 10 列「原链接」，不再作为独立手动行置顶。想让它作为干净的手动记录行存活，请用 HTML 里没有的 deliveryId 或留空。<br>
       2. 「原链接」列用于为线上已有按钮补充原始链接，由 CSV 维护、HTML 不覆盖。<br>
       3. 提交成功后，线上 /links 会实时（或等 CDN 缓存刷新后）显示新行，通常无需重新部署。<br>
-      4. 「现有手动 / 自定义记录」卡片中可删除行，仅支持删除一级标题为「手动记录」「自定义」的行；秒杀区 / 百补区 / 入口区行由 HTML 按钮自动生成，不在此处管理。
+      4. 「现有手动 / 自定义记录」卡片中可删除行，仅支持删除一级标题为「手动记录」「自定义」的行；秒杀区 / 百补区 / 入口区行由 HTML 按钮自动生成，不在此处管理。<br>
+      5. CSV 列顺序：一级标题、二级标题、奖励名、<b>sceneId、deliveryId、每日次数</b>、是否使用、状态、链接、原链接。手动记录行按 sceneId → deliveryId 排序。
     </div>
   </div>
 </div>
@@ -132,7 +140,8 @@ async function submit() {
     name: $("name").value.trim(), daily: $("daily").value.trim(),
     did: $("did").value.trim(), sid: $("sid").value.trim(),
     used: $("used").value, status: $("status").value,
-    link: $("link").value.trim(), orig: $("orig").value.trim()
+    link: $("link").value.trim(), orig: $("orig").value.trim(),
+    dedupe: $("dedupe").checked
   };
   if (!payload.name) { log.className = "log err"; log.textContent = "奖励名不能为空"; return; }
   btn.disabled = true; log.className = "log"; log.textContent = "写入中…";
