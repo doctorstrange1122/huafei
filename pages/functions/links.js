@@ -63,7 +63,9 @@ export async function onRequestGet(context) {
   }
 
   const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote, feedbackRows, feedbackNote);
-  return new Response(html, {
+  // 版本标记 v3-cachebust：用于确认部署生效
+  const marked = html.replace("</title>", '</title><!-- v3-cachebust -->');
+  return new Response(marked, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
 }
