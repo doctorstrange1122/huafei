@@ -43,8 +43,14 @@ function rebuild(content, newLine, doDedupe) {
   let merged = 0;
 
   // 手动记录行一律是「参数存档」：是否使用=否、状态=空白（线上已无对应按钮）
-  for (const c of kept) if (isManual(c)) { c[6] = "否"; c[7] = ""; }
-  if (isManual(newCells)) { newCells[6] = "否"; newCells[7] = ""; }
+  // 仅当值不合规时才改，并保留该单元格原有引号风格，避免录入一次就把整表格式重写
+  const normalizeManual = c => {
+    if (!isManual(c)) return;
+    if (unquote(c[6]) !== "否") c[6] = String(c[6]).trim().startsWith('"') ? '"否"' : "否";
+    if (unquote(c[7]) !== "") c[7] = String(c[7]).trim().startsWith('"') ? '""' : "";
+  };
+  kept.forEach(normalizeManual);
+  normalizeManual(newCells);
 
   if (doDedupe) {
     // 1) 全表：手动记录行按 (sceneId, deliveryId) 只保留第一条，其余删除
