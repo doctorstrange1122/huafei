@@ -62,7 +62,7 @@ export async function onRequestGet(context) {
     } catch (e) { feedbackNote = "读取失败"; }
   }
 
-  const html = buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote, feedbackRows, feedbackNote);
+  const html = await buildHtml(htmlText, csvText, srcNote, huafeiRows, huafeiNote, feedbackRows, feedbackNote, KV);
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }
   });
@@ -224,13 +224,24 @@ function reconcile(htmlText, csvText) {
 function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+function escAttr(s) {
+  return esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+// 手动记录行的稳定标识：优先 sceneId/deliveryId；两列都空时用奖励名兜底
+// 与 api/manual-status.js 的 KV key 规则保持一致
+function availRowKey(r) {
+  const sid = String(r[3] || "").trim();
+  const did = String(r[4] || "").trim();
+  if (sid || did) return sid + "/" + did;
+  return "name/" + String(r[2] || "").trim();
+}
 
 function classForLevel1(level1) {
   const map = { "手动记录": "manual", "秒杀区": "ms", "百补区": "bb", "入口区": "rukou", "自定义": "zdy" };
   return "cat-" + (map[level1] || "other");
 }
 
-function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRows, feedbackNote) {
+async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRows, feedbackNote, KV) {
   let errMsg = "";
   let finalRows = [];
   if (htmlText && htmlText.trim()) {
@@ -242,12 +253,39 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
   // 追加 huafei 自定义链接（不去重，全部保留）
   if (Array.isArray(extraRows) && extraRows.length) finalRows = finalRows.concat(extraRows);
 
-  // 每列去重值，用于表头筛选下拉
-  const COLS = ["一级标题","二级标题","奖励名","sceneId","deliveryId","每日次数","是否使用","状态","链接","原链接"];
-  const LONG_COLS = new Set([8, 9]); // 链接/原链接：选项文本截断，value 仍用完整值
+  // 读取「是否可用」标记：按行标识逐条 KV.get（不用 list，规避 KV 最终一致性延迟）
+  // 数据仍是 10 列，新列只在渲染层插入，CSV / reconcile / add / delete 全不动
+  const availMarks = {};
+  if (KV) {
+    try {
+      const keys = [];
+      const seen = new Set();
+      for (const r of finalRows) {
+        if (String(r[0] || "").trim() !== "手动记录") continue;
+        const k = availRowKey(r);
+        if (!seen.has(k)) { seen.add(k); keys.push(k); }
+      }
+      const vals = await Promise.all(keys.map(k => KV.get("mstatus:" + k).catch(() => null)));
+      for (let i = 0; i < keys.length; i++) {
+        if (vals[i] === "可用" || vals[i] === "失效") availMarks[keys[i]] = vals[i];
+      }
+    } catch (e) { /* KV 读取失败不影响表格渲染，全部按空白显示 */ }
+  }
+
+  // 显示列 11 个：在 deliveryId 后插入「是否可用」（索引 5）
+  // 显示列 c -> 数据列：c<5 取 r[c]；c>5 取 r[c-1]；c==5 为虚拟列，取 KV 标记
+  const COLS = ["一级标题","二级标题","奖励名","sceneId","deliveryId","是否可用","每日次数","是否使用","状态","链接","原链接"];
+  const AVAIL_COL = 5;
+  const LONG_COLS = new Set([9, 10]); // 链接/原链接：选项文本截断，value 仍用完整值
+  const dispVal = (r, c) => {
+    if (c === AVAIL_COL) return String(r[0] || "").trim() === "手动记录" ? (availMarks[availRowKey(r)] || "") : "";
+    const di = c < AVAIL_COL ? c : c - 1;
+    return String(r[di] || "").trim();
+  };
   const colValues = COLS.map((_, c) => {
+    if (c === AVAIL_COL) return ["可用", "失效"]; // 预留选项，供表头筛选
     const set = new Set();
-    for (const r of finalRows) { const v = String(r[c] || "").trim(); if (v) set.add(v); }
+    for (const r of finalRows) { const v = dispVal(r, c); if (v) set.add(v); }
     return [...set].sort((a, b) => a.localeCompare(b, "zh"));
   });
   const theadCells = COLS.map((name, c) => {
@@ -266,6 +304,17 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
     const statusCls = status === "待测" ? "st-testing" : (status === "可用" ? "st-available" : "st-none");
     const linkHtml = link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(link)}</a>` : "";
     const origHtml = orig ? `<a href="${esc(orig)}" target="_blank" rel="noopener">${esc(orig)}</a>` : "";
+    // 仅「手动记录」行显示可点下拉；其余分类该列留空白、不可点
+    const isManual = String(level1 || "").trim() === "手动记录";
+    const aKey = isManual ? availRowKey(r) : "";
+    const aVal = isManual ? (availMarks[aKey] || "") : "";
+    const availHtml = isManual
+      ? `<td class="avail-cell"><select class="avail-sel${aVal === "失效" ? " is-bad" : ""}" data-key="${escAttr(aKey)}" aria-label="是否可用">
+          <option value=""${aVal === "" ? " selected" : ""}></option>
+          <option value="可用"${aVal === "可用" ? " selected" : ""}>可用</option>
+          <option value="失效"${aVal === "失效" ? " selected" : ""}>失效</option>
+        </select><span class="avail-tip"></span></td>`
+      : `<td class="avail-cell"></td>`;
     if (counts.hasOwnProperty(level1)) counts[level1]++;
     return `<tr class="${rowCls} ${catCls}">
       <td class="${catCls}">${esc(level1)}</td>
@@ -273,6 +322,7 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
       <td>${esc(name)}</td>
       <td>${esc(sid)}</td>
       <td>${esc(did)}</td>
+      ${availHtml}
       <td>${esc(daily)}</td>
       <td class="${usedCls}">${esc(used)}</td>
       <td class="status ${statusCls}">${esc(status)}</td>
@@ -331,6 +381,16 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
   td.link a { color:#9ecbff; text-decoration:none; max-width:260px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom; }
   td.link a:hover { text-decoration:underline; }
   .err { color:#c0392b; }
+  /* 是否可用：仅手动记录行的可点下拉 */
+  td.avail-cell { padding:5px 6px; }
+  select.avail-sel { font-size:12px; padding:3px 5px; min-width:60px; border-radius:5px;
+    border:1px solid #c7ccd1; background:#fff; color:#222; cursor:pointer; }
+  select.avail-sel option { color:#222; }
+  select.avail-sel.is-bad { color:#d92d20; font-weight:700; border-color:#e0a3a0; }
+  select.avail-sel option[value="失效"] { color:#d92d20; font-weight:700; }
+  .avail-tip { font-size:11px; margin-left:4px; font-weight:600; }
+  .avail-tip.ok { color:#1a7f43; }
+  .avail-tip.bad { color:#d92d20; }
   /* 表头筛选下拉 */
   th .th-name { font-weight:600; margin-bottom:4px; line-height:1.2; }
   th select.col-filter { display:block; width:100%; max-width:150px; margin:2px auto 0; font-size:12px; padding:3px 4px; border-radius:5px; border:1px solid #c7ccd1; background:#fff; color:#222; box-sizing:border-box; }
@@ -350,6 +410,12 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
     td.link a{color:#63b3ed;}
     td.status.st-testing{color:#ffd479;}
     td.status.st-available{color:#7ee2a8;}
+    select.avail-sel{background:#2a2e34;color:#e6e6e6;border-color:#3a3f47;}
+    select.avail-sel option{color:#e6e6e6;}
+    select.avail-sel.is-bad{color:#ff8a85;border-color:#a8514d;}
+    select.avail-sel option[value="失效"]{color:#ff8a85;}
+    .avail-tip.ok{color:#7ee2a8;}
+    .avail-tip.bad{color:#ff8a85;}
   }
 </style>
 </head>
@@ -378,9 +444,17 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
   </div>
   <script>
   (function(){
+    var AVAIL_COL = 5;
     var table = document.getElementById('dataTable');
     if (!table) return;
     var selects = Array.prototype.slice.call(document.querySelectorAll('.col-filter'));
+    function cellVal(td, c){
+      if (c === AVAIL_COL) {
+        var s = td.getElementsByTagName('select')[0];
+        return s ? s.value : '';
+      }
+      return (td.textContent || '').trim();
+    }
     function apply(){
       var crit = selects.map(function(s){ return s.value; });
       var rows = table.tBodies[0].rows;
@@ -389,7 +463,7 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
         var tds = rows[i].children;
         var ok = true;
         for (var c=0;c<crit.length;c++){
-          if (crit[c] && (tds[c].textContent||'').trim() !== crit[c]) { ok=false; break; }
+          if (crit[c] && cellVal(tds[c], c) !== crit[c]) { ok=false; break; }
         }
         rows[i].style.display = ok ? '' : 'none';
         if (ok) shown++;
@@ -398,6 +472,41 @@ function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedbackRow
       if (el) el.textContent = '筛选后显示 ' + shown + ' / ' + rows.length + ' 条';
     }
     selects.forEach(function(s){ s.addEventListener('change', apply); });
+
+    // 「是否可用」下拉：选择后立即保存到云端（KV），失败回滚并提示
+    var availSels = Array.prototype.slice.call(document.querySelectorAll('.avail-sel'));
+    function setBad(sel, val){
+      var cls = sel.className.replace(/\s*is-bad/g, '');
+      sel.className = val === '失效' ? cls + ' is-bad' : cls;
+    }
+    availSels.forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var key = sel.getAttribute('data-key') || '';
+        var val = sel.value;
+        var old = sel.getAttribute('data-old') || '';
+        var tip = sel.parentNode.getElementsByTagName('span')[0];
+        setBad(sel, val);
+        if (tip) { tip.textContent = '保存中…'; tip.className = 'avail-tip'; }
+        fetch('/api/manual-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: key, value: val })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          if (!j.ok) throw new Error(j.error || '保存失败');
+          sel.setAttribute('data-old', val);
+          if (tip) {
+            tip.textContent = '已保存'; tip.className = 'avail-tip ok';
+            setTimeout(function(){ tip.textContent = ''; tip.className = 'avail-tip'; }, 1600);
+          }
+          apply(); // 新值参与表头筛选
+        }).catch(function(e){
+          sel.value = old;
+          setBad(sel, old);
+          if (tip) { tip.textContent = '保存失败'; tip.className = 'avail-tip bad'; }
+        });
+      });
+      sel.setAttribute('data-old', sel.value);
+    });
   })();
   </script>
 </body>
