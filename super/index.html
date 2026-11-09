@@ -2989,6 +2989,8 @@
         function selfSetParam(url, key, val) {
             var re = new RegExp('([?&]' + key + '=)[^&#]*', 'i');
             if (re.test(url)) return url.replace(re, '$1' + encodeURIComponent(val));
+            // 原链接没有这个参数、新值又为空时，绝不凭空追加一个空的 key=（例如 &spmb=）
+            if (val === '') return url;
             var sep = url.indexOf('?') >= 0 ? '&' : '?';
             return url + sep + key + '=' + encodeURIComponent(val);
         }
@@ -3039,12 +3041,18 @@
             });
         });
         // 依据弹窗输入构造「替换参数后的完整链接」，供「替换并跳转」与「替换并复制」共用
+        // 以原始链接为准：只改其中确实存在的参数；原链接没有的参数，只有用户主动填了值
+        // 才追加，留空则完全不碰，避免复制/跳转结果里多出 &spmb= 这类空参数。
         function selfBuildReplacedUrl() {
             if (!selfJumpTarget) return '';
-            var url = selfJumpTarget.url;
+            var src = selfJumpTarget.url;
+            var url = src;
             SELF_PARAMS.forEach(function (p) {
                 var inp = document.getElementById(p.input);
-                var v = inp.value.trim() !== '' ? inp.value.trim() : (selfOriginals[p.key] || '');
+                var typed = inp.value.trim();
+                var existed = new RegExp('[?&]' + p.key + '=', 'i').test(src);
+                if (!existed && typed === '') return;   // 原来没有、也没主动填 → 不加
+                var v = typed !== '' ? typed : (selfOriginals[p.key] || '');
                 url = selfSetParam(url, p.key, v);
             });
             return url;
