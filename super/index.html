@@ -1526,7 +1526,10 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <!-- 二维码生成库改走同源文件，不再依赖 cdn.jsdelivr.net（国内常超时，会报「生成过程中出现错误」） -->
+    <script src="qrcode.min.js"></script>
+    <!-- 兜底：仅当同源文件确实取不到时，才回退到 CDN（同步写入，保证后续脚本执行前已就绪） -->
+    <script>if (typeof QRCode === 'undefined') { document.write('<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"><\/script>'); }</script>
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         // 全局变量
