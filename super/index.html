@@ -846,18 +846,20 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .qr-code-container {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap; /* 窄屏也强制左右双栏，不换行成竖排 */
             flex-direction: row;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             text-align: center;
+            width: 100%;
         }
         .qr-code-left {
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex-shrink: 0;
+            flex: 0 1 160px; /* 基准 160px，窄屏可等比压小 */
+            min-width: 0;
         }
         .qr-code-right {
             display: flex;
@@ -865,13 +867,14 @@
             align-items: stretch;
             justify-content: center;
             gap: 5px;
-            min-width: 140px;
+            min-width: 0; /* 去掉 140px 硬下限，窄屏可收缩 */
             max-width: 260px;
             flex: 1 1 140px;
         }
         /* 二维码显示的缩略图（本身是高清原图，仅 CSS 缩小显示） */
         .qr-thumb {
-            width: 160px;
+            width: 100%;
+            max-width: 160px;
             height: auto;
             border-radius: 8px;
             cursor: zoom-in;
