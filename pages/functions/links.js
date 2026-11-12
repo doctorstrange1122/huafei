@@ -272,6 +272,28 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
     } catch (e) { /* KV 读取失败不影响表格渲染，全部按空白显示 */ }
   }
 
+  // 手动记录行「奖励名」在线覆盖：与 mstatus 对称，存 KV 覆盖层（mname:KEY），不改 CSV。
+  // 先按“原始奖励名”算出稳定行标识，再读取覆盖值，最后覆盖到数据列 r[2]，
+  // 这样即使奖励名被改，后续保存用的 data-key 仍是改之前的稳定标识，不会错位。
+  const manualNameKeys = [];
+  finalRows.forEach((r, idx) => {
+    manualNameKeys[idx] = (String(r[0] || "").trim() === "手动记录") ? availRowKey(r) : "";
+  });
+  const nameMarks = {};
+  if (KV) {
+    try {
+      const nameKeys = [...new Set(manualNameKeys.filter(Boolean))];
+      const nameVals = await Promise.all(nameKeys.map(k => KV.get("mname:" + k).catch(() => null)));
+      for (let i = 0; i < nameKeys.length; i++) {
+        if (nameVals[i]) nameMarks[nameKeys[i]] = nameVals[i];
+      }
+    } catch (e) { /* 读取失败不影响渲染，按 CSV 原名显示 */ }
+  }
+  finalRows.forEach((r, idx) => {
+    const k = manualNameKeys[idx];
+    if (k && nameMarks[k]) r[2] = nameMarks[k];
+  });
+
   // 显示列 11 个：在 deliveryId 后插入「是否可用」（索引 5）
   // 显示列 c -> 数据列：c<5 取 r[c]；c>5 取 r[c-1]；c==5 为虚拟列，取 KV 标记
   const COLS = ["一级标题","二级标题","奖励名","sceneId","deliveryId","是否可用","每日次数","是否使用","状态","链接","原链接"];
@@ -296,7 +318,7 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
   }).join("");
 
   const counts = { "手动记录": 0, "秒杀区": 0, "百补区": 0, "入口区": 0, "自定义": 0 };
-  const bodyRows = finalRows.map(r => {
+  const bodyRows = finalRows.map((r, idx) => {
     const [level1, subtitle, name, sid, did, daily, used, status, link, orig] = r;
     const catCls = classForLevel1(level1);
     const usedCls = used === "是" ? "yes" : "no";
@@ -316,10 +338,13 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
         </select><span class="avail-tip"></span></td>`
       : `<td class="avail-cell"></td>`;
     if (counts.hasOwnProperty(level1)) counts[level1]++;
+    const aKeyName = isManual ? (manualNameKeys[idx] || "") : "";
     return `<tr class="${rowCls} ${catCls}">
       <td class="${catCls}">${esc(level1)}</td>
       <td>${esc(subtitle)}</td>
-      <td>${esc(name)}</td>
+      ${isManual
+        ? `<td class="name-cell"><input class="name-input" data-key="${escAttr(aKeyName)}" value="${escAttr(name)}" maxlength="40" aria-label="奖励名"></td>`
+        : `<td>${esc(name)}</td>`}
       <td>${esc(sid)}</td>
       <td>${esc(did)}</td>
       ${availHtml}
@@ -391,6 +416,10 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
   .avail-tip { font-size:11px; margin-left:4px; font-weight:600; }
   .avail-tip.ok { color:#1a7f43; }
   .avail-tip.bad { color:#d92d20; }
+  /* 手动记录行「奖励名」在线编辑输入框 */
+  .name-input { font-size:13px; padding:3px 6px; min-width:96px; max-width:170px; border-radius:5px;
+    border:1px solid #c7ccd1; background:#fff; color:#222; box-sizing:border-box; }
+  .name-input:focus { outline:none; border-color:#1a73e8; box-shadow:0 0 0 2px rgba(26,115,232,.15); }
   /* 表头筛选下拉 */
   th .th-name { font-weight:600; margin-bottom:4px; line-height:1.2; }
   th select.col-filter { display:block; width:100%; max-width:150px; margin:2px auto 0; font-size:12px; padding:3px 4px; border-radius:5px; border:1px solid #c7ccd1; background:#fff; color:#222; box-sizing:border-box; }
@@ -414,6 +443,8 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
     select.avail-sel option{color:#e6e6e6;}
     select.avail-sel.is-bad{color:#ff8a85;border-color:#a8514d;}
     select.avail-sel option[value="失效"]{color:#ff8a85;}
+    .name-input{background:#2a2e34;color:#e6e6e6;border-color:#3a3f47;}
+    .name-input:focus{border-color:#5aa0ff;box-shadow:0 0 0 2px rgba(90,160,255,.18);}
     .avail-tip.ok{color:#7ee2a8;}
     .avail-tip.bad{color:#ff8a85;}
   }
@@ -506,6 +537,31 @@ async function buildHtml(htmlText, csvText, srcNote, extraRows, extraNote, feedb
         });
       });
       sel.setAttribute('data-old', sel.value);
+    });
+
+    // 手动记录行「奖励名」在线编辑：change/blur 时保存到云端（KV mname:KEY），失败回滚
+    var nameInputs = Array.prototype.slice.call(document.querySelectorAll('.name-input'));
+    nameInputs.forEach(function(inp){
+      var orig = inp.value;
+      function save(){
+        var key = inp.getAttribute('data-key') || '';
+        var val = inp.value.trim();
+        if (!val) { inp.value = orig; return; }            // 不允许清空（清空等同于恢复 CSV 原值，无意义）
+        if (val === orig) return;                          // 未改动则不发请求
+        fetch('/api/manual-name', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: key, value: val })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          if (!j.ok) throw new Error(j.error || '保存失败');
+          orig = val;
+        }).catch(function(e){
+          inp.value = orig;
+          alert('奖励名保存失败：' + (e.message || ''));
+        });
+      }
+      inp.addEventListener('change', save);
+      inp.addEventListener('blur', save);
     });
   })();
   </script>
