@@ -1297,6 +1297,18 @@
         </div>
 
         <div class="level2-section">
+            <button type="button" class="level2-title level2-fold-toggle" onclick="toggleFold('foldSecZhuanma')">转码区<span class="fold-arrow">▼</span></button>
+            <div class="fold-panel level2-fold-panel" id="foldSecZhuanma">
+            <div class="btn-section">
+            <div class="btn-section-title level3-title">淘金币</div>
+            <div class="button-group">
+                <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/tmtjb/town/home?actionArg=openHalfDetail&umpChannel=tblmgydpbt&topIds=928465297717', '淘金币抵扣', 'taojinbi_dikou', false, true)" data-btn-key="taojinbi_dikou"><span class="btn-label">淘金币抵扣</span><span class="usage-badge zero">0</span><span class="status-badge available">可用</span></button>
+            </div>
+            </div>
+            </div>
+        </div>
+
+        <div class="level2-section">
             <button type="button" class="level2-title level2-fold-toggle" onclick="toggleFold('foldSecMiaosha')">秒杀区(默认每日1次)<span class="fold-arrow">▼</span></button>
             <div class="fold-panel level2-fold-panel" id="foldSecMiaosha">
             <div class="btn-section">
@@ -3540,7 +3552,7 @@
         }
 
         // 三个二级大区下拉互斥：同一时刻最多展开一个（秒杀区/百补区/入口区）
-        var FOLD_EXCLUSIVE = { foldSecMiaosha: 1, foldSecBaibu: 1, foldSecRukou: 1 };
+        var FOLD_EXCLUSIVE = { foldSecMiaosha: 1, foldSecBaibu: 1, foldSecRukou: 1, foldSecZhuanma: 1 };
 
         // 统一设置某个折叠面板的展开状态（含标题箭头），避免各处重复操作 class
         function setFoldState(id, isOpen) {
@@ -3658,6 +3670,10 @@
             }
             if (/[?&]id=\d+/.test(url)) {
                 return url.replace(/([?&]id=)\d+/, '$1' + ids);
+            }
+            // topIds=（如淘金币 town/home 落地页 openHalfDetail 场景）：与 itemIds 同义，替换 topIds 参数
+            if (/topIds=[^&]*/.test(url)) {
+                return url.replace(/topIds=[^&]+/, 'topIds=' + ids);
             }
             // 兜底：自动在末尾追加（用户确认行为）
             return url + '&itemIds=' + ids;
@@ -3831,7 +3847,7 @@ async function resolveProductId(productLink) {
             resultArea.appendChild(wrap);
         }
 
-        async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount) {
+        async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount, plain) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
             const userCustomText = document.getElementById('customText').value.trim();
@@ -3870,7 +3886,7 @@ async function resolveProductId(productLink) {
                 // 结果区跳转 / 兜底始终用真实完整链接（本机直接唤起 App，不依赖中转页）
                 const directUrl = replaceIdInUrl(baseUrl, productId);
                 let fullContent;
-                if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1) {
+                if (btnKey && REDIRECT_BASE.indexOf('YOUR-WORKER') === -1 && !plain) {
                     // 中转模式：把商品id 作为 pid 传给中转服务，由服务端拼回真实链接并返回中转页
                     // 自定义链接（self_ 开头）走 huafei-redirect-pages 的 /h/ 中转（GET 跳转，WebView 内可用）
                     // 后端已统一迁移至 huafei-redirect-pages，与文档同域闭环
