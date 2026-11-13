@@ -177,6 +177,29 @@
         }
         .card-title::before { content: ""; width: 4px; height: 16px; background: linear-gradient(180deg, #7a93ac 0%, #6b82a0 100%); border-radius: 2px; }
         .section-hint { text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 1px; margin: -2px 0 10px; background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        /* 横幅公告：标题橙文字 + 橙色淡底卡片，点击跳转淘宝 */
+        .announce-banner {
+            margin: 12px 0;
+            padding: 13px 16px;
+            text-align: center;
+            border-radius: 12px;
+            background-color: rgba(255,107,53,0.10);
+            border: 1px solid rgba(255,107,53,0.40);
+            box-shadow: 0 2px 10px rgba(255,107,53,0.12);
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(255,107,53,0.20);
+        }
+        .announce-banner:active { background-color: rgba(255,107,53,0.18); }
+        .announce-banner .announce-text {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            line-height: 1.4;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         .reset-usage-btn {
             font-size: 12px;
             color: var(--weak-text);
@@ -1287,6 +1310,10 @@
                 生成后自动跳转天猫
             </label>
         </div>
+    </div>
+
+    <div class="announce-banner" onclick="openTaobaoApp('https://shop.m.taobao.com/shop/shop_index.htm?shop_id=367747993&user_id=2222612378207', '')">
+        <span class="announce-text">👉店铺直达—领红包、过肥料👈</span>
     </div>
 
     <div class="card">
