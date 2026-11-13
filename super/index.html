@@ -183,22 +183,19 @@
             padding: 13px 16px;
             text-align: center;
             border-radius: 12px;
-            background-color: rgba(255,107,53,0.10);
-            border: 1px solid rgba(255,107,53,0.40);
-            box-shadow: 0 2px 10px rgba(255,107,53,0.12);
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            border: 1px solid rgba(255,107,53,0.5);
+            box-shadow: 0 4px 14px rgba(255,107,53,0.35);
             cursor: pointer;
             -webkit-tap-highlight-color: rgba(255,107,53,0.20);
         }
-        .announce-banner:active { background-color: rgba(255,107,53,0.18); }
+        .announce-banner:active { opacity: 0.92; }
         .announce-banner .announce-text {
             font-size: 15px;
             font-weight: 700;
             letter-spacing: 0.5px;
             line-height: 1.4;
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--accent);
         }
         .reset-usage-btn {
             font-size: 12px;
@@ -1313,7 +1310,7 @@
     </div>
 
     <div class="announce-banner" onclick="openTaobaoApp('https://shop.m.taobao.com/shop/shop_index.htm?shop_id=367747993&user_id=2222612378207', '')">
-        <span class="announce-text">👉店铺直达—领红包、过肥料👈</span>
+        <span class="announce-text">👉点此直达店铺👈</span>
     </div>
 
     <div class="card">
