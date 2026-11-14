@@ -1,7 +1,8 @@
-// 淘宝联盟官方「商品链接转换」(taobao.tbk.item.convert) —— 给商品id加PID归因，生成带佣金的推广链接/口令
+// 淘宝联盟官方「链接加PID归因转换」 —— 默认 taobao.tbk.item.share.convert（商品三分成链接转换）
+// 也支持 ?method=taobao.tbk.item.convert
 // 环境变量: TB_APP_KEY, TB_APP_SECRET
-// 路由: /api/conv?num_iid=商品id&pid=推广位(mm_xxx)&method=taobao.tbk.item.convert
-// 返回: { ok, click_url, coupon_click_url, tpwd, raw }
+// 路由: /api/conv?num_iid=商品id&pid=推广位(mm_xxx)&method=...
+// 返回: { ok, click_url, coupon_click_url, raw }
 const API_URL = 'https://eco.taobao.com/router/rest';
 
 async function md5(str) {
@@ -42,21 +43,25 @@ export async function onRequest(context) {
 
   const numIid = sp.get('num_iid') || '';
   const pid = sp.get('pid') || env.TB_PID || '';
+  const method = sp.get('method') || 'taobao.tbk.item.share.convert';
   if (!numIid) return new Response(JSON.stringify({ ok: false, error: 'missing num_iid' }), { status: 400, headers: cors });
 
   const fields = { num_iid: numIid, platform: '2' };
   if (pid) fields.pid = pid;
 
   try {
-    const r = await topCall('taobao.tbk.item.convert', appKey, appSecret, fields);
+    const r = await topCall(method, appKey, appSecret, fields);
     if (r.error_response) {
       return new Response(JSON.stringify({ ok: false, error: (r.error_response.sub_msg || r.error_response.msg), raw: r }), { status: 200, headers: cors });
     }
-    const data = r.tbk_item_convert_response && r.tbk_item_convert_response.result_data;
+    // 兼容两种返回根节点
+    const resp = r.tbk_item_share_convert_response || r.tbk_item_convert_response;
+    const data = resp && resp.result_data;
     if (data) {
       return new Response(JSON.stringify({
         ok: true,
-        click_url: data.click_url || '',
+        method,
+        click_url: data.click_url || data.wx_qrcode_url || '',
         coupon_click_url: data.coupon_click_url || '',
         raw: data,
       }), { headers: cors });
