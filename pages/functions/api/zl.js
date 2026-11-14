@@ -122,16 +122,24 @@ export async function onRequest(context) {
   const results = {};
   let finalTkl = '';
 
-  // —— 路径1：直接给了淘口令 → 直接高佣转链 ——
+  // —— 路径1：直接给了淘口令 → 直接高佣转链（tkl / content 两种参数名都试，折淘客接口命名不统一）——
   if (isTaokouling(content)) {
+    finalTkl = content;
     for (const { host, port } of HOSTS) {
       try {
         const r = await ztkGet(host, port,
           `/api/open_gaoyongzhuanlian.ashx?appkey=${appkey}&sid=${sid}${pidQ}&tkl=${c}`, 9000);
-        results.zhuanlian = r;
-        finalTkl = content;
-        break;
+        results.zhuanlian_tkl = r;
+        if (r && r.status !== 301) { results.zhuanlian = r; break; }
       } catch (e) { results.err1 = String((e && e.message) || e); }
+    }
+    for (const { host, port } of HOSTS) {
+      try {
+        const r = await ztkGet(host, port,
+          `/api/open_gaoyongzhuanlian.ashx?appkey=${appkey}&sid=${sid}${pidQ}&content=${c}`, 9000);
+        results.zhuanlian_content = r;
+        if (r && r.status !== 301) { results.zhuanlian = r; break; }
+      } catch (e) { results.err1b = String((e && e.message) || e); }
     }
   }
 
