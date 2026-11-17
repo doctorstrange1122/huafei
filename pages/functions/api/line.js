@@ -237,6 +237,7 @@ export async function onRequest(context) {
       for (const [tag, u] of [
         ['h5', 'https://h5.m.taobao.com/awp/core/detail.htm?id=' + encodeURIComponent(gid)],
         ['item', 'https://item.taobao.com/item.htm?id=' + encodeURIComponent(gid)],
+        ['click', (sp.get('s') || '').trim() || 'https://example.com/'],
       ]) {
         try {
           const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': UA } });
