@@ -3893,9 +3893,9 @@ async function resolveProductId(productLink) {
             }
 
             if (!d || !d.ok) {
-                const msg = escapeHtml((d && (d.error || d.hint)) || '接口无返回数据');
-                resultArea.innerHTML = '<p style="color: var(--error-text);">查询失败：' + msg + '</p>' +
-                    '<p style="font-size:12px;color:#999;">可能原因：① 该商品没有淘客推广计划（无佣金）；② 链接或口令已失效；③ 该商品不支持转链。</p>';
+                const msg = escapeHtml((d && (d.error || d.hint)) || '未查询到优惠');
+                resultArea.innerHTML = '<p style="color: var(--error-text);">' + msg + '</p>' +
+                    '<p style="font-size:12px;color:#999;">请检查输入的商品链接或口令是否正确，稍后再试。</p>';
                 return;
             }
 
