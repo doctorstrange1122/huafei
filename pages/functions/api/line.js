@@ -198,7 +198,10 @@ export async function onRequest(context) {
       return json({ ok: true, source: 'cache', age, throttled: true, updatedAt: meta.updatedAt, count: cached.length, items: cached });
     }
 
-    const pages = mode === 'seed' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] : [1];
+    const want = Math.max(1, Math.min(12, parseInt(sp.get('pages') || '6', 10) || 6));
+    const pages = mode === 'seed'
+      ? Array.from({ length: want }, (_, i) => i + 1)
+      : [1];
     const mapped = new Map(cached.map(x => [x.id, x]));
     let added = 0;
 
