@@ -42,6 +42,18 @@ async function signParams(params, secret) {
   return (await md5Hex(raw)).toUpperCase();
 }
 
+// 带超时的 JSON 请求：避免大淘客偶发无响应导致整条请求卡死
+async function fetchJson(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => { try { ctrl.abort(); } catch (_) {} }, ms || 15000);
+  try {
+    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: ctrl.signal });
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return new Response('', { headers: CORS });
@@ -85,8 +97,7 @@ export async function onRequest(context) {
   try {
     const sign = await signParams(params, appSecret);
     const qs = new URLSearchParams({ ...params, sign }).toString();
-    const resp = await fetch(`${API}?${qs}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    const r = await resp.json();
+    const r = await fetchJson(`${API}?${qs}`, 15000);
     const d = (r && r.data) || null;
 
     if (r.code !== 0 || !d) {
@@ -115,10 +126,7 @@ export async function onRequest(context) {
       try {
         const dp = { appKey, version: 'v1.2.3', id: d.goodsId };
         const dsign = await signParams(dp, appSecret);
-        const dresp = await fetch(`${API_DETAIL}?${new URLSearchParams({ ...dp, sign: dsign }).toString()}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
-        const dj = await dresp.json();
+        const dj = await fetchJson(`${API_DETAIL}?${new URLSearchParams({ ...dp, sign: dsign }).toString()}`, 8000);
         const dd = (dj && dj.data) || null;
         if (dj.code === 0 && dd) {
           out.title = dd.title || '';
@@ -139,10 +147,7 @@ export async function onRequest(context) {
       try {
         const cp = { appKey, version: 'v1.0.0', content };
         const csign = await signParams(cp, appSecret);
-        const cresp = await fetch(`${API_COUPON}?${new URLSearchParams({ ...cp, sign: csign }).toString()}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
-        const cj = await cresp.json();
+        const cj = await fetchJson(`${API_COUPON}?${new URLSearchParams({ ...cp, sign: csign }).toString()}`, 6000);
         const cd = (cj && cj.data) || null;
         if (cj.code === 0 && cd) {
           if (Number(cd.couponAmount) > 0) out.couponPrice = cd.couponAmount;
