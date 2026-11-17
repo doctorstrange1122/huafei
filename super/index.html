@@ -3900,7 +3900,7 @@ async function resolveProductId(productLink) {
             }
 
             const qrUrl = d.shortUrl || d.cpsLongUrl || '';
-            const priceText = d.actualPrice ? ('券后¥' + d.actualPrice) : (d.itemName || '推广链接').slice(0, 10);
+            const priceText = '查优惠';
             let mergedCanvas = null;
             try {
                 if (qrUrl) {
@@ -3963,8 +3963,10 @@ async function resolveProductId(productLink) {
                         '<button type="button" class="add-common-btn" onclick="addCurrentToCommonIds()" title="保存到常用 id">+常用</button>' +
                     '</div>' +
                 '</div>' +
-                (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
-                (qrUrl ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '');
+                '<div class="action-buttons">' +
+                    (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
+                    (qrUrl ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '') +
+                '</div>';
 
             container.appendChild(left);
             container.appendChild(right);
