@@ -3548,6 +3548,16 @@
             if (lb) lb.classList.remove('open');
         }
 
+        // 点击放大线报配图（复用同一遮罩，仅改图片地址与说明文字）
+        function openPicPreview(src) {
+            const lb = document.getElementById('qrLightbox');
+            const img = document.getElementById('qrLightboxImg');
+            if (!lb || !img || !src) return;
+            img.alt = '线报配图';
+            img.src = src;
+            lb.classList.add('open');
+        }
+
         // 生成普通二维码图片（无文字）
         function createQRCodeOnly(qrCodeDataURL) {
             return new Promise((resolve) => {
@@ -4239,7 +4249,7 @@ async function resolveProductId(productLink) {
             body.innerHTML = list.map(function (o) {
                 var it = o.it, i = o.i;
                 var pic = it.pic
-                    ? '<img class="li-pic" src="' + escapeHtml(it.pic) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
+                    ? '<img class="li-pic li-pic-zoom" src="' + escapeHtml(it.pic) + '" data-pic="' + escapeHtml(it.pic) + '" alt="线报配图" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
                     : '<div class="li-pic"></div>';
                 return '<div class="line-item" data-i="' + i + '">' +
                     pic +
@@ -4262,11 +4272,16 @@ async function resolveProductId(productLink) {
             Array.prototype.forEach.call(body.querySelectorAll('.line-item'), function (el) {
                 var i = parseInt(el.getAttribute('data-i'), 10);
                 var timer = null, moved = false;
-                el.addEventListener('touchstart', function () { moved = false; timer = setTimeout(function () { if (!moved) copyLineItem(i); }, 600); }, { passive: true });
+                el.addEventListener('touchstart', function (e) {
+                    if (e.target.closest('.li-pic-zoom')) return; // 缩略图不触发长按复制
+                    moved = false; timer = setTimeout(function () { if (!moved) copyLineItem(i); }, 600);
+                }, { passive: true });
                 el.addEventListener('touchmove', function () { moved = true; clearTimeout(timer); }, { passive: true });
                 el.addEventListener('touchend', function () { clearTimeout(timer); });
                 el.addEventListener('click', function (e) {
                     if (e.target.closest('button')) return;
+                    var zp = e.target.closest('.li-pic-zoom');
+                    if (zp) { openPicPreview(zp.getAttribute('data-pic') || zp.src); return; } // 点缩略图只放大
                     el.classList.toggle('expanded');
                 });
             });
@@ -5040,6 +5055,7 @@ async function resolveProductId(productLink) {
         #lineBody { min-height: 200px; }
         .line-item { display: flex; gap: 10px; background: #fff; border-radius: 14px; padding: 11px 12px; margin-bottom: 10px; }
         .line-item .li-pic { width: 54px; height: 54px; border-radius: 10px; object-fit: cover; background: #f3f4f8; flex: 0 0 54px; }
+        .line-item .li-pic-zoom { cursor: zoom-in; }
         .li-main { flex: 1; min-width: 0; }
         .line-text { font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
         .line-item.expanded .line-text { -webkit-line-clamp: 99; display: block; }
