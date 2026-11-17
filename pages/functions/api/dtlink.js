@@ -159,8 +159,8 @@ export async function onRequest(context) {
     }
 
     if (!out.shortUrl) {
-      out.error = '该商品未加入淘客推广计划（无佣金），无法生成带归因的推广链';
-      out.hint = '可换一个有佣金的同款商品，或直接用原链接';
+      out.error = '未查询到优惠';
+      out.hint = '请确认商品链接或口令是否正确，稍后再试';
     }
 
     if (sp.get('debug') === '1') out.raw = d;
