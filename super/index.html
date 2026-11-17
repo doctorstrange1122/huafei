@@ -4156,7 +4156,8 @@ async function resolveProductId(productLink) {
                 var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), { cache: 'no-store' });
                 var d = await resp.json();
                 if (!d || !d.ok) throw new Error((d && d.error) || '接口异常');
-                _lineItems = d.items || [];
+                // 兜底过滤：券过期/下架的失效条目没有口令也没有链接，直接不显示（后端入库也会清）
+                _lineItems = (d.items || []).filter(function (it) { return it && (it.tpwd || it.url); });
                 _lineInfo = { updatedAt: d.updatedAt, source: d.source };
                 renderLineList();
             } catch (e) {
