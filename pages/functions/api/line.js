@@ -10,6 +10,7 @@
 
 const API_LIST = 'https://openapi.dataoke.com/api/dels/spider/list-tip-off';
 const API_LINK = 'https://openapi.dataoke.com/api/tb-service/get-privilege-link';
+const API_PARSE = 'https://openapi.dataoke.com/api/tb-service/parse-content';
 
 const K_LATEST = 'line:latest';
 const K_META = 'line:meta';
@@ -142,9 +143,20 @@ async function store(env, items, added) {
   await KV.put(K_DAY + day, JSON.stringify(merged));
 }
 
-// goodsSign → 淘宝数字商品ID：先看 302 的 Location，再看 200 页面正文里的跳转地址
-async function resolveNumId(gid, env, ms) {
-  if (!gid) return '';
+// 纯数字ID校验（淘宝商品ID一般是 9~14 位）
+const isNumId = (s) => /^\d{6,}$/.test(String(s || ''));
+
+// 从任意链接里抽 id=数字
+function pickId(str) {
+  const m = String(str || '').match(/[?&]id=(\d{6,})/);
+  return m ? m[1] : '';
+}
+
+// goodsSign → 淘宝数字商品ID
+// 主路：大淘客「万能解析」接口把 goodsSign 解析成完整商品链接，链接里直接带 id=<数字>，
+//       接口返回的 goodsId 本身通常也已经是数字ID，两条都取，命中即用。
+// 兜底：跟随 uland 跳转，从 Location / 正文 / 最终 URL 里取。
+async function resolveNumIdByRedirect(gid, env, ms) {
   const key = 'line:num:' + gid;
   const KV = env.KEY_STORE;
   try {
@@ -190,6 +202,41 @@ async function resolveNumId(gid, env, ms) {
   return num;
 }
 
+async function resolveNumId(gid, ctx, env, ms) {
+  if (!gid) return '';
+  if (isNumId(gid)) return gid;          // 本身就是数字ID
+  const key = 'line:num:' + gid;
+
+  try {
+    const hit = await env.KEY_STORE.get(key);
+    if (hit) return hit;
+  } catch (_) {}
+
+  let num = '';
+  try {
+    const p = { appKey: ctx.appKey, version: 'v1.0.0', content: gid };
+    p.sign = await signParams(p, ctx.appSecret);
+    const r = await fetchJson(`${API_PARSE}?${new URLSearchParams(p).toString()}`, ms || 12000);
+    const d = (r && r.code === 0 && r.data) || null;
+    if (d) {
+      const cands = [d.goodsId, d.cpsLongUrl, d.itemLink, d.shortUrl, d.couponLink];
+      for (const c of cands) {
+        if (isNumId(c)) { num = String(c); break; }
+        const got = pickId(c);
+        if (got) { num = got; break; }
+      }
+    }
+  } catch (_) {}
+
+  // 解析不到 → 退回 302 跟随那一套
+  if (!num) num = await resolveNumIdByRedirect(gid, env, ms);
+
+  if (num) {
+    try { await env.KEY_STORE.put(key, num); } catch (_) {}
+  }
+  return num;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method === 'OPTIONS') return new Response('', { headers: CORS });
@@ -229,7 +276,7 @@ export async function onRequest(context) {
   if (mode === 'numid') {
     const gid = (sp.get('id') || '').trim();
     if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
-    const num = await resolveNumId(gid, env, 8000);
+    const num = await resolveNumId(gid, ctx, env, 12000);
     if (num) return json({ ok: true, numId: num });
     if (sp.get('debug') === '1') {
       const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
@@ -261,7 +308,7 @@ export async function onRequest(context) {
     let filled = 0;
     for (let i = 0; i < need.length; i += 5) {
       const chunk = need.slice(i, i + 5);
-      const res = await Promise.all(chunk.map(x => resolveNumId(x.id, env, 7000)));
+      const res = await Promise.all(chunk.map(x => resolveNumId(x.id, ctx, env, 9000)));
       res.forEach((v, k) => { if (v) { chunk[k].numId = v; filled++; } });
     }
     if (filled) await store(env, cached0, 0);
@@ -340,13 +387,16 @@ export async function onRequest(context) {
 
     await store(env, merged, added);
 
-    // 定时任务顺带补齐数字ID，用户点二维码时就能秒出
+    // 定时任务顺带补齐数字ID，用户点二维码时就能秒出（3 条一批，避免打满出站连接）
     if (mode === 'cron') {
       const need = merged.filter(x => !x.numId && x.id).slice(0, 6);
-      if (need.length) {
-        const got = await Promise.all(need.map(x => resolveNumId(x.id, env, 6000).then(n => { if (n) x.numId = n; return !!n; })));
-        if (got.some(Boolean)) await store(env, merged, 0);
+      let any = false;
+      for (let i = 0; i < need.length; i += 3) {
+        const chunk = need.slice(i, i + 3);
+        const got = await Promise.all(chunk.map(x => resolveNumId(x.id, ctx, env, 8000).then(n => { if (n) x.numId = n; return !!n; })));
+        if (got.some(Boolean)) any = true;
       }
+      if (any) await store(env, merged, 0);
     }
 
     return json({ ok: true, source: 'live', updatedAt: Date.now(), count: merged.length, added, items: merged });
