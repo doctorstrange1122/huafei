@@ -283,27 +283,18 @@ export async function onRequest(context) {
       }
       const out = {};
       const targets = [
-        ['tpwdParse', 'https://openapi.dataoke.com/api/tb-service/parse-taokouling', { version: 'v1.0.0', content: c }],
-        ['detail', 'https://openapi.dataoke.com/api/goods/get-goods-details', { version: 'v1.2.3', id: c }],
-        ['privLink', 'https://openapi.dataoke.com/api/tb-service/get-privilege-link', { version: 'v1.3.1', goodsId: c, pid: ctx.pid }],
+        ['couponInfo', 'https://openapi.dataoke.com/api/dels/taobao/kit/coupon/get-coupon-info', { version: 'v1.0.0', content: c }],
+        ['material', 'https://openapi.dataoke.com/api/goods/material/list', { version: 'v1.0.0', id: c }],
+        ['similar', 'https://openapi.dataoke.com/api/goods/list-similer-goods-by-open', { version: 'v1.2.2', id: c }],
         ['contentParse', 'https://openapi.dataoke.com/api/dels/kit/contentParse', { version: 'v1.0.0', content: c }],
       ];
       await Promise.all(targets.map(async ([tag, u, p]) => {
-        try { out[tag] = await callApi(u, p, ctx.appKey, ctx.appSecret, 15000); }
-        catch (e) { out[tag] = 'ERR ' + String(e).slice(0, 80); }
+        try {
+          const r = await callApi(u, p, ctx.appKey, ctx.appSecret, 15000);
+          out[tag] = JSON.stringify(r).slice(0, 1200);
+        } catch (e) { out[tag] = 'ERR ' + String(e).slice(0, 80); }
       }));
-      // 只留关键字段，避免返回体过大
-      const slim = {};
-      for (const [k, v] of Object.entries(out)) {
-        if (typeof v === 'string' || !v || !v.data) { slim[k] = v; continue; }
-        const d0 = v.data;
-        const keep = {};
-        ['id', 'goodsId', 'itemId', 'itemLink', 'originUrl', 'itemUrl', 'shortUrl', 'tpwd', 'cpsFullTpwd', 'cpsLongUrl', 'title'].forEach(function (kk) {
-          if (d0[kk] !== undefined) keep[kk] = d0[kk];
-        });
-        slim[k] = { code: v.code, msg: v.msg, data: keep };
-      }
-      return json({ ok: true, content: c, out: slim });
+      return json({ ok: true, content: c, out });
     }
     const gid = (sp.get('id') || '').trim();
     if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
