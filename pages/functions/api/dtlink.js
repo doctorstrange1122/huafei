@@ -12,6 +12,7 @@
 //   couponLink -> 公开领券页（不带归因，仅作展示/兜底）
 
 const API = 'https://openapi.dataoke.com/api/tb-service/parse-content';
+const API_DETAIL = 'https://openapi.dataoke.com/api/goods/get-goods-details';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,6 +103,31 @@ export async function onRequest(context) {
       cpsLongUrl: d.cpsLongUrl || '',
       cpsFullTpwd: d.cpsFullTpwd || '',
     };
+
+    // 附加商品详情（券后价 / 原价 / 券额 / 门槛 / 月销 / 店铺）——失败不影响转链结果
+    if (d.goodsId && sp.get('detail') !== '0') {
+      try {
+        const dp = { appKey, version: 'v1.2.3', id: d.goodsId };
+        const dsign = await signParams(dp, appSecret);
+        const dresp = await fetch(`${API_DETAIL}?${new URLSearchParams({ ...dp, sign: dsign }).toString()}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        const dj = await dresp.json();
+        const dd = (dj && dj.data) || null;
+        if (dj.code === 0 && dd) {
+          out.title = dd.title || '';
+          out.originalPrice = dd.originalPrice || '';
+          out.actualPrice = dd.actualPrice || '';
+          out.couponPrice = dd.couponPrice || '';
+          out.couponConditions = dd.couponConditions || '';
+          out.monthSales = dd.monthSales || '';
+          out.shopName = dd.shopName || '';
+          out.mainPic = dd.mainPic || '';
+          if (dd.commissionRate) out.commissionRate = dd.commissionRate;
+        }
+      } catch (_) {}
+    }
+
     if (sp.get('debug') === '1') out.raw = d;
     return json(out);
   } catch (e) {
