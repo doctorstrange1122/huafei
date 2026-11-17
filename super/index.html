@@ -1830,6 +1830,12 @@
             restoreAutoJumpStates();
             setupAutoJumpCheckboxMutex();
             renderCommonIdList();
+            // 转码区默认展开（不参与互斥，可手动关闭）
+            setFoldState('foldSecZhuanma', true);
+            if (typeof scheduleFitButtonFonts === 'function') {
+                scheduleFitButtonFonts();
+                setTimeout(scheduleFitButtonFonts, 120);
+            }
         }
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initPageFeatures);
@@ -3574,8 +3580,9 @@
             return shortUrl;
         }
 
-        // 三个二级大区下拉互斥：同一时刻最多展开一个（秒杀区/百补区/入口区）
-        var FOLD_EXCLUSIVE = { foldSecMiaosha: 1, foldSecBaibu: 1, foldSecRukou: 1, foldSecZhuanma: 1 };
+        // 二级大区下拉互斥：同一时刻最多展开一个（秒杀区/百补区/入口区）。
+        // 转码区不参与互斥：默认展开，可手动开合，不影响也不受其他下拉栏影响
+        var FOLD_EXCLUSIVE = { foldSecMiaosha: 1, foldSecBaibu: 1, foldSecRukou: 1 };
 
         // 统一设置某个折叠面板的展开状态（含标题箭头），避免各处重复操作 class
         function setFoldState(id, isOpen) {
