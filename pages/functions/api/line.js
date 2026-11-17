@@ -155,6 +155,20 @@ async function resolveNumId(gid, env, ms) {
     const timer = setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, ms || 8000);
     let resp;
     try {
+      const r1 = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), {
+        redirect: 'manual',
+        signal: ctrl.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+        },
+      });
+      const loc = r1.headers.get('location') || '';
+      let mm = loc.match(/[?&]id=(\d{6,})/);
+      if (mm) {
+        try { await env.KEY_STORE.put(key, mm[1]); } catch (_) {}
+        return mm[1];
+      }
+      // 没直接给出，再跟随一次
       resp = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), {
         redirect: 'follow',
         signal: ctrl.signal,
@@ -213,6 +227,12 @@ export async function onRequest(context) {
     if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
     const num = await resolveNumId(gid, env, 8000);
     if (num) return json({ ok: true, numId: num });
+    if (sp.get('debug') === '1') {
+      try {
+        const r = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)' } });
+        return json({ ok: false, status: r.status, loc: (r.headers.get('location') || '').slice(0, 300), ctype: r.headers.get('content-type')) });
+      } catch (e) { return json({ ok: false, err: String(e).slice(0, 120) }); }
+    }
     return json({ ok: false, error: '未能解析出数字ID' });
   }
 
