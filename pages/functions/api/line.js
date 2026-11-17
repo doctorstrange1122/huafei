@@ -205,9 +205,10 @@ export async function onRequest(context) {
     return json({ ok: true, source: 'cache', age, updatedAt: meta.updatedAt, count: cached.length, items: cached });
   }
 
-  // 用户手动刷新 / 定时任务
-  if (mode === 'refresh' || mode === 'seed') {
-    if (mode === 'refresh' && age < REFRESH_GAP) {
+  // 用户手动刷新 / 定时任务 / 回填
+  if (mode === 'refresh' || mode === 'cron' || mode === 'seed') {
+    const gap = mode === 'cron' ? 240 : REFRESH_GAP;
+    if (mode !== 'seed' && age < gap) {
       return json({ ok: true, source: 'cache', age, throttled: true, updatedAt: meta.updatedAt, count: cached.length, items: cached });
     }
 
@@ -238,7 +239,7 @@ export async function onRequest(context) {
         else if (old) { /* 保留旧的转链结果 */ }
         else { mapped.set(x.id, x); added++; }
       });
-      if (mode === 'refresh') break;
+      if (mode !== 'seed') break;   // refresh/cron 只拉最新一页
     }
 
     const merged = Array.from(mapped.values())
