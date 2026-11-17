@@ -130,6 +130,10 @@ async function pullPage(pageId, ctx) {
 
 async function store(env, items, added) {
   const KV = env.KEY_STORE;
+  // 丢弃转链后仍无口令、无链接的失效条目（券过期/商品下架，接口返回空 data），
+  // 保证缓存里只留能用的线报；这类条目重试也无法救回，留着只会让用户复制到空口令。
+  const valid = (items || []).filter(x => x && (x.tpwd || x.url));
+  items = valid;
   const ts = Date.now();
   await KV.put(K_LATEST, JSON.stringify(items));
   await KV.put(K_META, JSON.stringify({ updatedAt: ts, count: items.length, added: added || 0 }));
