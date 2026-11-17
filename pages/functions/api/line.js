@@ -232,21 +232,20 @@ export async function onRequest(context) {
     const num = await resolveNumId(gid, env, 8000);
     if (num) return json({ ok: true, numId: num });
     if (sp.get('debug') === '1') {
-      const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15';
-      const u = 'https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid);
-      const info = {};
-      try {
-        const r1 = await fetch(u, { redirect: 'manual', headers: { 'User-Agent': UA } });
-        info.manual = { status: r1.status, loc: (r1.headers.get('location') || '').slice(0, 120), type: r1.type };
-        const b = await r1.text().catch(e => 'ERR:' + e);
-        info.bodyLen = (b || '').length;
-        info.body = String(b || '');
-      } catch (e) { info.manualErr = String(e).slice(0, 100); }
-      try {
-        const r2 = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': UA } });
-        info.follow = { status: r2.status, url: String(r2.url).slice(0, 160) };
-      } catch (e) { info.followErr = String(e).slice(0, 100); }
-      return json({ ok: false, ...info });
+      const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
+      const out = {};
+      for (const [tag, u] of [
+        ['h5', 'https://h5.m.taobao.com/awp/core/detail.htm?id=' + encodeURIComponent(gid)],
+        ['item', 'https://item.taobao.com/item.htm?id=' + encodeURIComponent(gid)],
+      ]) {
+        try {
+          const r = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': UA } });
+          const b = await r.text();
+          const nums = Array.from(new Set((b.match(/\b\d{9,14}\b/g) || []).slice(0, 8)));
+          out[tag] = { status: r.status, url: String(r.url).slice(0, 120), len: b.length, nums };
+        } catch (e) { out[tag] = 'ERR ' + String(e).slice(0, 60); }
+      }
+      return json({ ok: false, ...out });
     }
     return json({ ok: false, error: '未能解析出数字ID' });
   }
