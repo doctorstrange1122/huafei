@@ -63,8 +63,13 @@ export async function onRequest(context) {
     return json({ ok: false, error: '未配置 DTK_APPKEY / DTK_APPSECRET（环境变量或 KV dtk:appkey / dtk:appsecret）' }, 500);
   }
 
-  const content = (sp.get('content') || sp.get('url') || sp.get('tkl') || '').trim();
+  let content = (sp.get('content') || sp.get('url') || sp.get('tkl') || '').trim();
   if (!content) return json({ ok: false, error: 'missing content（商品链接 / 淘口令 / goodsSign）' }, 400);
+
+  // 纯数字商品ID：大淘客只认商品链接/口令，裸ID需先转成商品详情页链接
+  if (/^\d{6,}$/.test(content)) {
+    content = 'https://item.taobao.com/item.htm?id=' + content;
+  }
 
   const pid = (sp.get('pid') || defPid || '').trim();
   const params = {
@@ -149,8 +154,8 @@ export async function onRequest(context) {
     }
 
     if (!out.shortUrl) {
-      out.error = '该商品暂不支持转链（可能没有淘客推广计划或无佣金）';
-      out.hint = '换一个商品链接 / 淘口令再试';
+      out.error = '该商品未加入淘客推广计划（无佣金），无法生成带归因的推广链';
+      out.hint = '可换一个有佣金的同款商品，或直接用原链接';
     }
 
     if (sp.get('debug') === '1') out.raw = d;
