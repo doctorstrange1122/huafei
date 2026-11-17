@@ -4078,6 +4078,10 @@ async function resolveProductId(productLink) {
         var LINE_API = 'https://huafei-redirect-pages.pages.dev/api/line';
         var _lineItems = [];
         var _lineLoaded = false;
+        var _lineKeyword = '';
+        var _lineSearchTimer = null;
+        var _lineInfo = {};
+        var _lineBusy = false;
 
         function initMainTabs() {
             if (document.getElementById('tabReward')) return;
@@ -4098,6 +4102,10 @@ async function resolveProductId(productLink) {
             line.id = 'tabLine';
             line.className = 'tab-page';
             line.innerHTML =
+                '<div class="line-search">' +
+                    '<input type="search" id="lineSearch" placeholder="搜索关键词，如 纸巾 / 洗衣液" autocomplete="off" oninput="onLineSearch()">' +
+                    '<button type="button" class="ls-clear" id="lineSearchClear" onclick="clearLineSearch()">×</button>' +
+                '</div>' +
                 '<div class="line-toolbar">' +
                     '<span class="lt-sub" id="lineSub"></span>' +
                     '<button type="button" class="line-refresh" id="lineRefreshBtn" onclick="loadLine(true)">刷新</button>' +
@@ -4132,35 +4140,82 @@ async function resolveProductId(productLink) {
             initMainTabs();
         }
 
-        async function loadLine(force) {
+        async function loadLine(force, silent) {
             var body = document.getElementById('lineBody');
             var btn = document.getElementById('lineRefreshBtn');
             var sub = document.getElementById('lineSub');
-            if (!body) return;
-            if (btn) { btn.disabled = true; btn.textContent = force ? '刷新中' : '加载中'; }
-            if (!_lineItems.length) body.innerHTML = '<div class="line-empty"><span class="spinner"></span>正在获取线报…</div>';
+            if (!body || _lineBusy) return;
+            _lineBusy = true;
+            if (!silent) {
+                if (btn) { btn.disabled = true; btn.textContent = force ? '刷新中' : '加载中'; }
+                if (!_lineItems.length) body.innerHTML = '<div class="line-empty"><span class="spinner"></span>正在获取线报…</div>';
+            }
 
             try {
                 var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), { cache: 'no-store' });
                 var d = await resp.json();
                 if (!d || !d.ok) throw new Error((d && d.error) || '接口异常');
                 _lineItems = d.items || [];
+                _lineInfo = { updatedAt: d.updatedAt, source: d.source };
                 renderLineList();
-                if (sub) {
-                    sub.textContent = _lineItems.length + ' 条' +
-                        (d.updatedAt ? ' · ' + lineTimeText(d.updatedAt) : '') +
-                        (d.source === 'cache' ? '（缓存）' : '');
-                }
             } catch (e) {
                 if (!_lineItems.length) {
                     body.innerHTML = '<div class="line-empty">获取失败<br><span style="font-size:12px;">' +
                         escapeHtml(String((e && e.message) || e)) + '</span></div>';
-                } else if (sub) {
+                } else if (sub && !silent) {
                     sub.textContent = '刷新失败，仍显示上次结果';
                 }
             } finally {
-                if (btn) { btn.disabled = false; btn.textContent = '刷新'; }
+                _lineBusy = false;
+                if (btn && !silent) { btn.disabled = false; btn.textContent = '刷新'; }
             }
+        }
+
+        // 兜底：GitHub Actions 定时会有排队延迟，页面停留在线报页时每 10 分钟静默补一次
+        setInterval(function () {
+            var l = document.getElementById('tabLine');
+            if (!l || !l.classList.contains('active')) return;
+            if (document.visibilityState !== 'visible') return;
+            loadLine(true, true);
+        }, 10 * 60 * 1000);
+
+        // 关键词过滤：空格分词，命中全部关键词才算（不区分大小写）
+        function lineView() {
+            var all = _lineItems.map(function (it, i) { return { it: it, i: i }; });
+            var kw = (_lineKeyword || '').trim().toLowerCase();
+            if (!kw) return all;
+            var words = kw.split(/\s+/).filter(Boolean);
+            return all.filter(function (o) {
+                var hay = ((o.it.text || '') + ' ' + (o.it.title || '') + ' ' + (o.it.tpwd || '')).toLowerCase();
+                return words.every(function (w) { return hay.indexOf(w) >= 0; });
+            });
+        }
+
+        function onLineSearch() {
+            clearTimeout(_lineSearchTimer);
+            _lineSearchTimer = setTimeout(function () {
+                var el = document.getElementById('lineSearch');
+                _lineKeyword = el ? el.value : '';
+                renderLineList();
+            }, 150);
+        }
+
+        function clearLineSearch() {
+            var el = document.getElementById('lineSearch');
+            if (el) { el.value = ''; el.focus(); }
+            _lineKeyword = '';
+            renderLineList();
+        }
+
+        function updateLineSub(hit) {
+            var sub = document.getElementById('lineSub');
+            if (!sub) return;
+            var parts = [];
+            var kw = (_lineKeyword || '').trim();
+            parts.push(kw ? '命中 ' + hit + ' / 共 ' + _lineItems.length + ' 条' : _lineItems.length + ' 条');
+            if (_lineInfo.updatedAt) parts.push(lineTimeText(_lineInfo.updatedAt));
+            if (_lineInfo.source === 'cache') parts.push('缓存');
+            sub.textContent = parts.join(' · ');
         }
 
         function renderLineList() {
@@ -4168,9 +4223,19 @@ async function resolveProductId(productLink) {
             if (!body) return;
             if (!_lineItems.length) {
                 body.innerHTML = '<div class="line-empty">暂无线报<br><span style="font-size:12px;">点「刷新」再试一次</span></div>';
+                updateLineSub(0);
                 return;
             }
-            body.innerHTML = _lineItems.map(function (it, i) {
+
+            var list = lineView();
+            if (!list.length) {
+                body.innerHTML = '<div class="line-empty">没有找到含「' + escapeHtml(_lineKeyword.trim()) + '」的线报<br><span style="font-size:12px;">换个关键词试试</span></div>';
+                updateLineSub(0);
+                return;
+            }
+
+            body.innerHTML = list.map(function (o) {
+                var it = o.it, i = o.i;
                 var pic = it.pic
                     ? '<img class="li-pic" src="' + escapeHtml(it.pic) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
                     : '<div class="li-pic"></div>';
@@ -4190,6 +4255,7 @@ async function resolveProductId(productLink) {
                     '</div>' +
                 '</div>';
             }).join('');
+            updateLineSub(list.length);
 
             Array.prototype.forEach.call(body.querySelectorAll('.line-item'), function (el) {
                 var i = parseInt(el.getAttribute('data-i'), 10);
@@ -4972,6 +5038,11 @@ async function resolveProductId(productLink) {
         .tab-page.active { display: block; }
 
         /* ===== 线报页 ===== */
+        .line-search { position: relative; display: flex; align-items: center; margin: 0 0 10px; }
+        .line-search input { width: 100%; border: 0; background: #fff; border-radius: 11px; padding: 10px 34px 10px 12px; font-size: 13px; color: #333; box-shadow: 0 1px 3px rgba(15,23,42,.06); -webkit-appearance: none; }
+        .line-search input:focus { outline: none; box-shadow: 0 0 0 1.5px #3b62d9; }
+        .line-search input::-webkit-search-cancel-button { display: none; }
+        .line-search .ls-clear { position: absolute; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #eceef5; color: #8a90a3; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; }
         .line-toolbar { display: flex; align-items: center; gap: 8px; padding: 2px 2px 10px; }
         .line-toolbar .lt-sub { font-size: 12px; color: #98a0b3; flex: 1; }
         .line-refresh { border: 0; background: #eef2ff; color: #3b62d9; font-size: 13px; padding: 7px 16px; border-radius: 999px; }
