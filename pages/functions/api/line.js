@@ -274,28 +274,6 @@ export async function onRequest(context) {
 
   // goodsSign → 淘宝数字商品ID
   if (mode === 'numid') {
-    // 临时探测：线报原始返回字段 + 各解析接口返回
-    if (sp.get('probe') === '1') {
-      const c = (sp.get('content') || sp.get('id') || '').trim();
-      if (c === 'list') {
-        const raw = await callApi(API_LIST, { version: 'v4.0.0', pageId: '1', pageSize: '2' }, ctx.appKey, ctx.appSecret, 15000);
-        return json({ ok: true, list: raw });
-      }
-      const out = {};
-      const targets = [
-        ['couponInfo', 'https://openapi.dataoke.com/api/dels/taobao/kit/coupon/get-coupon-info', { version: 'v1.0.0', content: c }],
-        ['material', 'https://openapi.dataoke.com/api/goods/material/list', { version: 'v1.0.0', id: c }],
-        ['similar', 'https://openapi.dataoke.com/api/goods/list-similer-goods-by-open', { version: 'v1.2.2', id: c }],
-        ['contentParse', 'https://openapi.dataoke.com/api/dels/kit/contentParse', { version: 'v1.0.0', content: c }],
-      ];
-      await Promise.all(targets.map(async ([tag, u, p]) => {
-        try {
-          const r = await callApi(u, p, ctx.appKey, ctx.appSecret, 15000);
-          out[tag] = JSON.stringify(r).slice(0, 1200);
-        } catch (e) { out[tag] = 'ERR ' + String(e).slice(0, 80); }
-      }));
-      return json({ ok: true, content: c, out });
-    }
     const gid = (sp.get('id') || '').trim();
     if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
     const num = await resolveNumId(gid, ctx, env, 12000);
