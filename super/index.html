@@ -1327,6 +1327,7 @@
             <div class="btn-section">
             <div class="button-group">
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/tmtjb/town/home?actionArg=openHalfDetail&umpChannel=tblmgydpbt&topIds=928465297717', '淘金币抵扣', '', false, true)"><span class="btn-label">淘金币抵扣</span><span class="status-badge available">可用</span></button>
+                <button onclick="lookupCoupon()"><span class="btn-label">查优惠</span><span class="status-badge available">可用</span></button>
             </div>
             </div>
             </div>
@@ -3867,6 +3868,105 @@ async function resolveProductId(productLink) {
             wrap.appendChild(tip);
             resultArea.innerHTML = '';
             resultArea.appendChild(wrap);
+        }
+
+        /* ==================== 查优惠（大淘客带券转链） ==================== */
+        // 复用顶部输入框：商品链接 / 淘口令 / 商品ID
+        // 后端 /api/dtlink → 大淘客 parse-content（带 PID 归因）+ 商品详情（券后价/券额/月销）
+        // 结果：券后价 + 带券推广二维码（shortUrl，已带归因）+ 券后淘口令
+        async function lookupCoupon() {
+            const inputEl = document.getElementById('productLink');
+            const raw = (inputEl && inputEl.value ? inputEl.value : '').trim();
+            if (!raw) { alert('请先输入商品链接、淘口令或商品ID'); return; }
+
+            const resultArea = document.getElementById('resultArea');
+            scrollResultIntoView();
+            resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在查询优惠并转链，请稍候...</p>';
+
+            let d = null;
+            try {
+                const resp = await fetch('https://huafei-redirect-pages.pages.dev/api/dtlink?content=' + encodeURIComponent(raw), { cache: 'no-store' });
+                d = await resp.json();
+            } catch (e) {
+                resultArea.innerHTML = '<p style="color: var(--error-text);">查询失败：网络异常或接口超时，请稍后重试。</p>';
+                return;
+            }
+
+            if (!d || !d.ok) {
+                const msg = escapeHtml((d && (d.error || d.hint)) || '接口无返回数据');
+                resultArea.innerHTML = '<p style="color: var(--error-text);">查询失败：' + msg + '</p>' +
+                    '<p style="font-size:12px;color:#999;">可能原因：① 该商品没有淘客推广计划（无佣金）；② 链接或口令已失效；③ 该商品不支持转链。</p>';
+                return;
+            }
+
+            const qrUrl = d.shortUrl || d.cpsLongUrl || '';
+            const priceText = d.actualPrice ? ('券后¥' + d.actualPrice) : (d.itemName || '推广链接').slice(0, 10);
+            let mergedCanvas = null;
+            try {
+                if (qrUrl) {
+                    const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+                        width: 256, height: 256, errorCorrectionLevel: 'M',
+                        colorDark: '#000000', colorLight: '#FFFFFF'
+                    });
+                    mergedCanvas = await createQRCodeWithText(qrDataUrl, priceText);
+                }
+            } catch (e) { console.error('二维码生成失败', e); }
+
+            const container = document.createElement('div');
+            container.className = 'qr-code-container';
+
+            // 左侧：二维码
+            const left = document.createElement('div');
+            left.className = 'qr-code-left';
+            left.style.textAlign = 'center';
+            if (mergedCanvas) {
+                const img = document.createElement('img');
+                img.className = 'qr-thumb';
+                img.src = mergedCanvas.toDataURL('image/png');
+                img.alt = priceText;
+                img.style.webkitTouchCallout = 'none';
+                img.addEventListener('click', function () { openQRPreview(mergedCanvas.toDataURL('image/png')); });
+                let lpTimer;
+                img.addEventListener('touchstart', function () {
+                    lpTimer = setTimeout(function () {
+                        if (isInApp && NativeBridge.saveImage && confirm('是否保存图片到图库？')) {
+                            NativeBridge.saveImage(mergedCanvas.toDataURL('image/png'));
+                        }
+                    }, 600);
+                });
+                img.addEventListener('touchend', function () { clearTimeout(lpTimer); });
+                img.addEventListener('touchmove', function () { clearTimeout(lpTimer); });
+                left.appendChild(img);
+                const tip = document.createElement('div');
+                tip.className = 'long-press-tip';
+                tip.textContent = '点击放大，长按保存';
+                left.appendChild(tip);
+            }
+
+            // 右侧：商品信息 + 操作
+            const right = document.createElement('div');
+            right.className = 'qr-code-right';
+            const metas = [];
+            if (d.couponPrice) metas.push('券 ¥' + escapeHtml(d.couponPrice) + (d.couponConditions ? '（满' + escapeHtml(d.couponConditions) + '）' : ''));
+            if (d.commissionRate) metas.push('佣金 ' + escapeHtml(d.commissionRate) + '%');
+            if (d.monthSales) metas.push('月销 ' + escapeHtml(String(d.monthSales)));
+
+            window._lastCouponTpwd = d.shortTpwd || '';
+            right.innerHTML =
+                '<div style="font-size:13px;line-height:1.45;color:#333;margin-bottom:6px;">' + escapeHtml(d.title || d.itemName || '') + '</div>' +
+                '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;">' +
+                    (d.actualPrice ? '<span style="font-size:22px;font-weight:800;color:#ff2d55;">¥' + escapeHtml(d.actualPrice) + '</span>' : '') +
+                    (d.originalPrice ? '<span style="font-size:12px;color:#999;text-decoration:line-through;">¥' + escapeHtml(d.originalPrice) + '</span>' : '') +
+                '</div>' +
+                (metas.length ? '<div style="font-size:12px;color:#666;margin-bottom:8px;">' + metas.join(' · ') + '</div>' : '') +
+                (d.shortTpwd ? '<div style="font-size:12px;color:#333;background:#f6f6f6;border-radius:8px;padding:6px 8px;margin-bottom:8px;word-break:break-all;">' + escapeHtml(d.shortTpwd) + '</div>' : '') +
+                (d.shortTpwd ? '<button type="button" class="copy-id-btn" style="margin-bottom:8px;" onclick="copyToClipboard(window._lastCouponTpwd)">复制淘口令</button>' : '') +
+                (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键打开淘宝</button>' : '');
+
+            container.appendChild(left);
+            container.appendChild(right);
+            resultArea.innerHTML = '';
+            resultArea.appendChild(container);
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount, plain) {
