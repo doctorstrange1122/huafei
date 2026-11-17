@@ -4003,7 +4003,7 @@ async function resolveProductId(productLink) {
         }
 
         // ===== 通用结果卡：二维码 + 当前商品id + 复制/+常用 + 一键跳转 =====
-        async function renderQrResultCard(target, qrUrl, label, productId) {
+        async function renderQrResultCard(target, qrUrl, label, productId, lineMode) {
             const resultArea = (target && target.nodeType === 1) ? target : document.getElementById('resultArea');
             if (!target || target.nodeType !== 1) scrollResultIntoView();
 
@@ -4054,7 +4054,7 @@ async function resolveProductId(productLink) {
             const escapedPid = window._lastGeneratedProductId.replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const pidHtml = escapedPid.split(',').map(function (s) { return '<span class="pid-item">' + s.trim() + '</span>'; }).join('');
 
-            right.innerHTML =
+            const pidPanelHtml = lineMode ? '' :
                 '<div class="product-id-panel">' +
                     '<span class="pid-label">当前商品id</span>' +
                     '<span class="pid-value">' + pidHtml + '</span>' +
@@ -4062,10 +4062,11 @@ async function resolveProductId(productLink) {
                         '<button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>' +
                         '<button type="button" class="add-common-btn" onclick="addCurrentToCommonIds()" title="保存到常用 id">+常用</button>' +
                     '</div>' +
-                '</div>' +
+                '</div>';
+            right.innerHTML = pidPanelHtml +
                 '<div class="action-buttons">' +
                     (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
-                    (qrUrl ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '') +
+                    (qrUrl && !lineMode ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '') +
                 '</div>';
 
             container.appendChild(left);
@@ -4281,29 +4282,17 @@ async function resolveProductId(productLink) {
             if (t) t.classList.remove('show');
         }
 
-        // goodsSign -> 淘宝数字商品ID（云端跟随跳转解析并缓存）
-        async function resolveNumericId(it) {
-            if (it.numId) return it.numId;
-            if (!it.id) return '';
-            try {
-                var r = await fetch(LINE_API + '?mode=numid&id=' + encodeURIComponent(it.id));
-                var d = await r.json();
-                if (d && d.ok && d.numId) { it.numId = d.numId; return d.numId; }
-            } catch (e) { }
-            return '';
-        }
-
         async function lineItemToQR(i) {
             var it = _lineItems[i];
             if (!it || !it.url) { alert('这一条没有转链成功，可以长按复制文案手动处理'); return; }
             var toast = document.getElementById('lineToast');
             var body = document.getElementById('toastBody');
-            body.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在解析商品 ID…</p>';
+            body.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在生成二维码…</p>';
             toast.classList.add('show');
 
-            var numId = await resolveNumericId(it);
+            // 线报弹窗：不解析数字ID，不显示商品id面板，只留「跳转淘宝」按钮
             body.innerHTML = '';
-            await renderQrResultCard(body, it.url, '线报', numId || it.id || '');
+            await renderQrResultCard(body, it.url, '线报', '', true);
         }
 
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount, plain) {
