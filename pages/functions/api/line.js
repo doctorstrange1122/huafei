@@ -279,8 +279,8 @@ export async function onRequest(context) {
       const c = (sp.get('content') || sp.get('id') || '').trim();
       const out = {};
       const targets = [
-        ['tpwdParse', 'https://openapi.dataoke.com/api/tb-service/parse-taokouling', { version: 'v1.0.0', content: c }],
-        ['tpwdToTpwd', 'https://openapi.dataoke.com/api/tb-service/twd-to-twd', { version: 'v1.0.0', content: c }],
+        ['detail', 'https://openapi.dataoke.com/api/goods/get-goods-details', { version: 'v1.2.3', id: c }],
+        ['privLink', 'https://openapi.dataoke.com/api/tb-service/get-privilege-link', { version: 'v1.3.1', goodsId: c, pid: ctx.pid }],
         ['contentParse', 'https://openapi.dataoke.com/api/dels/kit/contentParse', { version: 'v1.0.0', content: c }],
       ];
       for (const [tag, u, p] of targets) {
