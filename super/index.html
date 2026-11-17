@@ -1328,6 +1328,7 @@
             <div class="button-group">
                 <button onclick="generateQRCodes(1, 'https://pages-fast.m.taobao.com/wow/z/tmtjb/town/home?actionArg=openHalfDetail&umpChannel=tblmgydpbt&topIds=928465297717', '淘金币抵扣', '', false, true)"><span class="btn-label">淘金币抵扣</span><span class="status-badge available">可用</span></button>
                 <button onclick="lookupCoupon()"><span class="btn-label">查优惠</span><span class="status-badge available">可用</span></button>
+                <button onclick="openLineDrawer()"><span class="btn-label">线报</span><span class="status-badge available">可用</span></button>
             </div>
             </div>
             </div>
@@ -3981,6 +3982,183 @@ async function resolveProductId(productLink) {
             resultArea.appendChild(container);
         }
 
+        // ===== 通用结果卡：二维码 + 当前商品id + 复制/+常用 + 一键跳转 =====
+        async function renderQrResultCard(qrUrl, label, productId) {
+            const resultArea = document.getElementById('resultArea');
+            scrollResultIntoView();
+            resultArea.innerHTML = '<p class="loading-hint"><span class="spinner"></span>正在生成二维码，请稍候...</p>';
+
+            let mergedCanvas = null;
+            try {
+                const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+                    width: 256, height: 256, errorCorrectionLevel: 'M',
+                    colorDark: '#000000', colorLight: '#FFFFFF'
+                });
+                mergedCanvas = await createQRCodeWithText(qrDataUrl, label);
+            } catch (e) { console.error('二维码生成失败', e); }
+
+            const container = document.createElement('div');
+            container.className = 'qr-code-container';
+
+            const left = document.createElement('div');
+            left.className = 'qr-code-left';
+            left.style.textAlign = 'center';
+            if (mergedCanvas) {
+                const img = document.createElement('img');
+                img.className = 'qr-thumb';
+                img.src = mergedCanvas.toDataURL('image/png');
+                img.alt = label;
+                img.style.webkitTouchCallout = 'none';
+                img.addEventListener('click', function () { openQRPreview(mergedCanvas.toDataURL('image/png')); });
+                let lpTimer;
+                img.addEventListener('touchstart', function () {
+                    lpTimer = setTimeout(function () {
+                        if (isInApp && NativeBridge.saveImage && confirm('是否保存图片到图库？')) {
+                            NativeBridge.saveImage(mergedCanvas.toDataURL('image/png'));
+                        }
+                    }, 600);
+                });
+                img.addEventListener('touchend', function () { clearTimeout(lpTimer); });
+                img.addEventListener('touchmove', function () { clearTimeout(lpTimer); });
+                left.appendChild(img);
+                const tip = document.createElement('div');
+                tip.className = 'long-press-tip';
+                tip.textContent = '点击放大，长按保存';
+                left.appendChild(tip);
+            }
+
+            const right = document.createElement('div');
+            right.className = 'qr-code-right';
+            window._lastGeneratedProductId = String(productId || '');
+            window._lastGeneratedLink = qrUrl;
+
+            const escapedPid = window._lastGeneratedProductId.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const pidHtml = escapedPid.split(',').map(function (s) { return '<span class="pid-item">' + s.trim() + '</span>'; }).join('');
+
+            right.innerHTML =
+                '<div class="product-id-panel">' +
+                    '<span class="pid-label">当前商品id</span>' +
+                    '<span class="pid-value">' + pidHtml + '</span>' +
+                    '<div class="pid-btn-group">' +
+                        '<button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>' +
+                        '<button type="button" class="add-common-btn" onclick="addCurrentToCommonIds()" title="保存到常用 id">+常用</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="action-buttons">' +
+                    (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
+                    (qrUrl ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '') +
+                '</div>';
+
+            container.appendChild(left);
+            container.appendChild(right);
+            resultArea.innerHTML = '';
+            resultArea.appendChild(container);
+        }
+
+        // ===== 线报抽屉（云端已转好链，这里只做展示与复制）=====
+        var LINE_API = 'https://huafei-redirect-pages.pages.dev/api/line';
+        var _lineItems = [];
+
+        function openLineDrawer() {
+            document.getElementById('lineOverlay').classList.add('show');
+            if (_lineItems.length) { renderLineList(); return; }
+            loadLine(false);
+        }
+
+        function closeLineDrawer() {
+            document.getElementById('lineOverlay').classList.remove('show');
+        }
+
+        function lineTimeText(ts) {
+            if (!ts) return '';
+            var d = new Date(ts), p = function (n) { return String(n).padStart(2, '0'); };
+            return p(d.getHours()) + ':' + p(d.getMinutes()) + ' 更新';
+        }
+
+        async function loadLine(force) {
+            var body = document.getElementById('lineBody');
+            var btn = document.getElementById('lineRefreshBtn');
+            var sub = document.getElementById('lineSub');
+            btn.disabled = true;
+            btn.textContent = force ? '刷新中' : '加载';
+            if (!_lineItems.length) body.innerHTML = '<div class="line-empty"><span class="spinner"></span>正在获取线报…</div>';
+
+            try {
+                var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), { cache: 'no-store' });
+                var d = await resp.json();
+                if (!d || !d.ok) throw new Error((d && d.error) || '接口异常');
+                _lineItems = d.items || [];
+                renderLineList();
+                sub.textContent = _lineItems.length + ' 条' +
+                    (d.updatedAt ? ' · ' + lineTimeText(d.updatedAt) : '') +
+                    (d.source === 'cache' ? '（缓存）' : '');
+            } catch (e) {
+                if (!_lineItems.length) {
+                    body.innerHTML = '<div class="line-empty">获取失败<br><span style="font-size:12px;">' +
+                        escapeHtml(String((e && e.message) || e)) + '</span></div>';
+                } else {
+                    sub.textContent = '刷新失败，仍显示上次结果';
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '刷新';
+            }
+        }
+
+        function renderLineList() {
+            var body = document.getElementById('lineBody');
+            if (!_lineItems.length) {
+                body.innerHTML = '<div class="line-empty">暂无线报<br><span style="font-size:12px;">点「刷新」再试一次</span></div>';
+                return;
+            }
+            body.innerHTML = _lineItems.map(function (it, i) {
+                var pic = it.pic
+                    ? '<img class="li-pic" src="' + escapeHtml(it.pic) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'">'
+                    : '<div class="li-pic"></div>';
+                return '<div class="line-item" data-i="' + i + '">' +
+                    pic +
+                    '<div class="li-main">' +
+                        '<div class="line-text">' + escapeHtml(it.text || '') + '</div>' +
+                        '<div class="line-meta">' +
+                            (it.price ? '<span class="line-price">¥' + escapeHtml(it.price) + '</span>' : '') +
+                            (it.tpwd ? '<span class="line-tpwd">' + escapeHtml(it.tpwd) + '</span>' : '') +
+                            (it.sub ? '<span class="line-badge">凑单</span>' : '') +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="line-acts">' +
+                        (it.tpwd ? '<button type="button" class="la-copy" onclick="copyLineItem(' + i + ')">复制</button>' : '') +
+                        (it.url ? '<button type="button" class="la-qr" onclick="lineItemToQR(' + i + ')">二维码</button>' : '') +
+                    '</div>' +
+                '</div>';
+            }).join('');
+
+            // 点击展开/收起全文；长按复制
+            Array.prototype.forEach.call(body.querySelectorAll('.line-item'), function (el) {
+                var i = parseInt(el.getAttribute('data-i'), 10);
+                var timer = null, moved = false;
+                el.addEventListener('touchstart', function () { moved = false; timer = setTimeout(function () { if (!moved) copyLineItem(i); }, 600); }, { passive: true });
+                el.addEventListener('touchmove', function () { moved = true; clearTimeout(timer); }, { passive: true });
+                el.addEventListener('touchend', function () { clearTimeout(timer); });
+                el.addEventListener('click', function (e) {
+                    if (e.target.closest('button')) return;
+                    el.classList.toggle('expanded');
+                });
+            });
+        }
+
+        function copyLineItem(i) {
+            var it = _lineItems[i];
+            if (!it) return;
+            copyToClipboard(it.text || '');
+        }
+
+        function lineItemToQR(i) {
+            var it = _lineItems[i];
+            if (!it || !it.url) { alert('这一条没有转链成功，可以长按复制文案手动处理'); return; }
+            closeLineDrawer();
+            renderQrResultCard(it.url, '线报', it.id || '');
+        }
+
         async function generateQRCodes(quantity, baseUrl, autoLabel, btnKey, skipCount, plain) {
             // 获取用户输入的淘口令/分享文本和自定义文字
             const productLink = document.getElementById('productLink').value.trim();
@@ -4705,7 +4883,44 @@ async function resolveProductId(productLink) {
             font-size: 48px;
             margin-bottom: 12px;
         }
+        /* ===== 线报抽屉 ===== */
+        .line-overlay { position: fixed; inset: 0; z-index: 9990; background: rgba(0,0,0,.45); display: none; align-items: flex-end; }
+        .line-overlay.show { display: flex; }
+        .line-sheet { width: 100%; max-height: 88vh; background: #f6f7fb; border-radius: 18px 18px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+        .line-head { display: flex; align-items: center; gap: 8px; padding: 13px 14px; background: #fff; border-bottom: 1px solid #eceef4; }
+        .line-title { font-size: 16px; font-weight: 700; color: #2b2f38; white-space: nowrap; }
+        .line-sub { font-size: 11px; color: #98a0b3; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .line-refresh { border: 0; background: #eef2ff; color: #3b62d9; font-size: 13px; padding: 6px 14px; border-radius: 999px; }
+        .line-refresh:disabled { opacity: .5; }
+        .line-close { border: 0; background: #f2f3f7; color: #666; width: 30px; height: 30px; border-radius: 50%; font-size: 13px; }
+        .line-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px 26px; }
+        .line-item { display: flex; gap: 10px; background: #fff; border-radius: 14px; padding: 11px 12px; margin-bottom: 10px; }
+        .line-item .li-pic { width: 54px; height: 54px; border-radius: 10px; object-fit: cover; background: #f3f4f8; flex: 0 0 54px; }
+        .li-main { flex: 1; min-width: 0; }
+        .line-text { font-size: 13px; line-height: 1.5; color: #333; white-space: pre-wrap; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-item.expanded .line-text { -webkit-line-clamp: 99; display: block; }
+        .line-meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+        .line-price { font-size: 13px; font-weight: 800; color: #ff2d55; }
+        .line-tpwd { font-size: 11px; color: #6b7280; background: #f4f5fa; padding: 2px 6px; border-radius: 6px; }
+        .line-badge { font-size: 11px; color: #b25a4d; background: #fdeee9; padding: 2px 6px; border-radius: 6px; }
+        .line-acts { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+        .line-acts button { border: 0; border-radius: 8px; font-size: 12px; padding: 7px 9px; white-space: nowrap; }
+        .line-acts .la-copy { background: #eef2ff; color: #3b62d9; }
+        .line-acts .la-qr { background: #e9f5ee; color: #2f7a4f; }
+        .line-empty { text-align: center; color: #98a0b3; font-size: 13px; padding: 36px 0; line-height: 1.8; }
     </style>
+
+    <div id="lineOverlay" class="line-overlay" onclick="if(event.target===this)closeLineDrawer()">
+        <div class="line-sheet">
+            <div class="line-head">
+                <span class="line-title">今日线报</span>
+                <span class="line-sub" id="lineSub"></span>
+                <button type="button" class="line-refresh" id="lineRefreshBtn" onclick="loadLine(true)">刷新</button>
+                <button type="button" class="line-close" onclick="closeLineDrawer()">✕</button>
+            </div>
+            <div class="line-body" id="lineBody"></div>
+        </div>
+    </div>
 
     <div id="keyActivateOverlay">
         <div class="key-activate-card">
