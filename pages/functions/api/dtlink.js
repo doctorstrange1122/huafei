@@ -148,6 +148,11 @@ export async function onRequest(context) {
       } catch (_) {}
     }
 
+    if (!out.shortUrl) {
+      out.error = '该商品暂不支持转链（可能没有淘客推广计划或无佣金）';
+      out.hint = '换一个商品链接 / 淘口令再试';
+    }
+
     if (sp.get('debug') === '1') out.raw = d;
     return json(out);
   } catch (e) {
