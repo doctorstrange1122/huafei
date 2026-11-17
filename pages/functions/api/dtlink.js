@@ -13,6 +13,7 @@
 
 const API = 'https://openapi.dataoke.com/api/tb-service/parse-content';
 const API_DETAIL = 'https://openapi.dataoke.com/api/goods/get-goods-details';
+const API_COUPON = 'https://openapi.dataoke.com/api/dels/taobao/kit/coupon/get-coupon-info';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -124,6 +125,25 @@ export async function onRequest(context) {
           out.shopName = dd.shopName || '';
           out.mainPic = dd.mainPic || '';
           if (dd.commissionRate) out.commissionRate = dd.commissionRate;
+        }
+      } catch (_) {}
+    }
+
+    // 兜底：老商品ID 拿不到详情时，用券查询接口补齐券额/门槛/领券链接
+    if (!out.couponPrice && sp.get('detail') !== '0') {
+      try {
+        const cp = { appKey, version: 'v1.0.0', content };
+        const csign = await signParams(cp, appSecret);
+        const cresp = await fetch(`${API_COUPON}?${new URLSearchParams({ ...cp, sign: csign }).toString()}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        const cj = await cresp.json();
+        const cd = (cj && cj.data) || null;
+        if (cj.code === 0 && cd) {
+          if (Number(cd.couponAmount) > 0) out.couponPrice = cd.couponAmount;
+          if (cd.couponConditions) out.couponConditions = cd.couponConditions;
+          if (cd.couponLink && !out.couponLink) out.couponLink = cd.couponLink;
+          if (cd.couponReceiveNum) out.couponReceiveNum = cd.couponReceiveNum;
         }
       } catch (_) {}
     }
