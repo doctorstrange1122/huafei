@@ -296,11 +296,12 @@ export async function onRequest(context) {
   if (url.searchParams.get('ztkraw') === '1') {
     const tkl = url.searchParams.get('content') || '';
     const appkey = env.ZTK_APPKEY, sid = env.ZTK_SID;
-    const out = { hasKey: !!appkey, hasSid: !!sid };
+    const pid = env.ZTK_PID ? '&pid=' + encodeURIComponent(env.ZTK_PID) : '';
+    const out = { hasKey: !!appkey, hasSid: !!sid, hasPid: !!env.ZTK_PID };
     for (const { host, port } of ZTK_HOSTS) {
       try {
         out[host] = await ztkGet(host, port,
-          `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${encodeURIComponent(tkl)}`, 8000);
+          `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${encodeURIComponent(tkl)}${pid}`, 8000);
       } catch (e) { out[host] = 'ERR ' + String(e).slice(0, 120); }
     }
     return new Response(JSON.stringify(out), { headers: CORS });
