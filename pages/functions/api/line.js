@@ -232,10 +232,21 @@ export async function onRequest(context) {
     const num = await resolveNumId(gid, env, 8000);
     if (num) return json({ ok: true, numId: num });
     if (sp.get('debug') === '1') {
+      const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15';
+      const u = 'https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid);
+      const info = {};
       try {
-        const r = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)' } });
-        return json({ ok: false, status: r.status, loc: (r.headers.get('location') || '').slice(0, 300), ctype: r.headers.get('content-type') });
-      } catch (e) { return json({ ok: false, err: String(e).slice(0, 120) }); }
+        const r1 = await fetch(u, { redirect: 'manual', headers: { 'User-Agent': UA } });
+        info.manual = { status: r1.status, loc: (r1.headers.get('location') || '').slice(0, 120), type: r1.type };
+        const b = await r1.text().catch(e => 'ERR:' + e);
+        info.bodyLen = (b || '').length;
+        info.snippet = String(b || '').slice(0, 160);
+      } catch (e) { info.manualErr = String(e).slice(0, 100); }
+      try {
+        const r2 = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': UA } });
+        info.follow = { status: r2.status, url: String(r2.url).slice(0, 160) };
+      } catch (e) { info.followErr = String(e).slice(0, 100); }
+      return json({ ok: false, ...info });
     }
     return json({ ok: false, error: '未能解析出数字ID' });
   }
