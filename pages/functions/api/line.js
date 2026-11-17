@@ -149,9 +149,19 @@ export async function onRequest(context) {
   const KV = env.KEY_STORE;
   if (!KV) return json({ ok: false, error: '未绑定 KV（KEY_STORE）' }, 500);
 
-  let appKey = env.DTK_APPKEY || (await KV.get('dtk:appkey')) || '';
-  let appSecret = env.DTK_APPSECRET || (await KV.get('dtk:appsecret')) || '';
-  const pid = env.DTK_PID || (await KV.get('dtk:pid')) || '';
+  let appKey = env.DTK_APPKEY || '';
+  let appSecret = env.DTK_APPSECRET || '';
+  let pid = env.DTK_PID || '';
+  if (!appKey || !appSecret || !pid) {
+    const [k1, k2, k3] = await Promise.all([
+      appKey ? Promise.resolve(appKey) : KV.get('dtk:appkey'),
+      appSecret ? Promise.resolve(appSecret) : KV.get('dtk:appsecret'),
+      pid ? Promise.resolve(pid) : KV.get('dtk:pid'),
+    ]);
+    appKey = appKey || k1 || '';
+    appSecret = appSecret || k2 || '';
+    pid = pid || k3 || '';
+  }
   if (!appKey || !appSecret) return json({ ok: false, error: '未配置大淘客密钥' }, 500);
   if (!pid) return json({ ok: false, error: '未配置推广位 PID' }, 500);
 
@@ -167,9 +177,12 @@ export async function onRequest(context) {
     return json({ ok: true, date: day, count: arr.length, items: arr });
   }
 
-  const meta = (await KV.get(K_META, 'json')) || { updatedAt: 0, count: 0 };
-  const cached = (await KV.get(K_LATEST, 'json')) || [];
-  const age = Math.floor((Date.now() - (meta.updatedAt || 0)) / 1000);
+  const [metaRaw, cachedRaw] = await Promise.all([
+    KV.get(K_META, 'json'),
+    KV.get(K_LATEST, 'json'),
+  ]);
+  const meta = metaRaw || { updatedAt: 0, count: 0 };
+  const cached = cachedRaw || [];  const age = Math.floor((Date.now() - (meta.updatedAt || 0)) / 1000);
 
   // 直接读缓存
   if (mode === 'view') {
@@ -198,10 +211,16 @@ export async function onRequest(context) {
       return json({ ok: true, source: 'cache', age, throttled: true, updatedAt: meta.updatedAt, count: cached.length, items: cached });
     }
 
-    const want = Math.max(1, Math.min(12, parseInt(sp.get('pages') || '6', 10) || 6));
-    const pages = mode === 'seed'
-      ? Array.from({ length: want }, (_, i) => i + 1)
-      : [1];
+    // seed 支持两种：page=N 回填指定页（推荐，单次约 5 秒）；pages=N 连续回填（易超时，仅小批量用）
+    const singlePage = parseInt(sp.get('page') || '0', 10);
+    let pages = [1];
+    if (mode === 'seed') {
+      if (singlePage > 0) pages = [singlePage];
+      else {
+        const want = Math.max(1, Math.min(3, parseInt(sp.get('pages') || '1', 10) || 1));
+        pages = Array.from({ length: want }, (_, i) => i + 1);
+      }
+    }
     const mapped = new Map(cached.map(x => [x.id, x]));
     let added = 0;
 
