@@ -4065,7 +4065,7 @@ async function resolveProductId(productLink) {
                 '</div>';
             right.innerHTML = pidPanelHtml +
                 '<div class="action-buttons">' +
-                    (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
+                    (qrUrl ? '<button class="btn-taobao' + (lineMode ? ' btn-tb-round' : '') + '" onclick="openTaobaoApp(\'' + qrUrl + '\')">' + (lineMode ? '去淘宝' : '一键跳转淘宝') + '</button>' : '') +
                     (qrUrl && !lineMode ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '') +
                 '</div>';
 
@@ -5059,6 +5059,16 @@ async function resolveProductId(productLink) {
         @keyframes toastIn { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .toast-close { position: absolute; right: 8px; top: 8px; border: 0; background: #f2f3f7; color: #666; width: 26px; height: 26px; border-radius: 50%; font-size: 12px; z-index: 2; }
         #toastBody .qr-code-container { box-shadow: none; padding: 6px 0 0; }
+        /* 线报弹窗：跳转淘宝做成大圆形按钮，填补隐藏商品id后的空白 */
+        #toastBody .btn-tb-round {
+            width: 108px; height: 108px; border-radius: 50%;
+            margin: 0 auto; padding: 0;
+            font-size: 16px; font-weight: 700; letter-spacing: 1px;
+            background: #6a9a7a; color: #fff;
+            box-shadow: 0 6px 16px rgba(106,154,122,.35);
+            display: flex; align-items: center; justify-content: center; text-align: center;
+        }
+        #toastBody .btn-tb-round:active { transform: scale(.94); }
     </style>
 
     <!-- 线报二维码弹窗（toast 形式） -->
