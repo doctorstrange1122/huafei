@@ -236,6 +236,24 @@ export async function onRequest(context) {
     return json({ ok: false, error: '未能解析出数字ID' });
   }
 
+  // 批量补数字ID：一次处理 n 条（默认 20），供初始化/补偿调用
+  if (mode === 'backfill') {
+    const cached0 = (await KV.get(K_LATEST, 'json')) || [];
+    const n = Math.max(1, Math.min(30, parseInt(sp.get('n') || '20', 10) || 20));
+    const need = cached0.filter(x => !x.numId && x.id).slice(0, n);
+    if (!need.length) return json({ ok: true, filled: 0, remain: 0 });
+
+    let filled = 0;
+    for (let i = 0; i < need.length; i += 5) {
+      const chunk = need.slice(i, i + 5);
+      const res = await Promise.all(chunk.map(x => resolveNumId(x.id, env, 7000)));
+      res.forEach((v, k) => { if (v) { chunk[k].numId = v; filled++; } });
+    }
+    if (filled) await store(env, cached0, 0);
+    const remain = cached0.filter(x => !x.numId && x.id).length;
+    return json({ ok: true, filled, remain });
+  }
+
   const [metaRaw, cachedRaw] = await Promise.all([
     KV.get(K_META, 'json'),
     KV.get(K_LATEST, 'json'),
