@@ -1,0 +1,21 @@
+name: 线报定时采集
+
+# Cloudflare Pages 不支持 Cron Trigger，这里用 GitHub Actions 做定时触发：
+# 触发在 GitHub，拉取/转链/存储在 Cloudflare（Pages Function + KV）。
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # 每 10 分钟
+  workflow_dispatch:          # 支持手动触发
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 拉取并转链
+        run: |
+          echo "开始: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          RESP=$(curl -sS --max-time 120 "https://huafei-redirect-pages.pages.dev/api/line?mode=cron")
+          echo "$RESP" | head -c 300
+          echo ""
+          echo "$RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); print('ok=%s source=%s count=%s added=%s throttled=%s' % (d.get('ok'), d.get('source'), d.get('count'), d.get('added'), d.get('throttled'))); sys.exit(0 if d.get('ok') else 1)"
