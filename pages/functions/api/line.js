@@ -274,9 +274,13 @@ export async function onRequest(context) {
 
   // goodsSign → 淘宝数字商品ID
   if (mode === 'numid') {
-    // 临时探测：看「口令解析 / 剪切板识别」对 goodsSign 和淘口令分别返回什么
+    // 临时探测：线报原始返回字段 + 各解析接口返回
     if (sp.get('probe') === '1') {
       const c = (sp.get('content') || sp.get('id') || '').trim();
+      if (c === 'list') {
+        const raw = await callApi(API_LIST, { version: 'v4.0.0', pageId: '1', pageSize: '2' }, ctx.appKey, ctx.appSecret, 15000);
+        return json({ ok: true, list: raw });
+      }
       const out = {};
       const targets = [
         ['tpwdParse', 'https://openapi.dataoke.com/api/tb-service/parse-taokouling', { version: 'v1.0.0', content: c }],
