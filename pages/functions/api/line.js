@@ -177,6 +177,32 @@ export async function onRequest(context) {
     return json({ ok: true, date: day, count: arr.length, items: arr });
   }
 
+  // goodsSign → 淘宝数字商品ID：跟随 uland 跳转取最终 URL 里的 id，结果永久缓存
+  if (mode === 'numid') {
+    const gid = (sp.get('id') || '').trim();
+    if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
+    const cacheKey = 'line:num:' + gid;
+    const hit = await KV.get(cacheKey);
+    if (hit) return json({ ok: true, numId: hit, cached: true });
+
+    try {
+      const resp = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), {
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+        },
+      });
+      const m = String(resp.url || '').match(/[?&]id=(\d{6,})/);
+      if (m) {
+        await KV.put(cacheKey, m[1]);   // 数字ID 不会变，永久缓存
+        return json({ ok: true, numId: m[1] });
+      }
+      return json({ ok: false, error: '未能解析出数字ID' });
+    } catch (e) {
+      return json({ ok: false, error: '解析失败：' + String(e && e.message || e).slice(0, 60) });
+    }
+  }
+
   const [metaRaw, cachedRaw] = await Promise.all([
     KV.get(K_META, 'json'),
     KV.get(K_LATEST, 'json'),
