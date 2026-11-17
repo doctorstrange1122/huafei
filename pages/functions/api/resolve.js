@@ -292,6 +292,20 @@ export async function onRequest(context) {
     return new Response(null, { status: 204, headers: CORS });
   }
 
+  // 临时诊断：直接打折淘客原始返回（测完删除）
+  if (url.searchParams.get('ztkraw') === '1') {
+    const tkl = url.searchParams.get('content') || '';
+    const appkey = env.ZTK_APPKEY, sid = env.ZTK_SID;
+    const out = { hasKey: !!appkey, hasSid: !!sid };
+    for (const { host, port } of ZTK_HOSTS) {
+      try {
+        out[host] = await ztkGet(host, port,
+          `/api/open_taokouling_jiexi.ashx?appkey=${appkey}&sid=${sid}&content=${encodeURIComponent(tkl)}`, 8000);
+      } catch (e) { out[host] = 'ERR ' + String(e).slice(0, 120); }
+    }
+    return new Response(JSON.stringify(out), { headers: CORS });
+  }
+
   const target = url.searchParams.get('url');
   if (!target) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing url parameter' }), { status: 400, headers: CORS });
