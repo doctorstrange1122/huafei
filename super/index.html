@@ -4087,12 +4087,32 @@ async function resolveProductId(productLink) {
 
         // ===== 主界面 tab：奖励页 / 线报页 =====
         var LINE_API = 'https://huafei-redirect-pages.pages.dev/api/line';
+        var LINE_CACHE_KEY = 'huafei_line_cache_v1';
         var _lineItems = [];
         var _lineLoaded = false;
         var _lineKeyword = '';
         var _lineSearchTimer = null;
         var _lineInfo = {};
         var _lineBusy = false;
+
+        // 本地缓存：线报 10 分钟才更新一次，缓存到手机本地，打开秒显示、断网也能看
+        function readLineCache() {
+            try {
+                var raw = localStorage.getItem(LINE_CACHE_KEY);
+                if (!raw) return null;
+                var c = JSON.parse(raw);
+                if (c && Array.isArray(c.items) && c.items.length) return c;
+            } catch (e) { }
+            return null;
+        }
+        function writeLineCache(items, info) {
+            try {
+                localStorage.setItem(LINE_CACHE_KEY, JSON.stringify({
+                    items: items,
+                    updatedAt: (info && info.updatedAt) || 0
+                }));
+            } catch (e) { }
+        }
 
         function initMainTabs() {
             if (document.getElementById('tabReward')) return;
@@ -4125,6 +4145,14 @@ async function resolveProductId(productLink) {
 
             wrapper.appendChild(reward);
             wrapper.appendChild(line);
+
+            // 先用本地缓存秒开：有缓存就立即渲染，不等待网络
+            var cached = readLineCache();
+            if (cached) {
+                _lineItems = (cached.items || []).filter(function (it) { return it && (it.tpwd || it.url); });
+                _lineInfo = { updatedAt: cached.updatedAt, source: 'cache' };
+                if (_lineItems.length) renderLineList();
+            }
         }
 
         function switchMainTab(name) {
@@ -4135,7 +4163,12 @@ async function resolveProductId(productLink) {
             var r = document.getElementById('tabReward'), l = document.getElementById('tabLine');
             if (r) r.classList.toggle('active', name === 'reward');
             if (l) l.classList.toggle('active', name === 'line');
-            if (name === 'line' && !_lineLoaded) { _lineLoaded = true; loadLine(false); }
+            if (name === 'line' && !_lineLoaded) {
+                _lineLoaded = true;
+                // 有本地缓存：先显示缓存（已在 initMainTabs 渲染），后台静默刷新；无缓存才等待
+                if (_lineItems.length) { loadLine(false, true); }
+                else { loadLine(false, false); }
+            }
             try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
         }
 
@@ -4162,22 +4195,29 @@ async function resolveProductId(productLink) {
                 if (!_lineItems.length) body.innerHTML = '<div class="line-empty"><span class="spinner"></span>正在获取线报…</div>';
             }
 
+            // 8 秒超时：网络不稳时快速失败，不干等十几秒
+            var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) { } }, 8000) : null;
             try {
-                var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), { cache: 'no-store' });
+                var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), {
+                    cache: 'no-store', signal: ctrl ? ctrl.signal : undefined
+                });
                 var d = await resp.json();
                 if (!d || !d.ok) throw new Error((d && d.error) || '接口异常');
                 // 兜底过滤：券过期/下架的失效条目没有口令也没有链接，直接不显示（后端入库也会清）
                 _lineItems = (d.items || []).filter(function (it) { return it && (it.tpwd || it.url); });
                 _lineInfo = { updatedAt: d.updatedAt, source: d.source };
+                writeLineCache(_lineItems, _lineInfo); // 写入本地缓存，下次秒开
                 renderLineList();
             } catch (e) {
                 if (!_lineItems.length) {
-                    body.innerHTML = '<div class="line-empty">获取失败<br><span style="font-size:12px;">' +
-                        escapeHtml(String((e && e.message) || e)) + '</span></div>';
+                    // 完全没有缓存：给中文提示，不暴露英文 Failed to fetch
+                    body.innerHTML = '<div class="line-empty">暂时连不上线报<br><span style="font-size:12px;">请检查网络后点「刷新」重试</span></div>';
                 } else if (sub && !silent) {
-                    sub.textContent = '刷新失败，仍显示上次结果';
+                    sub.textContent = '网络不稳，显示上次的线报';
                 }
             } finally {
+                if (timer) clearTimeout(timer);
                 _lineBusy = false;
                 if (btn && !silent) { btn.disabled = false; btn.textContent = '刷新'; }
             }
