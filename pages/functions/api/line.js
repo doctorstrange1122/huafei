@@ -142,48 +142,52 @@ async function store(env, items, added) {
   await KV.put(K_DAY + day, JSON.stringify(merged));
 }
 
-// goodsSign → 淘宝数字商品ID（跟随 uland 跳转），带 KV 永久缓存
+// goodsSign → 淘宝数字商品ID：先看 302 的 Location，再看 200 页面正文里的跳转地址
 async function resolveNumId(gid, env, ms) {
   if (!gid) return '';
   const key = 'line:num:' + gid;
+  const KV = env.KEY_STORE;
   try {
-    const hit = await env.KEY_STORE.get(key);
+    const hit = await KV.get(key);
     if (hit) return hit;
   } catch (_) {}
+
+  const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
+  const url = 'https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid);
+  const ctrl = new AbortController();
+  const timer = setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, ms || 8000);
+  let num = '';
+
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, ms || 8000);
-    let resp;
-    try {
-      const r1 = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), {
-        redirect: 'manual',
-        signal: ctrl.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-        },
-      });
-      const loc = r1.headers.get('location') || '';
-      let mm = loc.match(/[?&]id=(\d{6,})/);
-      if (mm) {
-        try { await env.KEY_STORE.put(key, mm[1]); } catch (_) {}
-        return mm[1];
-      }
-      // 没直接给出，再跟随一次
-      resp = await fetch('https://uland.taobao.com/item/edetail?id=' + encodeURIComponent(gid), {
-        redirect: 'follow',
-        signal: ctrl.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-        },
-      });
-    } finally { clearTimeout(timer); }
-    const m = String(resp.url || '').match(/[?&]id=(\d{6,})/);
-    if (m) {
-      try { await env.KEY_STORE.put(key, m[1]); } catch (_) {}
-      return m[1];
+    const r1 = await fetch(url, { redirect: 'manual', signal: ctrl.signal, headers: { 'User-Agent': UA } });
+    const loc = r1.headers.get('location') || '';
+    let mm = loc.match(/[?&]id=(\d{6,})/);
+
+    if (!mm) {
+      // 常见情况：200 + 一段 "Redirecting to https://item.taobao.com/item.htm?id=xxx."
+      try {
+        const body = await r1.text();
+        const m2 = body.match(/item\.(?:taobao|tmall)\.com\/[^"'\s<>]*[?&]id=(\d{6,})/) || body.match(/[?&]id=(\d{6,})/);
+        if (m2) mm = m2;
+      } catch (_) {}
     }
-  } catch (_) {}
-  return '';
+
+    if (mm) {
+      num = mm[1];
+    } else {
+      const r2 = await fetch(url, { redirect: 'follow', signal: ctrl.signal, headers: { 'User-Agent': UA } });
+      const m3 = String(r2.url || '').match(/[?&]id=(\d{6,})/);
+      if (m3) num = m3[1];
+    }
+  } catch (_) {
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (num) {
+    try { await KV.put(key, num); } catch (_) {}
+  }
+  return num;
 }
 
 export async function onRequest(context) {
