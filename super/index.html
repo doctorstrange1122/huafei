@@ -3943,25 +3943,28 @@ async function resolveProductId(productLink) {
                 left.appendChild(tip);
             }
 
-            // 右侧：商品信息 + 操作
+            // 右侧：与其他按钮一致的标准结果卡（当前商品id + 复制/+常用 + 一键跳转淘宝/天猫）
             const right = document.createElement('div');
             right.className = 'qr-code-right';
-            const metas = [];
-            if (d.couponPrice) metas.push('券 ¥' + escapeHtml(d.couponPrice) + (d.couponConditions ? '（满' + escapeHtml(d.couponConditions) + '）' : ''));
-            if (d.commissionRate) metas.push('佣金 ' + escapeHtml(d.commissionRate) + '%');
-            if (d.monthSales) metas.push('月销 ' + escapeHtml(String(d.monthSales)));
 
-            window._lastCouponTpwd = d.shortTpwd || '';
+            // 供 copyProductId()/addCurrentToCommonIds() 复用的商品id
+            window._lastGeneratedProductId = d.goodsId || d.itemId || '';
+            window._lastGeneratedLink = qrUrl;
+
+            const escapedPid = String(window._lastGeneratedProductId).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const pidHtml = escapedPid.split(',').map(function (s) { return '<span class="pid-item">' + s.trim() + '</span>'; }).join('');
+
             right.innerHTML =
-                '<div style="font-size:13px;line-height:1.45;color:#333;margin-bottom:6px;">' + escapeHtml(d.title || d.itemName || '') + '</div>' +
-                '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;">' +
-                    (d.actualPrice ? '<span style="font-size:22px;font-weight:800;color:#ff2d55;">¥' + escapeHtml(d.actualPrice) + '</span>' : '') +
-                    (d.originalPrice ? '<span style="font-size:12px;color:#999;text-decoration:line-through;">¥' + escapeHtml(d.originalPrice) + '</span>' : '') +
+                '<div class="product-id-panel">' +
+                    '<span class="pid-label">当前商品id</span>' +
+                    '<span class="pid-value">' + pidHtml + '</span>' +
+                    '<div class="pid-btn-group">' +
+                        '<button type="button" class="copy-id-btn" onclick="copyProductId()">复制</button>' +
+                        '<button type="button" class="add-common-btn" onclick="addCurrentToCommonIds()" title="保存到常用 id">+常用</button>' +
+                    '</div>' +
                 '</div>' +
-                (metas.length ? '<div style="font-size:12px;color:#666;margin-bottom:8px;">' + metas.join(' · ') + '</div>' : '') +
-                (d.shortTpwd ? '<div style="font-size:12px;color:#333;background:#f6f6f6;border-radius:8px;padding:6px 8px;margin-bottom:8px;word-break:break-all;">' + escapeHtml(d.shortTpwd) + '</div>' : '') +
-                (d.shortTpwd ? '<button type="button" class="copy-id-btn" style="margin-bottom:8px;" onclick="copyToClipboard(window._lastCouponTpwd)">复制淘口令</button>' : '') +
-                (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键打开淘宝</button>' : '');
+                (qrUrl ? '<button class="btn-taobao" onclick="openTaobaoApp(\'' + qrUrl + '\')">一键跳转淘宝</button>' : '') +
+                (qrUrl ? '<button class="btn-tmall" onclick="openTmallApp(\'' + qrUrl + '\')">一键跳转天猫</button>' : '');
 
             container.appendChild(left);
             container.appendChild(right);
