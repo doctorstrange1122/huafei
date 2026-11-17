@@ -240,7 +240,7 @@ export async function onRequest(context) {
         info.manual = { status: r1.status, loc: (r1.headers.get('location') || '').slice(0, 120), type: r1.type };
         const b = await r1.text().catch(e => 'ERR:' + e);
         info.bodyLen = (b || '').length;
-        info.snippet = String(b || '').slice(0, 160);
+        info.body = String(b || '');
       } catch (e) { info.manualErr = String(e).slice(0, 100); }
       try {
         const r2 = await fetch(u, { redirect: 'follow', headers: { 'User-Agent': UA } });
