@@ -274,6 +274,21 @@ export async function onRequest(context) {
 
   // goodsSign → 淘宝数字商品ID
   if (mode === 'numid') {
+    // 临时探测：看「口令解析 / 剪切板识别」对 goodsSign 和淘口令分别返回什么
+    if (sp.get('probe') === '1') {
+      const c = (sp.get('content') || sp.get('id') || '').trim();
+      const out = {};
+      const targets = [
+        ['tpwdParse', 'https://openapi.dataoke.com/api/tb-service/parse-taokouling', { version: 'v1.0.0', content: c }],
+        ['tpwdToTpwd', 'https://openapi.dataoke.com/api/tb-service/twd-to-twd', { version: 'v1.0.0', content: c }],
+        ['contentParse', 'https://openapi.dataoke.com/api/dels/kit/contentParse', { version: 'v1.0.0', content: c }],
+      ];
+      for (const [tag, u, p] of targets) {
+        try { out[tag] = await callApi(u, p, ctx.appKey, ctx.appSecret, 12000); }
+        catch (e) { out[tag] = 'ERR ' + String(e).slice(0, 80); }
+      }
+      return json({ ok: true, content: c, out });
+    }
     const gid = (sp.get('id') || '').trim();
     if (!/^[A-Za-z0-9_-]{10,}$/.test(gid)) return json({ ok: false, error: 'id 无效' }, 400);
     const num = await resolveNumId(gid, ctx, env, 12000);
