@@ -346,8 +346,10 @@ export async function onRequest(context) {
 
   // 用户手动刷新 / 定时任务 / 回填
   if (mode === 'refresh' || mode === 'cron' || mode === 'seed') {
+    // mode=cron&retry=1 手动全量重试未转链条目，跳过节流（一次性补偿用）
+    const retryAll = mode === 'cron' && !!sp.get('retry');
     const gap = mode === 'cron' ? 240 : REFRESH_GAP;
-    if (mode !== 'seed' && age < gap) {
+    if (mode !== 'seed' && !retryAll && age < gap) {
       return json({ ok: true, source: 'cache', age, throttled: true, updatedAt: meta.updatedAt, count: cached.length, items: cached });
     }
 
@@ -381,6 +383,22 @@ export async function onRequest(context) {
       if (mode !== 'seed') break;   // refresh/cron 只拉最新一页
     }
 
+    // 定时任务重试「未转链的旧条目」：补上"首次转链失败后掉出最新页、永不重试"的缺口。
+    // 每次修 6 条，多跑几轮即可把沉淀的空口令条目全部救回；成功才更新，失败保持原样。
+    let retried = 0;
+    if (mode === 'cron') {
+      const staleAll = Array.from(mapped.values()).filter(x => !x.converted && x.id);
+      const stale = staleAll.slice(0, retryAll ? 120 : 6);
+      if (stale.length) {
+        const conv = await convertAll(stale, ctx);
+        conv.forEach(x => {
+          const old = mapped.get(x.id);
+          if (x.converted && old) { mapped.set(x.id, x); retried++; }
+        });
+      }
+      if (retried) console.log('line-cron retried fixed:', retried);
+    }
+
     const merged = Array.from(mapped.values())
       .sort((a, b) => String(b.time).localeCompare(String(a.time)))
       .slice(0, mode === 'seed' ? 240 : MAX_ITEMS);
@@ -399,7 +417,7 @@ export async function onRequest(context) {
       if (any) await store(env, merged, 0);
     }
 
-    return json({ ok: true, source: 'live', updatedAt: Date.now(), count: merged.length, added, items: merged });
+    return json({ ok: true, source: 'live', updatedAt: Date.now(), count: merged.length, added, retried, items: merged });
   }
 
   return json({ ok: false, error: 'unknown mode' }, 400);
