@@ -4180,6 +4180,20 @@ async function resolveProductId(productLink) {
             return p(d.getHours()) + ':' + p(d.getMinutes()) + ' 更新';
         }
 
+        // 线报每条的发布时间：接口给的是 "YYYY-MM-DD HH:MM:SS"
+        // 当天只显示 HH:MM，非当天显示 MM-DD HH:MM，紧凑且不跨天混淆
+        function formatLineTime(str) {
+            if (!str) return '';
+            var m = String(str).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            if (!m) return String(str);
+            var y = +m[1], mo = m[2], d = m[3], hh = m[4], mm = m[5];
+            var now = new Date();
+            var p = function (n) { return String(n).padStart(2, '0'); };
+            var today = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
+            if ((y + '-' + mo + '-' + d) === today) return hh + ':' + mm;
+            return mo + '-' + d + ' ' + hh + ':' + mm;
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initMainTabs);
         } else {
@@ -4301,6 +4315,7 @@ async function resolveProductId(productLink) {
                             (it.price ? '<span class="line-price">¥' + escapeHtml(it.price) + '</span>' : '') +
                             (it.tpwd ? '<span class="line-tpwd">' + escapeHtml(it.tpwd) + '</span>' : '') +
                             (it.sub ? '<span class="line-badge">凑单</span>' : '') +
+                            (it.time ? '<span class="line-time">' + escapeHtml(formatLineTime(it.time)) + '</span>' : '') +
                         '</div>' +
                     '</div>' +
                     '<div class="line-acts">' +
@@ -5106,6 +5121,7 @@ async function resolveProductId(productLink) {
         .line-price { font-size: 13px; font-weight: 800; color: #ff2d55; }
         .line-tpwd { font-size: 11px; color: var(--text-sub); background: var(--weak-bg); padding: 2px 6px; border-radius: 6px; }
         .line-badge { font-size: 11px; color: #d4796b; background: var(--idpanel-bg); padding: 2px 6px; border-radius: 6px; }
+        .line-time { font-size: 11px; color: var(--text-weak); margin-left: auto; white-space: nowrap; }
         .line-acts { display: flex; flex-direction: column; gap: 6px; justify-content: center; }
         .line-acts button { border: 0; border-radius: 8px; font-size: 12px; padding: 7px 9px; white-space: nowrap; }
         .line-acts .la-copy { background: var(--tip-bg); color: var(--accent); }
