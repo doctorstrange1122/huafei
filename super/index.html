@@ -4211,11 +4211,31 @@ async function resolveProductId(productLink) {
                 if (!_lineItems.length) body.innerHTML = '<div class="line-empty"><span class="spinner"></span>正在获取线报…</div>';
             }
 
-            // 8 秒超时：网络不稳时快速失败，不干等十几秒
+            // 展示永远走 view（读 KV 快照，快），超时放宽到 15 秒，给弱网留余量
             var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-            var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) { } }, 8000) : null;
+            var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) { } }, 15000) : null;
             try {
-                var resp = await fetch(LINE_API + '?mode=' + (force ? 'refresh' : 'view'), {
+                // 手动刷新：后台「发后即忘」触发真实拉取+转链（约 10 秒，后端写回 KV），
+                // 绝不 await 它——否则必然撞上前端超时，误报「网络不稳」。
+                if (force) {
+                    fetch(LINE_API + '?mode=refresh&_r=' + Date.now(), { cache: 'no-store' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) {
+                            // 后台拉取完成后，把最新数据静默刷新到页面上（用户无需退出重进）
+                            if (d && d.ok && Array.isArray(d.items)) {
+                                var fresh = d.items.filter(function (it) { return it && (it.tpwd || it.url); });
+                                if (fresh.length) {
+                                    _lineItems = fresh;
+                                    _lineInfo = { updatedAt: d.updatedAt, source: d.source };
+                                    writeLineCache(_lineItems, _lineInfo);
+                                    renderLineList();
+                                }
+                            }
+                        })
+                        .catch(function () { }); // 后台失败不影响当前展示
+                }
+
+                var resp = await fetch(LINE_API + '?mode=view&_r=' + Date.now(), {
                     cache: 'no-store', signal: ctrl ? ctrl.signal : undefined
                 });
                 var d = await resp.json();
@@ -4225,6 +4245,7 @@ async function resolveProductId(productLink) {
                 _lineInfo = { updatedAt: d.updatedAt, source: d.source };
                 writeLineCache(_lineItems, _lineInfo); // 写入本地缓存，下次秒开
                 renderLineList();
+                if (force && !silent && sub && _lineInfo.source === 'cache') sub.textContent = '后台同步中，稍后自动更新';
             } catch (e) {
                 if (!_lineItems.length) {
                     // 完全没有缓存：给中文提示，不暴露英文 Failed to fetch
