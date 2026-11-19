@@ -4180,6 +4180,15 @@ async function resolveProductId(productLink) {
             return p(d.getHours()) + ':' + p(d.getMinutes()) + ' 更新';
         }
 
+        // 从线报文案里提取作者标注的「实付价」（💰 前后的数字），比接口的券后价更接近最终到手价。
+        // 兼容两种写法：💰25（数字在后，多数）/ 仅87💰（数字在前）。取第一个匹配。
+        function extractLinePrice(it) {
+            var t = (it && (it.text || it.raw)) || '';
+            var m = t.match(/[💰💲🤑]\s*(\d+(?:\.\d+)?)/);   // 图标在前：💰25
+            if (!m) m = t.match(/(\d+(?:\.\d+)?)\s*[💰💲🤑]/); // 图标在后：87💰
+            return m ? m[1] : '';
+        }
+
         // 线报每条的发布时间：接口给的是 "YYYY-MM-DD HH:MM:SS"
         // 当天只显示 HH:MM，非当天显示 MM-DD HH:MM，紧凑且不跨天混淆
         function formatLineTime(str) {
@@ -4333,7 +4342,7 @@ async function resolveProductId(productLink) {
                     '<div class="li-main">' +
                         '<div class="line-text">' + escapeHtml(it.text || '') + '</div>' +
                         '<div class="line-meta">' +
-                            (it.price ? '<span class="line-price">¥' + escapeHtml(it.price) + '</span>' : '') +
+                            ((extractLinePrice(it) || it.price) ? '<span class="line-price">¥' + escapeHtml(extractLinePrice(it) || it.price) + '</span>' : '') +
                             (it.tpwd ? '<span class="line-tpwd">' + escapeHtml(it.tpwd) + '</span>' : '') +
                             (it.sub ? '<span class="line-badge">凑单</span>' : '') +
                             (it.time ? '<span class="line-time">' + escapeHtml(formatLineTime(it.time)) + '</span>' : '') +
