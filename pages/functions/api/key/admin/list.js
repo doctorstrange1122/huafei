@@ -39,7 +39,9 @@ export async function onRequestPost(context) {
                     deviceId: data.deviceId || null,
                     activatedAt: data.activatedAt || null,
                     createdAt: data.createdAt || null,
-                    unlimited: !!data.unlimited
+                    unlimited: !!data.unlimited,
+                    expireAt: data.expireAt || 0,
+                    durationDays: data.durationDays || 0
                 });
             }
         }
@@ -47,11 +49,13 @@ export async function onRequestPost(context) {
         // 按创建时间倒序
         keys.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
+        const now = Date.now();
         const stats = {
             total: keys.length,
             activated: keys.filter(k => k.activated && !k.revoked).length,
             unused: keys.filter(k => !k.activated && !k.revoked).length,
-            revoked: keys.filter(k => k.revoked).length
+            revoked: keys.filter(k => k.revoked).length,
+            expired: keys.filter(k => k.expireAt > 0 && now > k.expireAt && !k.revoked).length
         };
 
         return new Response(JSON.stringify({

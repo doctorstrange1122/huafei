@@ -6,6 +6,22 @@
 // 安全提醒：该字符串一旦外泄，任何人都能激活使用；仅用于测试，正式环境请从下方常量移除。
 const TEST_KEY = 'DT-TEST-TEST-TEST';
 
+const DAY_MS = 86400000;
+
+// 计算到期时间：已有 expireAt（含后台续期写入的）保留，不重复计算；
+// 否则按生成时定的 durationDays 从激活时刻起算；durationDays<=0 或缺失 = 永久（老密钥兼容）
+function calcExpireAt(keyData, now) {
+    if (keyData.expireAt && keyData.expireAt > 0) return keyData.expireAt;
+    const days = Number(keyData.durationDays);
+    if (days > 0) return now + days * DAY_MS;
+    return 0; // 0 = 永久有效
+}
+
+// 是否已过期：expireAt>0 且当前时间已超过即视为过期；无到期时间 = 永不过期
+function isExpired(keyData, now) {
+    return !!(keyData.expireAt && keyData.expireAt > 0 && now > keyData.expireAt);
+}
+
 export async function onRequestPost(context) {
     const { request, env } = context;
     const KV = env.KEY_STORE;
@@ -57,6 +73,17 @@ export async function onRequestPost(context) {
             });
         }
 
+        // 已过期：拒绝激活，返回过期标记与密钥（供前端展示）
+        if (isExpired(keyData, Date.now())) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: '密钥已过期，请联系续期',
+                expired: true,
+                expireAt: keyData.expireAt,
+                key: keyData.key
+            }), { status: 403, headers: corsHeaders });
+        }
+
         // 不限次数密钥：任意设备可反复激活，不绑定单一设备
         if (keyData.unlimited) {
             const now = Date.now();
@@ -65,6 +92,8 @@ export async function onRequestPost(context) {
             if (!keyData.activated) {
                 keyData.activated = true;
                 keyData.activatedAt = now;
+                // 首次激活：按天数算出到期时间并落库
+                keyData.expireAt = calcExpireAt(keyData, now);
             }
             keyData.deviceId = keyData.devices.join(',');
             await KV.put(`key:${key}`, JSON.stringify(keyData));
@@ -72,6 +101,7 @@ export async function onRequestPost(context) {
                 success: true,
                 activated: true,
                 activatedAt: keyData.activatedAt,
+                expireAt: keyData.expireAt || 0,
                 unlimited: true
             }), { headers: corsHeaders });
         }
@@ -83,7 +113,8 @@ export async function onRequestPost(context) {
                 return new Response(JSON.stringify({
                     success: true,
                     activated: true,
-                    activatedAt: keyData.activatedAt
+                    activatedAt: keyData.activatedAt,
+                    expireAt: keyData.expireAt || 0
                 }), { headers: corsHeaders });
             } else {
                 // 不同设备，拒绝
@@ -99,13 +130,16 @@ export async function onRequestPost(context) {
         keyData.activated = true;
         keyData.activatedAt = now;
         keyData.deviceId = deviceId;
+        // 首次激活：按天数算出到期时间并落库
+        keyData.expireAt = calcExpireAt(keyData, now);
 
         await KV.put(`key:${key}`, JSON.stringify(keyData));
 
         return new Response(JSON.stringify({
             success: true,
             activated: true,
-            activatedAt: now
+            activatedAt: now,
+            expireAt: keyData.expireAt || 0
         }), { headers: corsHeaders });
 
     } catch (e) {

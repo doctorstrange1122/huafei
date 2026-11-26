@@ -1,6 +1,7 @@
 // 管理员生成密钥 API
 // POST /api/key/admin/generate
-// body: { count: 50, adminPassword: "xxx" }
+// body: { count: 50, adminPassword: "xxx", unlimited: false, durationDays: 30 }
+// durationDays: 有效期天数（激活后起算）；默认 30；0 = 永久有效
 export async function onRequestPost(context) {
     const { request, env } = context;
     const KV = env.KEY_STORE;
@@ -18,6 +19,14 @@ export async function onRequestPost(context) {
         const password = body.adminPassword || '';
         const count = parseInt(body.count) || 10;
         const unlimited = !!body.unlimited;
+
+        // 有效期天数：未传默认 30；0 表示永久
+        const rawDays = body.durationDays;
+        let durationDays = 30;
+        if (rawDays !== undefined && rawDays !== null && rawDays !== '') {
+            const parsed = parseInt(rawDays);
+            durationDays = isNaN(parsed) ? 30 : Math.max(0, parsed);
+        }
 
         if (password !== ADMIN_PASSWORD) {
             return new Response(JSON.stringify({ success: false, error: '密码错误' }), {
@@ -46,7 +55,9 @@ export async function onRequestPost(context) {
                 activatedAt: null,
                 createdAt: now,
                 unlimited: unlimited,
-                devices: []
+                devices: [],
+                durationDays: durationDays
+                // expireAt 不在此刻写：激活时才按「激活时刻 + durationDays」算出绝对到期日
             };
             await KV.put(`key:${key}`, JSON.stringify(keyData));
             generated.push(key);
@@ -55,6 +66,7 @@ export async function onRequestPost(context) {
         return new Response(JSON.stringify({
             success: true,
             count: generated.length,
+            durationDays: durationDays,
             keys: generated
         }), { headers: corsHeaders });
 

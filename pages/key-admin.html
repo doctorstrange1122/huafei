@@ -81,7 +81,7 @@
         /* 统计卡片 */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 10px;
             margin-bottom: 14px;
         }
@@ -162,6 +162,28 @@
         .status-active { background: #c6f6d5; color: #22543d; }
         .status-unused { background: #bee3f8; color: #2a4365; }
         .status-revoked { background: #fed7d7; color: #742a2a; }
+        .status-expired { background: #feebc8; color: #7b341e; }
+        .renew-btn {
+            padding: 4px 10px;
+            font-size: 11px;
+            background: #c6f6d5;
+            color: #22543d;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 6px;
+        }
+        .renew-btn:hover { background: #9ae6b4; }
+        .batch-renew-btn {
+            font-size: 12px;
+            padding: 6px 12px;
+            background: #48bb78;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
         .unlimited-toggle {
             display: flex;
             align-items: center;
@@ -326,15 +348,21 @@
                     <div class="stat-num" id="statRevoked">0</div>
                     <div class="stat-label">已作废</div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-num" id="statExpired">0</div>
+                    <div class="stat-label">已过期</div>
+                </div>
             </div>
 
             <!-- 生成密钥 -->
             <div class="card generate-section">
                 <h3>生成新密钥</h3>
                 <div class="generate-row">
-                    <input type="number" id="generateCount" value="20" min="1" max="200">
+                    <input type="number" id="generateCount" value="20" min="1" max="200" title="生成数量">
+                    <input type="number" id="generateDays" value="30" min="0" max="3650" title="有效期天数，0=永久" style="max-width:110px;">
                     <button onclick="generateKeys()">生成</button>
                 </div>
+                <div style="font-size:12px;color:#718096;margin-top:6px;">左：数量　右：有效期天数（默认 30 天，激活后起算；填 0 = 永久有效）</div>
                 <label class="unlimited-toggle"><input type="checkbox" id="generateUnlimited"> 不限次数（多设备可反复激活）</label>
             </div>
 
@@ -355,8 +383,10 @@
                             <option value="unused">未使用</option>
                             <option value="active">已激活</option>
                             <option value="revoked">已作废</option>
+                            <option value="expired">已过期</option>
                         </select>
                     </div>
+                    <button class="batch-renew-btn" onclick="batchRenew()">批量续期</button>
                     <span class="page-info" id="pageInfo"></span>
                 </div>
                 <div class="select-all-bar">
@@ -372,11 +402,12 @@
                                 <th>密钥</th>
                                 <th>状态</th>
                                 <th>激活时间</th>
+                                <th>到期时间</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="keysTableBody">
-                            <tr><td colspan="5" style="text-align:center; color:#a0aec0; padding:20px;">加载中...</td></tr>
+                            <tr><td colspan="6" style="text-align:center; color:#a0aec0; padding:20px;">加载中...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -469,6 +500,7 @@ function renderData(data) {
     document.getElementById('statActivated').textContent = data.stats.activated;
     document.getElementById('statUnused').textContent = data.stats.unused;
     document.getElementById('statRevoked').textContent = data.stats.revoked;
+    document.getElementById('statExpired').textContent = data.stats.expired || 0;
 
     // 保存全部密钥数据
     allKeys = data.keys || [];
@@ -477,13 +509,29 @@ function renderData(data) {
     renderKeysList();
 }
 
+// 判断密钥是否已过期（expireAt>0 且已过期）
+function isExpired(k) {
+    return k && k.expireAt > 0 && Date.now() > k.expireAt;
+}
+
+// 格式化到期时间：显示日期 + 剩余天数（或"已过期"）
+function formatExpire(k) {
+    if (!k || !k.expireAt || k.expireAt <= 0) return '<span class="date-text">永久</span>';
+    const remain = k.expireAt - Date.now();
+    const dateStr = formatDate(k.expireAt);
+    if (remain <= 0) return `<span class="date-text" style="color:#c53030;">${dateStr}（已过期）</span>`;
+    const days = Math.ceil(remain / 86400000);
+    return `<span class="date-text">${dateStr}（剩 ${days} 天）</span>`;
+}
+
 function getFilteredKeys() {
     const filter = document.getElementById('statusFilter').value;
     if (filter === 'all') return allKeys;
     return allKeys.filter(k => {
         if (filter === 'unused') return !k.activated && !k.revoked;
-        if (filter === 'active') return k.activated && !k.revoked;
+        if (filter === 'active') return k.activated && !k.revoked && !isExpired(k);
         if (filter === 'revoked') return k.revoked;
+        if (filter === 'expired') return isExpired(k) && !k.revoked;
         return true;
     });
 }
@@ -512,11 +560,12 @@ function renderKeysList() {
     // 列表
     const tbody = document.getElementById('keysTableBody');
     if (pageKeys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</td></tr>';
     } else {
         tbody.innerHTML = pageKeys.map(k => {
             let statusClass, statusText;
             if (k.revoked) { statusClass = 'status-revoked'; statusText = '已作废'; }
+            else if (isExpired(k)) { statusClass = 'status-expired'; statusText = '已过期'; }
             else if (k.activated) { statusClass = 'status-active'; statusText = '已激活'; }
             else { statusClass = 'status-unused'; statusText = '未使用'; }
 
@@ -534,7 +583,8 @@ function renderKeysList() {
                 </td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span>${k.unlimited ? ' <span class="badge-unlimited">不限</span>' : ''}</td>
                 <td><span class="date-text">${dateStr}</span></td>
-                <td>${canRevoke ? `<button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : '-'}</td>
+                <td>${formatExpire(k)}</td>
+                <td>${canRevoke ? `<button class="renew-btn" onclick="renewKey('${k.key}')">续期</button><button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : '-'}</td>
             </tr>`;
         }).join('');
     }
@@ -590,21 +640,82 @@ function generateKeys() {
         alert('数量范围 1-200');
         return;
     }
+    const daysRaw = document.getElementById('generateDays').value;
+    const days = daysRaw === '' ? 30 : Math.max(0, parseInt(daysRaw) || 0);
+    const daysText = days === 0 ? '永久有效' : `${days} 天`;
 
-    if (!confirm(`确定生成 ${count} 个新密钥吗？`)) return;
+    if (!confirm(`确定生成 ${count} 个新密钥吗？\n有效期：${daysText}（激活后起算）`)) return;
 
     fetch(API_BASE + '/admin/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count, adminPassword: adminPwd, unlimited: (document.getElementById('generateUnlimited') || {}).checked || false })
+        body: JSON.stringify({
+            count,
+            adminPassword: adminPwd,
+            unlimited: (document.getElementById('generateUnlimited') || {}).checked || false,
+            durationDays: days
+        })
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`成功生成 ${data.count} 个密钥`);
+            alert(`成功生成 ${data.count} 个密钥\n有效期：${daysText}`);
             loadKeys();
         } else {
             alert(data.error || '生成失败');
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+// 单个续期：输入天数（默认30，0=永久），从现在起算
+function renewKey(key) {
+    const input = prompt(`续期密钥 ${key}\n输入有效天数（默认 30，从现在起算；填 0 = 永久有效）：`, '30');
+    if (input === null) return;
+    const days = input.trim() === '' ? 30 : Math.max(0, parseInt(input) || 0);
+    if (!confirm(`确定将 ${key} 续期 ${days === 0 ? '为永久有效' : days + ' 天'} 吗？\n设备绑定不变，用户原设备点「我已续期，重新验证」即可恢复。`)) return;
+
+    fetch(API_BASE + '/admin/set-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys: [key], days, adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('续期成功');
+            loadKeys();
+        } else {
+            alert(data.error || '续期失败');
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+// 批量续期：对勾选的密钥统一设置天数
+function batchRenew() {
+    if (selectedKeys.size === 0) {
+        alert('请先勾选要续期的密钥');
+        return;
+    }
+    const input = prompt(`已选 ${selectedKeys.size} 个密钥\n输入有效天数（默认 30，从现在起算；填 0 = 永久有效）：`, '30');
+    if (input === null) return;
+    const days = input.trim() === '' ? 30 : Math.max(0, parseInt(input) || 0);
+    if (!confirm(`确定将这 ${selectedKeys.size} 个密钥续期 ${days === 0 ? '为永久有效' : days + ' 天'} 吗？`)) return;
+
+    fetch(API_BASE + '/admin/set-expiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys: Array.from(selectedKeys), days, adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`续期成功 ${data.updated} 个${data.missing && data.missing.length ? '，' + data.missing.length + ' 个不存在' : ''}`);
+            selectedKeys.clear();
+            loadKeys();
+        } else {
+            alert(data.error || '续期失败');
         }
     })
     .catch(e => alert('网络错误：' + e.message));
