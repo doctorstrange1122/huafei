@@ -300,6 +300,27 @@
             cursor: pointer;
         }
         .filter-select:focus { border-color: #667eea; }
+        .search-input {
+            padding: 6px 10px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            outline: none;
+            background: #fff;
+            color: #4a5568;
+            width: 180px;
+        }
+        .search-input:focus { border-color: #667eea; }
+        .search-clear-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            background: #f7fafc;
+            color: #718096;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .search-clear-btn:hover { border-color: #667eea; color: #667eea; }
         .pagination {
             display: flex;
             justify-content: center;
@@ -399,6 +420,10 @@
                             <option value="revoked">已作废</option>
                             <option value="expired">已过期</option>
                         </select>
+                    </div>
+                    <div class="filter-group">
+                        <input type="text" class="search-input" id="keySearch" placeholder="搜索密钥（输入片段即可）" oninput="onSearchChange()">
+                        <button class="search-clear-btn" id="searchClearBtn" style="display:none;" onclick="clearSearch()">清空</button>
                     </div>
                     <button class="batch-renew-btn" onclick="batchRenew()">批量续期</button>
                     <span class="page-info" id="pageInfo"></span>
@@ -526,12 +551,16 @@ function formatExpire(k) {
 
 function getFilteredKeys() {
     const filter = document.getElementById('statusFilter').value;
-    if (filter === 'all') return allKeys;
+    const searchEl = document.getElementById('keySearch');
+    const kw = (searchEl ? searchEl.value : '').trim().toUpperCase();
     return allKeys.filter(k => {
-        if (filter === 'unused') return !k.activated && !k.revoked;
-        if (filter === 'active') return k.activated && !k.revoked && !isExpired(k);
-        if (filter === 'revoked') return k.revoked;
-        if (filter === 'expired') return isExpired(k) && !k.revoked;
+        // 状态筛选
+        if (filter === 'unused' && (k.activated || k.revoked)) return false;
+        if (filter === 'active' && !(k.activated && !k.revoked && !isExpired(k))) return false;
+        if (filter === 'revoked' && !k.revoked) return false;
+        if (filter === 'expired' && !(isExpired(k) && !k.revoked)) return false;
+        // 密钥搜索（大小写不敏感，匹配片段即可）
+        if (kw && String(k.key || '').toUpperCase().indexOf(kw) === -1) return false;
         return true;
     });
 }
@@ -539,6 +568,23 @@ function getFilteredKeys() {
 function onFilterChange() {
     currentPage = 1;
     renderKeysList();
+}
+
+// 搜索输入：实时过滤并重置到第一页，有内容时显示"清空"按钮
+function onSearchChange() {
+    const el = document.getElementById('keySearch');
+    const clearBtn = document.getElementById('searchClearBtn');
+    if (clearBtn) clearBtn.style.display = (el && el.value.trim()) ? '' : 'none';
+    currentPage = 1;
+    renderKeysList();
+}
+
+// 清空搜索
+function clearSearch() {
+    const el = document.getElementById('keySearch');
+    if (el) el.value = '';
+    onSearchChange();
+    if (el) el.focus();
 }
 
 function renderKeysList() {
@@ -560,7 +606,10 @@ function renderKeysList() {
     // 列表（卡片式）
     const listEl = document.getElementById('keysList');
     if (pageKeys.length === 0) {
-        listEl.innerHTML = '<div style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</div>';
+        const searchEl = document.getElementById('keySearch');
+        const kw = (searchEl ? searchEl.value : '').trim();
+        const tip = kw ? '没有匹配“' + kw.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '”的密钥' : '暂无密钥';
+        listEl.innerHTML = '<div style="text-align:center; color:#a0aec0; padding:20px;">' + tip + '</div>';
     } else {
         listEl.innerHTML = pageKeys.map(k => {
             let statusClass, statusText;
