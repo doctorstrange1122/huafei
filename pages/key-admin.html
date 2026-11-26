@@ -165,6 +165,21 @@
         .kc-row3 { display: flex; gap: 8px; margin-top: 10px; }
         .kc-row3 button { flex: 1; padding: 8px 0; font-size: 12px; font-weight: 600; }
         .kc-row3 .renew-btn, .kc-row3 .revoke-btn { margin: 0; }
+        .kc-note {
+            display: flex; align-items: flex-start; gap: 6px;
+            margin-top: 10px; padding: 8px 10px;
+            background: #fffaf0; border: 1px solid #fbd38d; border-radius: 8px;
+            font-size: 12px; color: #7b341e; line-height: 1.5;
+        }
+        .kc-note.empty { background: #f7fafc; border-color: #e2e8f0; color: #a0aec0; }
+        .kc-note .note-label { flex: 0 0 auto; color: #b7791f; font-weight: 600; }
+        .kc-note.empty .note-label { color: #a0aec0; }
+        .kc-note .note-text { flex: 1; word-break: break-all; white-space: pre-wrap; cursor: pointer; }
+        .kc-note .note-edit {
+            flex: 0 0 auto; padding: 2px 8px; font-size: 11px;
+            background: #ed8936; color: #fff; border: none; border-radius: 5px; cursor: pointer;
+        }
+        .kc-note .note-edit:hover { background: #dd6b20; }
         .status-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -534,6 +549,13 @@ function renderData(data) {
     renderKeysList();
 }
 
+// HTML 转义（备注为用户输入，防注入）
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // 判断密钥是否已过期（expireAt>0 且已过期）
 function isExpired(k) {
     return k && k.expireAt > 0 && Date.now() > k.expireAt;
@@ -559,8 +581,11 @@ function getFilteredKeys() {
         if (filter === 'active' && !(k.activated && !k.revoked && !isExpired(k))) return false;
         if (filter === 'revoked' && !k.revoked) return false;
         if (filter === 'expired' && !(isExpired(k) && !k.revoked)) return false;
-        // 密钥搜索（大小写不敏感，匹配片段即可）
-        if (kw && String(k.key || '').toUpperCase().indexOf(kw) === -1) return false;
+        // 密钥 / 备注搜索（大小写不敏感，匹配片段即可）
+        if (kw) {
+            const hay = (String(k.key || '') + ' ' + String(k.note || '')).toUpperCase();
+            if (hay.indexOf(kw) === -1) return false;
+        }
         return true;
     });
 }
@@ -637,6 +662,10 @@ function renderKeysList() {
                     <span class="kc-item"><span class="kc-label">激活</span><span class="kc-val">${dateStr}</span></span>
                     <span class="kc-item"><span class="kc-label">到期</span>${expireHtml}</span>
                 </div>
+                ${k.note
+                    ? `<div class="kc-note"><span class="note-label">备注</span><span class="note-text" onclick="editNote('${k.key}')">${escapeHtml(k.note)}</span><button class="note-edit" onclick="editNote('${k.key}')">改</button></div>`
+                    : `<div class="kc-note empty"><span class="note-label">备注</span><span class="note-text" onclick="editNote('${k.key}')">点击添加备注…</span></div>`
+                }
                 <div class="kc-row3">
                     <button class="copy-btn" onclick="copyKey('${k.key}', this)">复制</button>
                     ${canRevoke ? `<button class="renew-btn" onclick="renewKey('${k.key}')">续期</button><button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : ''}
@@ -719,6 +748,29 @@ function generateKeys() {
             loadKeys();
         } else {
             alert(data.error || '生成失败');
+        }
+    })
+    .catch(e => alert('网络错误：' + e.message));
+}
+
+// 编辑备注：留空则清除
+function editNote(key) {
+    const cur = (allKeys.find(k => k.key === key) || {}).note || '';
+    const input = prompt(`备注 ${key}\n输入备注文字（最多200字，留空则清除）：`, cur);
+    if (input === null) return;
+    const note = input.trim().slice(0, 200);
+
+    fetch(API_BASE + '/admin/set-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, note, adminPassword: adminPwd })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadKeys();
+        } else {
+            alert(data.error || '保存备注失败');
         }
     })
     .catch(e => alert('网络错误：' + e.message));

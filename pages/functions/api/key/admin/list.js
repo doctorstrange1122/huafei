@@ -41,7 +41,8 @@ export async function onRequestPost(context) {
                     createdAt: data.createdAt || null,
                     unlimited: !!data.unlimited,
                     expireAt: data.expireAt || 0,
-                    durationDays: data.durationDays || 0
+                    durationDays: data.durationDays || 0,
+                    note: data.note || ''
                 });
             }
         }
