@@ -5394,20 +5394,15 @@ async function resolveProductId(productLink) {
             var hint = document.getElementById('myKeyHint');
             var copyBtn = document.getElementById('myKeyCopyBtn');
             if (!modal || !body) return;
-            modal.style.display = 'flex';
+            // 进入软件前必须通过密钥验证，本地必然已存激活密钥，无需处理"无密钥"分支
             var key = localStorage.getItem(STORAGE_KEY) || '';
             _myCurrentKey = key;
-            if (key) {
-                body.innerHTML = '<div style="font-size:12px;color:var(--text-sub);margin-bottom:8px;">当前激活密钥</div>' +
-                    '<div style="font-size:19px;font-weight:700;letter-spacing:1px;color:var(--text-title);word-break:break-all;background:var(--weak-bg);padding:12px;border-radius:10px;user-select:all;-webkit-user-select:all;">' +
-                    escapeHtml(key) + '</div>';
-                if (hint) hint.textContent = '续期时请将此密钥复制发给管理员，请勿泄露给他人';
-                if (copyBtn) copyBtn.style.display = '';
-            } else {
-                body.innerHTML = '<div style="font-size:14px;color:var(--text-sub);padding:14px 0;">尚未激活密钥</div>';
-                if (hint) hint.textContent = '本工具需要激活密钥才能使用';
-                if (copyBtn) copyBtn.style.display = 'none';
-            }
+            body.innerHTML = '<div style="font-size:12px;color:var(--text-sub);margin-bottom:8px;">当前激活密钥</div>' +
+                '<div style="font-size:19px;font-weight:700;letter-spacing:1px;color:var(--text-title);word-break:break-all;background:var(--weak-bg);padding:12px;border-radius:10px;user-select:all;-webkit-user-select:all;">' +
+                escapeHtml(key) + '</div>';
+            if (hint) hint.textContent = '续期时请将此密钥复制发给管理员，请勿泄露给他人';
+            if (copyBtn) copyBtn.style.display = '';
+            modal.style.display = 'flex';
         };
         window.closeMyKeyModal = function() {
             var modal = document.getElementById('myKeyModal');
