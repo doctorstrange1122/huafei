@@ -1245,6 +1245,7 @@
 </button>
 <!-- 账号下拉菜单（已登录时） -->
 <div class="account-menu" id="accountMenu">
+    <button type="button" class="account-menu-item" onclick="document.getElementById('accountMenu').classList.remove('show');openMyKeyModal();">我的密钥</button>
     <button type="button" class="account-menu-item" onclick="accountSyncNow()">立即同步</button>
     <button type="button" class="account-menu-item danger" onclick="accountLogout()">退出登录</button>
 </div>
@@ -1576,6 +1577,7 @@
                 <div class="form-err" id="loginErr"></div>
                 <button type="button" class="btn-confirm" id="loginSubmit" onclick="doAccountLogin()">登录</button>
                 <div class="form-hint" style="text-align:center;">常用 ID 与自设按钮会随账号自动同步</div>
+                <div style="text-align:center;margin-top:10px;"><button type="button" onclick="closeAccountModal();openMyKeyModal();" style="border:0;background:transparent;color:var(--accent,#3b62d9);font-size:13px;text-decoration:underline;padding:6px;-webkit-tap-highlight-color:transparent;">我的密钥</button></div>
             </form>
             <form class="account-form" id="registerForm" onsubmit="return false;" style="display:none;">
                 <div class="form-row">
@@ -1593,6 +1595,20 @@
                 <div class="form-err" id="regErr"></div>
                 <button type="button" class="btn-confirm" id="regSubmit" onclick="doAccountRegister()">注册并登录</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 我的密钥弹窗（查看/复制当前激活密钥，用于续期时报给管理员） -->
+    <div class="custom-text-modal" id="myKeyModal" style="display:none;">
+        <div class="custom-text-overlay" onclick="closeMyKeyModal()"></div>
+        <div class="custom-text-card">
+            <div class="custom-text-title">我的密钥</div>
+            <div id="myKeyBody" style="text-align:center;"></div>
+            <div class="custom-text-actions" style="margin-top:16px;">
+                <button type="button" class="btn-cancel" onclick="closeMyKeyModal()">关闭</button>
+                <button type="button" class="btn-confirm" id="myKeyCopyBtn" onclick="copyMyKey()">复制密钥</button>
+            </div>
+            <div id="myKeyHint" style="font-size:12px;color:var(--text-sub);text-align:center;margin-top:14px;line-height:1.6;">密钥用于续期，请勿泄露给他人</div>
         </div>
     </div>
 
@@ -5368,6 +5384,37 @@ async function resolveProductId(productLink) {
                 btn.disabled = false;
                 btn.textContent = '激 活';
             }
+        };
+
+        // ===== 我的密钥：查看/复制当前激活密钥（用于续期时报给管理员）=====
+        var _myCurrentKey = '';
+        window.openMyKeyModal = function() {
+            var modal = document.getElementById('myKeyModal');
+            var body = document.getElementById('myKeyBody');
+            var hint = document.getElementById('myKeyHint');
+            var copyBtn = document.getElementById('myKeyCopyBtn');
+            if (!modal || !body) return;
+            var key = localStorage.getItem(STORAGE_KEY) || '';
+            _myCurrentKey = key;
+            if (key) {
+                body.innerHTML = '<div style="font-size:12px;color:var(--text-sub);margin-bottom:8px;">当前激活密钥</div>' +
+                    '<div style="font-size:19px;font-weight:700;letter-spacing:1px;color:var(--text-title);word-break:break-all;background:var(--weak-bg);padding:12px;border-radius:10px;user-select:all;-webkit-user-select:all;">' +
+                    escapeHtml(key) + '</div>';
+                if (hint) hint.textContent = '续期时请将此密钥复制发给管理员，请勿泄露给他人';
+                if (copyBtn) copyBtn.style.display = '';
+            } else {
+                body.innerHTML = '<div style="font-size:14px;color:var(--text-sub);padding:14px 0;">尚未激活密钥</div>';
+                if (hint) hint.textContent = '本工具需要激活密钥才能使用';
+                if (copyBtn) copyBtn.style.display = 'none';
+            }
+            modal.classList.add('active');
+        };
+        window.closeMyKeyModal = function() {
+            var modal = document.getElementById('myKeyModal');
+            if (modal) modal.classList.remove('active');
+        };
+        window.copyMyKey = function() {
+            if (_myCurrentKey) copyToClipboard(_myCurrentKey);
         };
 
         // 回车激活
