@@ -137,20 +137,34 @@
             border-radius: 6px;
             cursor: pointer;
         }
-        .keys-table { width: 100%; font-size: 13px; }
-        .keys-table th {
-            text-align: left;
-            padding: 8px 6px;
-            border-bottom: 2px solid #e2e8f0;
-            color: #718096;
-            font-weight: 600;
-            font-size: 12px;
+        /* 卡片式密钥列表（手机端清晰） */
+        .key-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
         }
-        .keys-table td {
-            padding: 10px 6px;
-            border-bottom: 1px solid #f0f4f8;
-            font-family: "SF Mono", Menlo, monospace;
+        .key-card.selected { border-color: #667eea; background: #f7f5ff; }
+        .kc-row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .kc-row1 .key-checkbox { width: 18px; height: 18px; margin-right: 0; flex: 0 0 auto; }
+        .kc-key {
+            font-family: "SF Mono", Menlo, Consolas, monospace;
+            font-size: 15px; font-weight: 700; color: #2d3748;
+            letter-spacing: 0.5px; word-break: break-all; flex: 1; min-width: 150px;
         }
+        .kc-badges { display: flex; gap: 6px; flex: 0 0 auto; }
+        .kc-row2 {
+            display: flex; flex-wrap: wrap; gap: 6px 18px;
+            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #edf2f7;
+            font-size: 12px; color: #718096;
+        }
+        .kc-row2 .kc-item { display: flex; align-items: center; gap: 5px; }
+        .kc-row2 .kc-label { color: #a0aec0; }
+        .kc-row2 .kc-val { color: #4a5568; font-weight: 600; font-family: -apple-system, sans-serif; }
+        .kc-row3 { display: flex; gap: 8px; margin-top: 10px; }
+        .kc-row3 button { flex: 1; padding: 8px 0; font-size: 12px; font-weight: 600; }
+        .kc-row3 .renew-btn, .kc-row3 .revoke-btn { margin: 0; }
         .status-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -394,22 +408,8 @@
                     <label><input type="checkbox" class="key-checkbox" id="selectAllFilteredCheckbox" onchange="toggleSelectAllFiltered(this)"> 全选筛选结果</label>
                     <span class="select-info" id="selectInfo">已选 0 个</span>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="keys-table">
-                        <thead>
-                            <tr>
-                                <th style="width:30px;">选</th>
-                                <th>密钥</th>
-                                <th>状态</th>
-                                <th>激活时间</th>
-                                <th>到期时间</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="keysTableBody">
-                            <tr><td colspan="6" style="text-align:center; color:#a0aec0; padding:20px;">加载中...</td></tr>
-                        </tbody>
-                    </table>
+                <div id="keysList">
+                    <div style="text-align:center; color:#a0aec0; padding:20px;">加载中...</div>
                 </div>
                 <div class="pagination" id="pagination"></div>
             </div>
@@ -557,12 +557,12 @@ function renderKeysList() {
         infoEl.textContent = `共 ${filtered.length} 个，第 ${currentPage}/${totalPages} 页`;
     }
 
-    // 列表
-    const tbody = document.getElementById('keysTableBody');
+    // 列表（卡片式）
+    const listEl = document.getElementById('keysList');
     if (pageKeys.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</td></tr>';
+        listEl.innerHTML = '<div style="text-align:center; color:#a0aec0; padding:20px;">暂无密钥</div>';
     } else {
-        tbody.innerHTML = pageKeys.map(k => {
+        listEl.innerHTML = pageKeys.map(k => {
             let statusClass, statusText;
             if (k.revoked) { statusClass = 'status-revoked'; statusText = '已作废'; }
             else if (isExpired(k)) { statusClass = 'status-expired'; statusText = '已过期'; }
@@ -572,20 +572,27 @@ function renderKeysList() {
             const dateStr = k.activatedAt ? formatDate(k.activatedAt) : '-';
             const canRevoke = !k.revoked;
             const checked = selectedKeys.has(k.key) ? 'checked' : '';
+            const isSel = selectedKeys.has(k.key) ? ' selected' : '';
+            const expireHtml = formatExpire(k);
 
-            return `<tr>
-                <td><input type="checkbox" class="key-checkbox row-checkbox" value="${k.key}" ${checked} onchange="toggleKeySelection('${k.key}', this.checked)"></td>
-                <td>
-                    <div class="key-cell">
-                        <span class="key-text">${k.key}</span>
-                        <button class="copy-btn" onclick="copyKey('${k.key}', this)">复制</button>
+            return `<div class="key-card${isSel}">
+                <div class="kc-row1">
+                    <input type="checkbox" class="key-checkbox row-checkbox" value="${k.key}" ${checked} onchange="toggleKeySelection('${k.key}', this.checked)">
+                    <span class="kc-key">${k.key}</span>
+                    <div class="kc-badges">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                        ${k.unlimited ? '<span class="badge-unlimited">不限</span>' : ''}
                     </div>
-                </td>
-                <td><span class="status-badge ${statusClass}">${statusText}</span>${k.unlimited ? ' <span class="badge-unlimited">不限</span>' : ''}</td>
-                <td><span class="date-text">${dateStr}</span></td>
-                <td>${formatExpire(k)}</td>
-                <td>${canRevoke ? `<button class="renew-btn" onclick="renewKey('${k.key}')">续期</button><button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : '-'}</td>
-            </tr>`;
+                </div>
+                <div class="kc-row2">
+                    <span class="kc-item"><span class="kc-label">激活</span><span class="kc-val">${dateStr}</span></span>
+                    <span class="kc-item"><span class="kc-label">到期</span>${expireHtml}</span>
+                </div>
+                <div class="kc-row3">
+                    <button class="copy-btn" onclick="copyKey('${k.key}', this)">复制</button>
+                    ${canRevoke ? `<button class="renew-btn" onclick="renewKey('${k.key}')">续期</button><button class="revoke-btn" onclick="revokeKey('${k.key}')">作废</button>` : ''}
+                </div>
+            </div>`;
         }).join('');
     }
 
