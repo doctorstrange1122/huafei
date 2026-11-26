@@ -5394,6 +5394,7 @@ async function resolveProductId(productLink) {
             var hint = document.getElementById('myKeyHint');
             var copyBtn = document.getElementById('myKeyCopyBtn');
             if (!modal || !body) return;
+            modal.style.display = 'flex';
             var key = localStorage.getItem(STORAGE_KEY) || '';
             _myCurrentKey = key;
             if (key) {
@@ -5407,11 +5408,10 @@ async function resolveProductId(productLink) {
                 if (hint) hint.textContent = '本工具需要激活密钥才能使用';
                 if (copyBtn) copyBtn.style.display = 'none';
             }
-            modal.classList.add('active');
         };
         window.closeMyKeyModal = function() {
             var modal = document.getElementById('myKeyModal');
-            if (modal) modal.classList.remove('active');
+            if (modal) modal.style.display = 'none';
         };
         window.copyMyKey = function() {
             if (_myCurrentKey) copyToClipboard(_myCurrentKey);
