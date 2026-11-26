@@ -5137,7 +5137,7 @@ async function resolveProductId(productLink) {
 
     <!-- ====== 密钥激活系统 ====== -->
     <style>
-        #keyActivateOverlay {
+        #keyActivateOverlay, #keyExpiredOverlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.6);
@@ -5147,7 +5147,22 @@ async function resolveProductId(productLink) {
             z-index: 99999;
             padding: 20px;
         }
-        #keyActivateOverlay.active { display: flex; }
+        #keyActivateOverlay.active, #keyExpiredOverlay.active { display: flex; }
+        /* 过期弹窗：密钥展示框与双按钮 */
+        .expired-key-box {
+            font-size: 18px; font-weight: 700; letter-spacing: 1px;
+            color: var(--text-main); word-break: break-all;
+            background: var(--weak-bg); padding: 12px; border-radius: 10px;
+            margin-bottom: 16px; user-select: all; -webkit-user-select: all;
+        }
+        .key-activate-card .btn-ghost {
+            width: 100%; padding: 12px; margin-top: 10px;
+            font-size: 15px; font-weight: 600;
+            background: var(--weak-bg); color: var(--text-main);
+            border: 1px solid var(--input-border); border-radius: 10px;
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .key-activate-card .btn-ghost:active { transform: scale(0.98); }
         .key-activate-card {
             background: var(--card-bg);
             border-radius: 16px;
@@ -5283,14 +5298,30 @@ async function resolveProductId(productLink) {
         </div>
     </div>
 
+    <!-- 密钥过期弹窗：显示密钥供用户报给管理员续期，并可一键重新验证 -->
+    <div id="keyExpiredOverlay">
+        <div class="key-activate-card">
+            <div class="key-icon">⏰</div>
+            <h2>密钥已过期</h2>
+            <p class="subtitle">有效期已结束，请联系管理员续期<br>复制下方密钥发给管理员即可</p>
+            <div class="expired-key-box" id="expiredKeyText"></div>
+            <button id="keyReverifyBtn" onclick="reverifyKey()">我已续期，重新验证</button>
+            <button type="button" class="btn-ghost" id="expiredCopyBtn" onclick="copyExpiredKey()">复制密钥</button>
+            <div class="key-activate-error" id="reverifyError"></div>
+        </div>
+    </div>
+
     <script>
     // 密钥验证系统
     (function() {
         const KEY_API_BASE = 'https://huafei-redirect-pages.pages.dev/api/key';
         const STORAGE_KEY = 'app_activate_key';
         const STORAGE_DEVICE = 'app_device_id';
+        const STORAGE_EXPIRE = 'app_expire_at'; // 本地缓存的到期时间戳(ms)；0/不存在 = 永久（老密钥兼容）
         // 密钥当前是否有效（页面加载验证成功 / 激活成功后置 true；点击生成/解析时只读取此标志，零网络开销）
         window.__keyValid = false;
+        // 当前是否处于「已过期」状态：过期时即使本地有密钥也不放行
+        var _isExpired = false;
 
         // 获取或生成设备ID
         function getDeviceId() {
@@ -5317,29 +5348,80 @@ async function resolveProductId(productLink) {
             document.getElementById('keyActivateOverlay').classList.remove('active');
         }
 
-        // 函数级密钥闸门：生成二维码/解析前调用，未验证则弹出激活窗并返回 false（不阻挡已验证用户，零网络开销）
+        // 显示「密钥已过期」弹窗，并带出当前密钥供用户报给管理员续期
+        function showExpiredOverlay(key) {
+            const box = document.getElementById('expiredKeyText');
+            const errEl = document.getElementById('reverifyError');
+            if (box) box.textContent = key || '';
+            if (errEl) errEl.textContent = '';
+            _expiredKey = key || localStorage.getItem(STORAGE_KEY) || '';
+            _isExpired = true;
+            window.__keyValid = false;
+            document.getElementById('keyExpiredOverlay').classList.add('active');
+        }
+
+        function hideExpiredOverlay() {
+            document.getElementById('keyExpiredOverlay').classList.remove('active');
+        }
+
+        // 函数级密钥闸门：生成二维码/解析前调用，未验证则弹窗并返回 false（不阻挡已验证用户，零网络开销）
         function ensureKeyValid() {
-            if (window.__keyValid === true) return true;
-            showActivateOverlay();
+            if (window.__keyValid === true && !_isExpired) return true;
+            if (_isExpired) {
+                showExpiredOverlay(localStorage.getItem(STORAGE_KEY) || '');
+            } else {
+                showActivateOverlay();
+            }
             return false;
         }
 
-        // 验证已保存的密钥
+        // 读取本地缓存的到期时间（ms）。0/不存在 = 永久（老密钥兼容）
+        function getLocalExpireAt() {
+            const v = parseInt(localStorage.getItem(STORAGE_EXPIRE) || '0', 10);
+            return isNaN(v) ? 0 : v;
+        }
+        // 把服务端返回的到期时间写回本地（服务端为准，纠正本地时间被改）
+        function saveLocalExpireAt(expireAt) {
+            const n = parseInt(expireAt || '0', 10) || 0;
+            if (n > 0) localStorage.setItem(STORAGE_EXPIRE, String(n));
+            else localStorage.removeItem(STORAGE_EXPIRE);
+        }
+
+        // 验证已保存的密钥：本地到期时间快速拦截（离线也能拦）+ 后台异步权威复核
         async function verifySavedKey() {
             const savedKey = localStorage.getItem(STORAGE_KEY);
             const deviceId = getDeviceId();
 
             if (!savedKey) return false;
 
-            // 本地存有已激活密钥：信任本地状态（服务端校验改为后台非阻塞软校验，
-            // 不再因服务端拒认已激活设备而把已激活用户锁死）。只有从未激活（本地无密钥）的设备才被拦。
-            // 后台仍请求一次 /verify 用于统计/未来可撤销，但不阻塞使用。
+            // ① 本地快速判断：到期时间已过 → 直接判定过期，秒拦（不依赖网络）
+            const localExpire = getLocalExpireAt();
+            if (localExpire > 0 && Date.now() > localExpire) {
+                return { expired: true, key: savedKey, expireAt: localExpire };
+            }
+
+            // ② 后台权威复核（发后即忘、不阻塞进入）：结果回来后再纠正状态
+            //    - expired → 弹过期窗（服务端为准，能纠正本地时间被篡改）
+            //    - 网络失败/其他拒绝 → 保持放行（弱网不误伤、已激活用户不被锁死）
             try {
                 fetch(KEY_API_BASE + '/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ key: savedKey, deviceId })
-                }).catch(function() {});
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data) return;
+                    if (data.expired) {
+                        // 服务端判定过期：更新本地到期时间并拦截
+                        saveLocalExpireAt(data.expireAt);
+                        showExpiredOverlay(data.key || savedKey);
+                    } else if (data.valid && data.expireAt !== undefined) {
+                        // 服务端返回的有效期为准，回写本地（续期后重开也能自动同步）
+                        saveLocalExpireAt(data.expireAt);
+                    }
+                })
+                .catch(function() {});
             } catch (e) {}
             return true;
         }
@@ -5372,9 +5454,17 @@ async function resolveProductId(productLink) {
 
                 if (data.success && data.activated) {
                     localStorage.setItem(STORAGE_KEY, key);
+                    saveLocalExpireAt(data.expireAt);
                     localStorage.setItem('app_last_verify', Date.now());
+                    _isExpired = false;
                     window.__keyValid = true;
+                    hideExpiredOverlay();
                     hideActivateOverlay();
+                } else if (data.expired) {
+                    // 激活时发现密钥已过期
+                    saveLocalExpireAt(data.expireAt);
+                    hideActivateOverlay();
+                    showExpiredOverlay(data.key || key);
                 } else {
                     errEl.textContent = data.error || '激活失败';
                 }
@@ -5383,6 +5473,53 @@ async function resolveProductId(productLink) {
             } finally {
                 btn.disabled = false;
                 btn.textContent = '激 活';
+            }
+        };
+
+        // 过期弹窗当前展示的密钥
+        var _expiredKey = '';
+
+        // 复制过期弹窗中的密钥
+        window.copyExpiredKey = function() {
+            if (_expiredKey) copyToClipboard(_expiredKey);
+        };
+
+        // 「我已续期，重新验证」：重新请求 /verify，通过后恢复使用（不删本地密钥）
+        window.reverifyKey = async function() {
+            const btn = document.getElementById('keyReverifyBtn');
+            const errEl = document.getElementById('reverifyError');
+            const key = localStorage.getItem(STORAGE_KEY) || _expiredKey;
+            if (!key) return;
+            if (btn) { btn.disabled = true; btn.textContent = '验证中...'; }
+            if (errEl) errEl.textContent = '';
+            const deviceId = getDeviceId();
+            try {
+                const resp = await fetch(KEY_API_BASE + '/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key, deviceId })
+                });
+                const data = await resp.json();
+                if (data && data.valid && !data.expired) {
+                    // 续期生效：更新本地到期时间，恢复使用
+                    saveLocalExpireAt(data.expireAt);
+                    _isExpired = false;
+                    window.__keyValid = true;
+                    localStorage.setItem('app_last_verify', Date.now());
+                    hideExpiredOverlay();
+                } else if (data && data.expired) {
+                    saveLocalExpireAt(data.expireAt);
+                    if (errEl) errEl.textContent = '密钥仍处于过期状态，请联系管理员续期';
+                } else if (data && data.error === '参数不完整') {
+                    if (errEl) errEl.textContent = '验证失败，请重试';
+                } else {
+                    // 服务端未放行（如设备不匹配）：老逻辑软校验可能仍可用，这里提示但不强行锁死
+                    if (errEl) errEl.textContent = '暂未验证通过，如已续期请稍后重试或联系管理员';
+                }
+            } catch (e) {
+                if (errEl) errEl.textContent = '网络错误，请检查网络后重试';
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '我已续期，重新验证'; }
             }
         };
 
@@ -5424,10 +5561,17 @@ async function resolveProductId(productLink) {
 
         // 初始化：检查激活状态
         async function init() {
-            const isValid = await verifySavedKey();
-            if (isValid) {
+            const result = await verifySavedKey();
+            if (result && result.expired) {
+                // 本地判定已过期：弹过期窗（带出密钥），不删本地密钥
+                saveLocalExpireAt(result.expireAt);
+                showExpiredOverlay(result.key);
+            } else if (result === true) {
+                // 本地有效：秒开，后台异步复核由 verifySavedKey 内部发起
                 localStorage.setItem('app_last_verify', Date.now());
+                _isExpired = false;
                 window.__keyValid = true;
+                hideExpiredOverlay();
                 hideActivateOverlay();
             } else {
                 showActivateOverlay();
