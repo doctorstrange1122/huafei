@@ -776,11 +776,11 @@ function editNote(key) {
     .catch(e => alert('网络错误：' + e.message));
 }
 
-// 单个续期：输入天数（默认30，0=永久），从现在起算
+// 单个续期：输入天数（留空/填0=永久），从现在起算
 function renewKey(key) {
-    const input = prompt(`续期密钥 ${key}\n输入有效天数（默认 30，从现在起算；填 0 = 永久有效）：`, '30');
+    const input = prompt(`续期密钥 ${key}\n输入有效天数（从现在起算；留空或填 0 = 永久有效）：`, '30');
     if (input === null) return;
-    const days = input.trim() === '' ? 30 : Math.max(0, parseInt(input) || 0);
+    const days = input.trim() === '' ? 0 : Math.max(0, parseInt(input) || 0);
     if (!confirm(`确定将 ${key} 续期 ${days === 0 ? '为永久有效' : days + ' 天'} 吗？\n设备绑定不变，用户原设备点「我已续期，重新验证」即可恢复。`)) return;
 
     fetch(API_BASE + '/admin/set-expiry', {
@@ -806,9 +806,9 @@ function batchRenew() {
         alert('请先勾选要续期的密钥');
         return;
     }
-    const input = prompt(`已选 ${selectedKeys.size} 个密钥\n输入有效天数（默认 30，从现在起算；填 0 = 永久有效）：`, '30');
+    const input = prompt(`已选 ${selectedKeys.size} 个密钥\n输入有效天数（从现在起算；留空或填 0 = 永久有效）：`, '30');
     if (input === null) return;
-    const days = input.trim() === '' ? 30 : Math.max(0, parseInt(input) || 0);
+    const days = input.trim() === '' ? 0 : Math.max(0, parseInt(input) || 0);
     if (!confirm(`确定将这 ${selectedKeys.size} 个密钥续期 ${days === 0 ? '为永久有效' : days + ' 天'} 吗？`)) return;
 
     fetch(API_BASE + '/admin/set-expiry', {
